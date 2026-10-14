@@ -17,33 +17,27 @@ class HelpView
         $blue = "\033[34m";
 
         echo "\n";
-        echo
-            sprintf(
-                '%s%s╔══════════════════════════════════════════════════════════════╗%s%s',
-                $bold,
-                $cyan,
-                $reset,
-                PHP_EOL,
-            )
-        ;
-        echo
-            sprintf(
-                '%s%s║                        versaWYS CLI                          ║%s%s',
-                $bold,
-                $cyan,
-                $reset,
-                PHP_EOL,
-            )
-        ;
-        echo
-            sprintf(
-                '%s%s╚══════════════════════════════════════════════════════════════╝%s%s',
-                $bold,
-                $cyan,
-                $reset,
-                PHP_EOL,
-            )
-        ;
+        echo sprintf(
+            '%s%s╔══════════════════════════════════════════════════════════════╗%s%s',
+            $bold,
+            $cyan,
+            $reset,
+            PHP_EOL,
+        );
+        echo sprintf(
+            '%s%s║                        versaWYS CLI                          ║%s%s',
+            $bold,
+            $cyan,
+            $reset,
+            PHP_EOL,
+        );
+        echo sprintf(
+            '%s%s╚══════════════════════════════════════════════════════════════╝%s%s',
+            $bold,
+            $cyan,
+            $reset,
+            PHP_EOL,
+        );
         echo "\n";
         echo "{$bold}{$blue}Uso:{$reset} php versaCLI [comando] [opciones]\n";
         echo "\n";
@@ -59,7 +53,8 @@ class HelpView
         echo sprintf('%s%sComandos disponibles:%s%s', $bold, $blue, $reset, PHP_EOL);
         echo "\n";
         echo sprintf('%s%s🚀 Servidor%s%s', $bold, $green, $reset, PHP_EOL);
-        echo "  {$yellow}serve{$reset}                     Servidor de desarrollo en localhost:8000 (--port=N --host=H)\n";
+        echo
+            "  {$yellow}serve{$reset}                     Servidor de desarrollo en localhost:8000 (--port=N --host=H)\n";
         echo "\n";
         echo sprintf('%s%s⏱️ Cron%s%s', $bold, $green, $reset, PHP_EOL);
         echo "  {$yellow}cron:make:[nombre]{$reset}        Crear nueva tarea cron\n";
@@ -71,7 +66,8 @@ class HelpView
         echo "  {$yellow}config:debug:[true/false]{$reset} Activar/desactivar modo debug\n";
         echo "  {$yellow}config:templateCache:[true/false]{$reset} Activar/desactivar cache de Twig\n";
         echo "  {$yellow}config:ClearCache{$reset}         Limpiar cache de templates\n";
-        echo "  {$yellow}config:merge <archivo.json>{$reset} Aplicar ajustes versionados (sin secretos) a config.json\n";
+        echo
+            "  {$yellow}config:merge <archivo.json>{$reset} Aplicar ajustes versionados (sin secretos) a config.json\n";
         echo "\n";
         echo sprintf('%s%s📊 Base de datos%s%s', $bold, $green, $reset, PHP_EOL);
         echo "  {$yellow}migrate:make:[nombre]{$reset}     Crear nueva migración\n";

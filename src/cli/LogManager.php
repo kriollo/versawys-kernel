@@ -196,8 +196,7 @@ class LogManager
                         sprintf('... mostrando las últimas %d de %d líneas totales', $lines, $totalLines),
                         'blue',
                     )
-                    . "\n"
-            ;
+                    . "\n";
         }
     }
 

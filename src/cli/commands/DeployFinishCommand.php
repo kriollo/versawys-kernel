@@ -34,7 +34,9 @@ class DeployFinishCommand extends BaseCommand
     {
         $number = 0;
         foreach (self::STEPS as $command => $title) {
-            echo CLIErrorHandler::colorize(sprintf("\n▶ %d/%d %s", ++$number, count(self::STEPS), $title), 'blue') . "\n";
+            echo
+                CLIErrorHandler::colorize(sprintf("\n▶ %d/%d %s", ++$number, count(self::STEPS), $title), 'blue')
+                    . "\n";
 
             if (str_starts_with($command, 'config:merge') && !is_file(self::SHARED_CONFIG)) {
                 CLIErrorHandler::info('No hay ' . self::SHARED_CONFIG . ': se omite.');
@@ -44,7 +46,10 @@ class DeployFinishCommand extends BaseCommand
 
             // Mismo PHP que este proceso; sin terminal: las confirmaciones toman su valor por defecto
             passthru(
-                escapeshellarg(PHP_BINARY) . ' versaCLI ' . implode(' ', array_map(escapeshellarg(...), explode(' ', $command))) . ' < /dev/null',
+                escapeshellarg(PHP_BINARY)
+                . ' versaCLI '
+                . implode(' ', array_map(escapeshellarg(...), explode(' ', $command)))
+                . ' < /dev/null',
                 $exitCode,
             );
             if ($exitCode !== 0) {
@@ -73,8 +78,10 @@ class DeployFinishCommand extends BaseCommand
             $steps .= sprintf("  %-36s %s\n", "php versaCLI {$command}", $title);
         }
 
-        return "Uso: php versaCLI app:deploy:finish\n\n"
+        return (
+            "Uso: php versaCLI app:deploy:finish\n\n"
             . "Pensado como único hook post_deploy de versaDeploy. Ejecuta, en orden y deteniéndose en el\n"
-            . "primero que falle:\n\n{$steps}";
+            . "primero que falle:\n\n{$steps}"
+        );
     }
 }

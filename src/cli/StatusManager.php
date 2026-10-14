@@ -163,6 +163,7 @@ class StatusManager
 
         if ($extensions === []) {
             echo "   ⚠ No se pudo leer composer.lock para validar extensiones\n\n";
+
             return;
         }
 
@@ -267,6 +268,7 @@ class StatusManager
 
     /**
      * @param array<string, mixed> $config
+     *
      * @return array<string, string> [extension_name => reason]
      */
     private static function getProjectRequiredExtensions(array $config): array
@@ -297,6 +299,7 @@ class StatusManager
 
     /**
      * @param array<int, string> $extensions Extensiones con prefijo ext-
+     *
      * @return array<int, string>
      */
     private static function mapExtensionsToLinuxPackages(array $extensions): array

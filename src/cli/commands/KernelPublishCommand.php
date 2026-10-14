@@ -23,7 +23,10 @@ class KernelPublishCommand extends BaseCommand
     {
         $dir = dirname(__DIR__, 3) . '/stubs';
         $files = [];
-        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)) as $file) {
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(
+            $dir,
+            \FilesystemIterator::SKIP_DOTS,
+        )) as $file) {
             $files[substr($file->getPathname(), strlen($dir) + 1)] = $file->getPathname();
         }
         ksort($files);
@@ -53,7 +56,11 @@ class KernelPublishCommand extends BaseCommand
                 }
                 $created = !is_file($target);
                 copy($source, $target);
-                echo CLIErrorHandler::colorize($created ? '  + ' : '  ↻ ', 'cyan') . $target . ($created ? ' (creado)' : ' (reemplazado)') . "\n";
+                echo
+                    CLIErrorHandler::colorize($created ? '  + ' : '  ↻ ', 'cyan')
+                        . $target
+                        . ($created ? ' (creado)' : ' (reemplazado)')
+                        . "\n";
 
                 continue;
             }
@@ -66,7 +73,9 @@ class KernelPublishCommand extends BaseCommand
         }
 
         if ($pending > 0) {
-            CLIErrorHandler::info("{$pending} archivo(s) con cambios propios: revisar el diff (- proyecto, + kernel) y usar --force para reemplazarlos.");
+            CLIErrorHandler::info(
+                "{$pending} archivo(s) con cambios propios: revisar el diff (- proyecto, + kernel) y usar --force para reemplazarlos.",
+            );
         }
 
         return 0;
@@ -81,8 +90,12 @@ class KernelPublishCommand extends BaseCommand
     #[\Override]
     public function getHelp(): string
     {
-        return "Uso: php versaCLI app:kernel:publish [--force]\n\n"
+        return (
+            "Uso: php versaCLI app:kernel:publish [--force]\n\n"
             . "Sin opciones crea los archivos que faltan y muestra en qué difieren los demás (- proyecto, + kernel).\n"
-            . "--force reemplaza los que difieren. Archivos: " . implode(', ', array_keys(self::stubs())) . "\n";
+            . '--force reemplaza los que difieren. Archivos: '
+            . implode(', ', array_keys(self::stubs()))
+            . "\n"
+        );
     }
 }

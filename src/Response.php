@@ -10,6 +10,9 @@ use versaWYS\kernel\cli\CLIErrorHandler;
 
 class Response
 {
+    /** Rastros de un detalle interno: SQL y errores de PDO/VersaORM, trazas y rutas de archivos del servidor. */
+    private const string INTERNAL_DETAIL = '/SQLSTATE|SQL failed|engine execution error|PDOException|VersaORMException|Stack trace|\.php\b|\/(?:home|var|usr|srv|opt|tmp)\//i';
+
     /** true dentro de versaCLI (lo activa CommandLineInterface::main): los errores van a la terminal. */
     public static bool $cli = false;
 
@@ -29,7 +32,12 @@ class Response
         if ($last !== null) {
             error_clear_last();
             if (($GLOBALS['config']['build']['debug'] ?? false) === true) {
-                self::jsonError(['success' => 0, 'message' => 'Error en la petición', 'errors' => $last, 'code' => 500], 500);
+                self::jsonError([
+                    'success' => 0,
+                    'message' => 'Error en la petición',
+                    'errors' => $last,
+                    'code' => 500,
+                ], 500);
 
                 return false;
             }
@@ -39,7 +47,10 @@ class Response
         if (is_array($data) || is_object($data)) {
             // En producción una respuesta de error no lleva el detalle técnico: es habitual que el
             // controlador devuelva 'error' => $exception->getMessage(), que expone SQL y rutas.
-            if (in_array($data['success'] ?? 1, [0, false, '0'], true) && ($GLOBALS['config']['build']['debug'] ?? false) !== true) {
+            if (
+                in_array($data['success'] ?? 1, [0, false, '0'], true)
+                && ($GLOBALS['config']['build']['debug'] ?? false) !== true
+            ) {
                 unset($data['error'], $data['exception'], $data['trace'], $data['file'], $data['line']);
                 $data = self::hideInternalMessages($data);
             }
@@ -194,6 +205,92 @@ class Response
         exit();
     }
 
+    public static function textPlain(string $data, int $code = 200): bool|string
+    {
+        if (error_get_last() !== null) {
+            $data = [
+                'success' => 0,
+                'message' => 'Error en la petición',
+                'errors' => error_get_last(),
+                'code' => 500,
+            ];
+            $code = 500;
+            self::jsonError($data, $code);
+
+            return false;
+        }
+
+        header('Content-Type: text/plain');
+        http_response_code($code);
+
+        // Para peticiones HEAD, solo enviamos headers, no el cuerpo
+        if (!self::isHead()) {
+            echo $data;
+        }
+
+        return true;
+    }
+
+    /**
+     * Redirects the user to the specified route.
+     *
+     * @param string $route the route to redirect to
+     */
+    public static function redirect(string $route): void
+    {
+        // Detectar si es una petición SPA para devolver JSON redirección en lugar de 302
+        // Esto previene problemas de protocolo (http/https) en el navegador al seguir redirects nativos
+        if (Request::isSPARequestStatic()) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'type' => 'redirect',
+                'url' => $route,
+            ]);
+            exit();
+        }
+
+        header('Location: ' . $route);
+    }
+
+    /**
+     * En producción, un `message` o `errors` con detalle interno no llega al cliente. Es habitual que
+     * un controlador devuelva `'errors' => $e->getMessage()`, y el mensaje de VersaORM trae la consulta
+     * SQL completa. Se reemplaza por un texto genérico con la referencia de la petición, y el original
+     * queda en el log `security` con esa misma referencia.
+     *
+     * @param array<mixed> $data
+     *
+     * @return array<mixed>
+     */
+    public static function hideInternalMessages(array $data): array
+    {
+        $hidden = [];
+        $walk = static function (mixed $value) use (&$walk, &$hidden): mixed {
+            if (is_array($value)) {
+                return array_map($walk, $value);
+            }
+            if (is_string($value) && preg_match(self::INTERNAL_DETAIL, $value) === 1) {
+                $hidden[] = $value;
+
+                return 'Error interno del servidor (ref. ' . Loggin::requestId() . ').';
+            }
+
+            return $value;
+        };
+
+        foreach (['message', 'errors', 'error'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $data[$key] = $walk($data[$key]);
+            }
+        }
+
+        if ($hidden !== []) {
+            Loggin::error('Respuesta con detalle interno: se ocultó al cliente', 'security', ['detalle' => $hidden]);
+        }
+
+        return $data;
+    }
+
     /**
      * Maneja errores para peticiones SPA devolviendo JSON en formato SPA renderizable.
      * Esto permite que el frontend SPA muestre el error dentro del layout existente
@@ -268,55 +365,6 @@ class Response
         ], $code);
 
         exit();
-    }
-
-    public static function textPlain(string $data, int $code = 200): bool|string
-    {
-        if (error_get_last() !== null) {
-            $data = [
-                'success' => 0,
-                'message' => 'Error en la petición',
-                'errors' => error_get_last(),
-                'code' => 500,
-            ];
-            $code = 500;
-            self::jsonError($data, $code);
-
-            return false;
-        }
-
-        header('Content-Type: text/plain');
-        http_response_code($code);
-
-        // Para peticiones HEAD, solo enviamos headers, no el cuerpo
-        if (!self::isHead()) {
-            echo $data;
-        }
-
-        return true;
-    }
-
-    /**
-     * Redirects the user to the specified route.
-     *
-     * @param string $route the route to redirect to
-     */
-    public static function redirect(string $route): void
-    {
-        // Detectar si es una petición SPA para devolver JSON redirección en lugar de 302
-        // Esto previene problemas de protocolo (http/https) en el navegador al seguir redirects nativos
-        if (Request::isSPARequestStatic()) {
-            header('Content-Type: application/json');
-            echo
-                json_encode([
-                    'type' => 'redirect',
-                    'url' => $route,
-                ])
-            ;
-            exit();
-        }
-
-        header('Location: ' . $route);
     }
 
     /**
@@ -465,54 +513,19 @@ class Response
             return $data;
         }
 
-        return self::hideInternalMessages(array_intersect_key($data, array_flip(['success', 'message', 'errors', 'code', 'type', 'timestamp'])));
+        return self::hideInternalMessages(array_intersect_key($data, array_flip([
+            'success',
+            'message',
+            'errors',
+            'code',
+            'type',
+            'timestamp',
+        ])));
     }
 
     /** Una respuesta a HEAD lleva solo las cabeceras. */
     private static function isHead(): bool
     {
         return ($_SERVER['REQUEST_METHOD'] ?? '') === 'HEAD';
-    }
-
-    /** Rastros de un detalle interno: SQL y errores de PDO/VersaORM, trazas y rutas de archivos del servidor. */
-    private const string INTERNAL_DETAIL = '/SQLSTATE|SQL failed|engine execution error|PDOException|VersaORMException|Stack trace|\.php\b|\/(?:home|var|usr|srv|opt|tmp)\//i';
-
-    /**
-     * En producción, un `message` o `errors` con detalle interno no llega al cliente. Es habitual que
-     * un controlador devuelva `'errors' => $e->getMessage()`, y el mensaje de VersaORM trae la consulta
-     * SQL completa. Se reemplaza por un texto genérico con la referencia de la petición, y el original
-     * queda en el log `security` con esa misma referencia.
-     *
-     * @param array<mixed> $data
-     *
-     * @return array<mixed>
-     */
-    public static function hideInternalMessages(array $data): array
-    {
-        $hidden = [];
-        $walk = static function (mixed $value) use (&$walk, &$hidden): mixed {
-            if (is_array($value)) {
-                return array_map($walk, $value);
-            }
-            if (is_string($value) && preg_match(self::INTERNAL_DETAIL, $value) === 1) {
-                $hidden[] = $value;
-
-                return 'Error interno del servidor (ref. ' . Loggin::requestId() . ').';
-            }
-
-            return $value;
-        };
-
-        foreach (['message', 'errors', 'error'] as $key) {
-            if (array_key_exists($key, $data)) {
-                $data[$key] = $walk($data[$key]);
-            }
-        }
-
-        if ($hidden !== []) {
-            Loggin::error('Respuesta con detalle interno: se ocultó al cliente', 'security', ['detalle' => $hidden]);
-        }
-
-        return $data;
     }
 }

@@ -33,20 +33,6 @@ final class RateLimitTest extends TestCase
         @rmdir($this->dir);
     }
 
-    /** @return array<string, mixed> */
-    private static function config(string $dir, int $requests = 3): array
-    {
-        return [
-            'rate_limiting' => [
-                'enabled' => true,
-                'cache_dir' => $dir,
-                'cleanup_probability' => 1000000,
-                'rules' => ['login' => ['requests' => $requests, 'window' => 60, 'enabled' => true]],
-            ],
-            'logging' => ['dir' => sys_get_temp_dir() . '/versawys-test-logs/'],
-        ];
-    }
-
     public function testItBlocksWithA429AfterTheLimit(): void
     {
         for ($i = 0; $i < 3; $i++) {
@@ -106,8 +92,12 @@ final class RateLimitTest extends TestCase
         // flock: 8 procesos a la vez sobre el mismo contador no pierden incrementos
         $script = tempnam(sys_get_temp_dir(), 'rl') . '.php';
         file_put_contents($script, '<?php
-            require ' . var_export(dirname(__DIR__) . '/vendor/autoload.php', true) . ';
-            $GLOBALS["config"] = ' . var_export(self::config($this->dir, 100000), true) . ';
+            require '
+        . var_export(dirname(__DIR__) . '/vendor/autoload.php', true)
+        . ';
+            $GLOBALS["config"] = '
+        . var_export(self::config($this->dir, 100000), true)
+        . ';
             for ($i = 0; $i < 25; $i++) { versaWYS\kernel\SecurityUtils::checkRateLimit("203.0.113.9", "login"); }
         ');
 
@@ -143,8 +133,24 @@ final class RateLimitTest extends TestCase
             unlink($blocker);
         }
 
-        $logs = (string) file_get_contents($log) . implode('', array_map(file_get_contents(...), glob(sys_get_temp_dir() . '/versawys-test-logs/*') ?: []));
+        $logs =
+            (string) file_get_contents($log)
+            . implode('', array_map(file_get_contents(...), glob(sys_get_temp_dir() . '/versawys-test-logs/*') ?: []));
         unlink($log);
         self::assertStringContainsString('Rate limiting sin almacenamiento escribible', $logs);
+    }
+
+    /** @return array<string, mixed> */
+    private static function config(string $dir, int $requests = 3): array
+    {
+        return [
+            'rate_limiting' => [
+                'enabled' => true,
+                'cache_dir' => $dir,
+                'cleanup_probability' => 1000000,
+                'rules' => ['login' => ['requests' => $requests, 'window' => 60, 'enabled' => true]],
+            ],
+            'logging' => ['dir' => sys_get_temp_dir() . '/versawys-test-logs/'],
+        ];
     }
 }

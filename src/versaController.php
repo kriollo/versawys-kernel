@@ -44,7 +44,10 @@ class versaController extends GlobalControllers
             $routesFromRouteFile = $route === 'all' ? array_merge(...array_values($allRoutes)) : $allRoutes[$route];
             $opcionActual = [
                 ['link' => '/doc', 'name' => 'VersaRoutes - Files'],
-                ['link' => '/doc?route=' . rawurlencode($route), 'name' => 'VersaRoutes - ' . ($route === 'all' ? 'Todas' : $route)],
+                [
+                    'link' => '/doc?route=' . rawurlencode($route),
+                    'name' => 'VersaRoutes - ' . ($route === 'all' ? 'Todas' : $route),
+                ],
             ];
         }
 

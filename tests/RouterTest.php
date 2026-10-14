@@ -62,6 +62,7 @@ final class RouterTest extends TestCase
         Router::get($path, [RouterTestController::class, 'show']);
 
         ob_start();
+
         try {
             $result = (new Router())->resolve();
             $output = ob_get_contents();
@@ -97,7 +98,12 @@ final class RouterTest extends TestCase
 
     public function testAMiddlewareResponseStopsTheRequestWithItsCode(): void
     {
-        $path = $this->route('get', '/', [RouterTestController::class, 'show'], [[RouterTestMiddleware::class, 'deny']]);
+        $path = $this->route(
+            'get',
+            '/',
+            [RouterTestController::class, 'show'],
+            [[RouterTestMiddleware::class, 'deny']],
+        );
 
         $output = $this->dispatch('GET', $path);
 
@@ -122,7 +128,11 @@ final class RouterTest extends TestCase
 
     public function testAnUnknownMethodGets405(): void
     {
-        $result = $this->dispatchIsolated('TRACE', '/kernel-test-405', "Router::get('/kernel-test-405', [RouterTestController::class, 'show']);");
+        $result = $this->dispatchIsolated(
+            'TRACE',
+            '/kernel-test-405',
+            "Router::get('/kernel-test-405', [RouterTestController::class, 'show']);",
+        );
 
         self::assertSame(405, $result['status']);
         self::assertStringNotContainsString('ok', $result['body']);
@@ -131,9 +141,13 @@ final class RouterTest extends TestCase
     public function testGroupPrefixAndMiddlewareApplyToEveryRoute(): void
     {
         $prefix = '/kernel-test-' . bin2hex(random_bytes(4));
-        Router::group($prefix, static function (): void {
-            Router::get('/a', [RouterTestController::class, 'show']);
-        }, [[RouterTestMiddleware::class, 'deny']]);
+        Router::group(
+            $prefix,
+            static function (): void {
+                Router::get('/a', [RouterTestController::class, 'show']);
+            },
+            [[RouterTestMiddleware::class, 'deny']],
+        );
 
         $this->dispatch('GET', $prefix . '/a');
 
@@ -228,7 +242,12 @@ final class RouterTest extends TestCase
     #[\PHPUnit\Framework\Attributes\DataProvider('clients')]
     public function testAnUncaughtExceptionAnswers500WithoutItsDetails(array $client): void
     {
-        $result = $this->dispatchIsolated('GET', '/kernel-test-falla', "Router::get('/kernel-test-falla', [RouterTestController::class, 'explode']);", $client);
+        $result = $this->dispatchIsolated(
+            'GET',
+            '/kernel-test-falla',
+            "Router::get('/kernel-test-falla', [RouterTestController::class, 'explode']);",
+            $client,
+        );
 
         self::assertSame(500, $result['status']);
         self::assertStringNotContainsString('SELECT', $result['body']);
@@ -237,7 +256,9 @@ final class RouterTest extends TestCase
 
     public function testAnUnknownApiRouteGetsA404WithoutInternals(): void
     {
-        $output = $this->dispatch('GET', '/kernel-test-nada-' . bin2hex(random_bytes(4)), ['HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']);
+        $output = $this->dispatch('GET', '/kernel-test-nada-' . bin2hex(random_bytes(4)), [
+            'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest',
+        ]);
 
         self::assertSame(404, http_response_code());
         self::assertIsArray(json_decode($output, true));
@@ -259,12 +280,32 @@ final class RouterTest extends TestCase
             namespace versaWYS\\kernel\\Tests;
             use versaWYS\\kernel\\Request;
             use versaWYS\\kernel\\Router;
-            require ' . var_export(dirname(__DIR__) . '/vendor/autoload.php', true) . ';
-            require ' . var_export(__FILE__, true) . ';
-            $GLOBALS["config"] = ' . var_export(['trusted_proxies' => [], 'rate_limiting' => ['enabled' => false], 'admin' => [], 'build' => ['debug' => false]], true) . ';
-            $_SERVER = ' . var_export(['REQUEST_METHOD' => $method, 'REQUEST_URI' => $path, 'REMOTE_ADDR' => '127.0.0.1', ...$server], true) . ';
+            require '
+        . var_export(dirname(__DIR__) . '/vendor/autoload.php', true)
+        . ';
+            require '
+        . var_export(__FILE__, true)
+        . ';
+            $GLOBALS["config"] = '
+        . var_export([
+            'trusted_proxies' => [],
+            'rate_limiting' => ['enabled' => false],
+            'admin' => [],
+            'build' => ['debug' => false],
+        ], true)
+        . ';
+            $_SERVER = '
+        . var_export([
+            'REQUEST_METHOD' => $method,
+            'REQUEST_URI' => $path,
+            'REMOTE_ADDR' => '127.0.0.1',
+            ...$server,
+        ], true)
+        . ';
             $GLOBALS["request"] = new Request();
-            ' . $routes . '
+            '
+        . $routes
+        . '
             register_shutdown_function(static function (): void { fwrite(STDERR, "STATUS:" . http_response_code()); });
             (new Router())->resolve();
         ');
@@ -305,6 +346,7 @@ final class RouterTest extends TestCase
         $request = new Request();
 
         ob_start();
+
         try {
             (new Router())->resolve();
 
@@ -341,7 +383,9 @@ final class RouterTestController
 
     public function explode(): never
     {
-        throw new \RuntimeException('PDO engine execution error: SQL failed (get): SELECT password FROM versa_users en /var/www/app/models/Users.php:40');
+        throw new \RuntimeException(
+            'PDO engine execution error: SQL failed (get): SELECT password FROM versa_users en /var/www/app/models/Users.php:40',
+        );
     }
 }
 

@@ -26,6 +26,12 @@ class CLIErrorHandler
     ];
 
     /**
+     * Muestra un mensaje de advertencia.
+     */
+    /** Algún comando reportó un error: versaCLI termina con código de salida 1 */
+    public static bool $failed = false;
+
+    /**
      * Maneja errores de base de datos de manera amigable para CLI.
      */
     public static function handleDatabaseError(Exception $e, array $context = []): void
@@ -165,12 +171,6 @@ class CLIErrorHandler
     {
         echo self::colorize('ℹ ', 'cyan') . $message . "\n";
     }
-
-    /**
-     * Muestra un mensaje de advertencia.
-     */
-    /** Algún comando reportó un error: versaCLI termina con código de salida 1 */
-    public static bool $failed = false;
 
     public static function warning(string $message): void
     {

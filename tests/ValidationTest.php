@@ -40,7 +40,11 @@ final class ValidationTest extends TestCase
     public function testBooleanAcceptsJsonAndFormValues(): void
     {
         foreach ([true, false, 1, 0, '1', '0', 'true', 'false', 'on', 'off'] as $value) {
-            self::assertSame([], Functions::validateParams(['ok' => $value], ['ok' => 'boolean']), var_export($value, true));
+            self::assertSame(
+                [],
+                Functions::validateParams(['ok' => $value], ['ok' => 'boolean']),
+                var_export($value, true),
+            );
         }
         self::assertArrayHasKey('ok', Functions::validateParams(['ok' => 'quizás'], ['ok' => 'boolean']));
     }
@@ -51,7 +55,11 @@ final class ValidationTest extends TestCase
 
         self::assertSame([], Functions::validateParams(['cantidad' => 0, 'estado' => '0', 'activo' => false], $rules));
         self::assertSame(
-            ['cantidad' => 'El campo cantidad es requerido', 'estado' => 'El campo estado es requerido', 'activo' => 'El campo activo es requerido'],
+            [
+                'cantidad' => 'El campo cantidad es requerido',
+                'estado' => 'El campo estado es requerido',
+                'activo' => 'El campo activo es requerido',
+            ],
             Functions::validateParams(['cantidad' => '', 'estado' => '   ', 'activo' => []], $rules),
         );
     }

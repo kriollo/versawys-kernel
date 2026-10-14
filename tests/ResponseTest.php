@@ -27,15 +27,6 @@ final class ResponseTest extends TestCase
         $config = $this->originalConfig;
     }
 
-    /** @return array<mixed> */
-    private static function send(array $data): array
-    {
-        ob_start();
-        Response::json($data, 500);
-
-        return json_decode((string) ob_get_clean(), true);
-    }
-
     public function testInProductionTheSqlOfAnExceptionNeverReachesTheClient(): void
     {
         // Lo que devuelve un controlador con 'message' => $e->getMessage() ante un fallo de VersaORM
@@ -49,7 +40,10 @@ final class ResponseTest extends TestCase
         self::assertStringNotContainsString('SELECT', (string) json_encode($body));
         self::assertStringNotContainsString('SQLSTATE', (string) json_encode($body));
         self::assertArrayNotHasKey('trace', $body);
-        self::assertMatchesRegularExpression('/^Error interno del servidor \(ref\. [A-Za-z0-9._-]+\)\.$/', $body['message']);
+        self::assertMatchesRegularExpression(
+            '/^Error interno del servidor \(ref\. [A-Za-z0-9._-]+\)\.$/',
+            $body['message'],
+        );
     }
 
     public function testValidationErrorsAreKept(): void
@@ -81,5 +75,14 @@ final class ResponseTest extends TestCase
         $body = self::send(['success' => 1, 'message' => 'Exportado a /tmp/reporte.php.csv']);
 
         self::assertSame('Exportado a /tmp/reporte.php.csv', $body['message']);
+    }
+
+    /** @return array<mixed> */
+    private static function send(array $data): array
+    {
+        ob_start();
+        Response::json($data, 500);
+
+        return json_decode((string) ob_get_clean(), true);
     }
 }

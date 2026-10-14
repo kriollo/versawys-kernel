@@ -104,6 +104,23 @@ class ApplicationCommandManager
     }
 
     /**
+     * Refresca el cache de comandos.
+     */
+    public static function refreshCache(): void
+    {
+        CLIErrorHandler::info('Refrescando cache de comandos...');
+
+        $commands = CommandRegistry::getCachedCommands(forceRefresh: true);
+
+        CLIErrorHandler::success('Cache actualizado. Comandos encontrados: ' . count($commands));
+
+        if (count($commands) > 0) {
+            echo "\n";
+            self::showAvailableCommands($commands);
+        }
+    }
+
+    /**
      * Muestra la ayuda general de comandos de aplicación.
      */
     private static function showAppCommandsHelp(): void
@@ -202,22 +219,5 @@ class ApplicationCommandManager
         }
 
         echo "\n";
-    }
-
-    /**
-     * Refresca el cache de comandos.
-     */
-    public static function refreshCache(): void
-    {
-        CLIErrorHandler::info('Refrescando cache de comandos...');
-
-        $commands = CommandRegistry::getCachedCommands(forceRefresh: true);
-
-        CLIErrorHandler::success('Cache actualizado. Comandos encontrados: ' . count($commands));
-
-        if (count($commands) > 0) {
-            echo "\n";
-            self::showAvailableCommands($commands);
-        }
     }
 }

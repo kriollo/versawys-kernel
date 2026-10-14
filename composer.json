@@ -1,70 +1,75 @@
 {
-    "name": "versawys/kernel",
-    "description": "Núcleo del framework versaWYS-PHP: enrutamiento, middlewares, sesión/JWT, Twig, CLI y VersaORM.",
-    "type": "library",
-    "keywords": [
-        "framework",
-        "php",
-        "mvc",
-        "twig",
-        "versaorm"
-    ],
-    "homepage": "https://github.com/kriollo/versaWYS",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Jorge Jara H.",
-            "email": "jjara@wys.cl"
-        }
-    ],
-    "support": {
-        "issues": "https://github.com/kriollo/versawys-kernel/issues",
-        "source": "https://github.com/kriollo/versawys-kernel"
-    },
-    "require": {
-        "php": ">=8.3",
-        "ext-intl": "*",
-        "ext-mbstring": "*",
-        "ext-pdo": "*",
-        "composer-runtime-api": "^2.2",
-        "firebase/php-jwt": "^7.1",
-        "symfony/mailer": "^7.3 || ^8.1",
-        "twig/cssinliner-extra": "^3.26",
-        "twig/twig": "^3.28",
-        "versaorm/versaorm-php": "^1.9 || ^2.0"
-    },
-    "require-dev": {
-        "laravel/pint": "^1.30",
-        "phpstan/phpstan": "^2.2",
-        "phpstan/phpstan-strict-rules": "^2.0",
-        "phpunit/phpunit": "^11.5",
-        "carthage-software/mago": "^1.57"
-    },
-    "autoload": {
-        "psr-4": {
-            "versaWYS\\kernel\\": "src/"
-        }
-    },
-    "minimum-stability": "stable",
-    "scripts": {
-        "pint": "pint",
-        "pint:check": "pint --test",
-        "test": "phpunit",
-        "bench": "@php -d xdebug.mode=off -d opcache.enable_cli=1 bench/run.php",
-        "stan": "phpstan analyse --ansi --memory-limit=1G",
-        "mago": "mago lint --baseline mago-baseline.toml",
-        "mago:baseline": "mago lint --baseline mago-baseline.toml --generate-baseline",
-        "mago:analyze": "mago analyze",
-        "check": [
-            "@pint:check",
-            "@mago",
-            "@test",
-            "@stan"
-        ]
-    },
-    "config": {
-        "allow-plugins": {
-            "carthage-software/mago": true
-        }
+  "name": "versawys/kernel",
+  "description": "Núcleo del framework versaWYS-PHP: enrutamiento, middlewares, sesión/JWT, Twig, CLI y VersaORM.",
+  "type": "library",
+  "keywords": [
+    "framework",
+    "php",
+    "mvc",
+    "twig",
+    "versaorm"
+  ],
+  "homepage": "https://github.com/kriollo/versaWYS",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Jorge Jara H.",
+      "email": "jjara@wys.cl"
     }
+  ],
+  "support": {
+    "issues": "https://github.com/kriollo/versawys-kernel/issues",
+    "source": "https://github.com/kriollo/versawys-kernel"
+  },
+  "require": {
+    "php": ">=8.3",
+    "ext-intl": "*",
+    "ext-mbstring": "*",
+    "ext-pdo": "*",
+    "composer-runtime-api": "^2.2",
+    "firebase/php-jwt": "^7.2.1",
+    "symfony/mailer": "^8.1.7",
+    "twig/cssinliner-extra": "^3.26",
+    "twig/twig": "^3.28",
+    "versaorm/versaorm-php": "^2.0.1"
+  },
+  "require-dev": {
+    "laravel/pint": "^1.32.1",
+    "phpstan/phpstan": "^2.3.1",
+    "phpstan/phpstan-strict-rules": "^2.1.0",
+    "phpunit/phpunit": "^11.5.57",
+    "carthage-software/mago": "^1.57",
+    "friendsofphp/php-cs-fixer": "^3.95.27",
+    "rector/rector": "^2.7"
+  },
+  "autoload": {
+    "psr-4": {
+      "versaWYS\\kernel\\": "src/"
+    }
+  },
+  "minimum-stability": "stable",
+  "scripts": {
+    "pint": "pint",
+    "pint:check": "pint --test",
+    "test": "phpunit",
+    "bench": "@php -d xdebug.mode=off -d opcache.enable_cli=1 bench/run.php",
+    "stan": "phpstan analyse --ansi --memory-limit=1G",
+    "mago": "mago lint --baseline mago-baseline.toml",
+    "mago:baseline": "mago lint --baseline mago-baseline.toml --generate-baseline",
+    "mago:analyze": "mago analyze",
+    "mago:analyze:fix": "mago analyze --fix",
+    "mago:fmt": "mago fmt",
+    "mago:lint:fix": "mago lint --fix --unsafe --format-after-fix",
+    "check": [
+      "@pint:check",
+      "@mago",
+      "@test",
+      "@stan"
+    ]
+  },
+  "config": {
+    "allow-plugins": {
+      "carthage-software/mago": true
+    }
+  }
 }

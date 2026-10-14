@@ -24,6 +24,7 @@ class CronManager
         if (file_exists($cronFile)) {
             if (!CLIHelper::confirm("La tarea cron {$cronFile} ya existe. Desea sobreescribirla?")) {
                 CLIErrorHandler::info('Operación cancelada.');
+
                 return;
             }
             unlink($cronFile);
@@ -77,12 +78,14 @@ class CronManager
     {
         if (!is_dir(self::$path)) {
             CLIErrorHandler::info('No hay tareas cron creadas (directorio no existe).');
+
             return;
         }
 
         $files = glob(self::$path . '*.php');
         if (empty($files)) {
             CLIErrorHandler::info('No hay tareas cron creadas.');
+
             return;
         }
 
@@ -99,11 +102,13 @@ class CronManager
 
         if (!class_exists($className)) {
             CLIErrorHandler::warning("Error: La clase de cron '{$className}' no existe.");
+
             return;
         }
 
         if (!method_exists($className, 'run')) {
             CLIErrorHandler::warning("Error: La clase '{$className}' no tiene un método run().");
+
             return;
         }
 

@@ -6,7 +6,13 @@ declare(strict_types=1);
 // config.php los fusiona con array_replace_recursive y `versaCLI config:init` genera el
 // config.json inicial a partir de este mismo array.
 return [
-    'framework' => 'versaWYS-PHP ' . (Composer\InstalledVersions::isInstalled('versawys/kernel') ? Composer\InstalledVersions::getPrettyVersion('versawys/kernel') : 'dev'),
+    'framework' =>
+        'versaWYS-PHP '
+            . (
+                Composer\InstalledVersions::isInstalled('versawys/kernel')
+                    ? Composer\InstalledVersions::getPrettyVersion('versawys/kernel')
+                    : 'dev'
+            ),
     'database' => [
         'engine' => 'pdo',
         'driver' => 'mysql', // mysql | postgresql
@@ -119,10 +125,30 @@ return [
         'cleanup_probability' => 100,
         'rules' => [
             'global' => ['requests' => 100, 'window' => 60, 'enabled' => true, 'description' => 'Límite global por IP'],
-            'api' => ['requests' => 30, 'window' => 60, 'enabled' => true, 'description' => 'Límite para endpoints API'],
-            'login' => ['requests' => 5, 'window' => 300, 'enabled' => true, 'description' => 'Límite para intentos de login'],
-            'upload' => ['requests' => 10, 'window' => 120, 'enabled' => true, 'description' => 'Límite para subida de archivos'],
-            'sensitive' => ['requests' => 3, 'window' => 600, 'enabled' => true, 'description' => 'Límite para endpoints sensibles'],
+            'api' => [
+                'requests' => 30,
+                'window' => 60,
+                'enabled' => true,
+                'description' => 'Límite para endpoints API',
+            ],
+            'login' => [
+                'requests' => 5,
+                'window' => 300,
+                'enabled' => true,
+                'description' => 'Límite para intentos de login',
+            ],
+            'upload' => [
+                'requests' => 10,
+                'window' => 120,
+                'enabled' => true,
+                'description' => 'Límite para subida de archivos',
+            ],
+            'sensitive' => [
+                'requests' => 3,
+                'window' => 600,
+                'enabled' => true,
+                'description' => 'Límite para endpoints sensibles',
+            ],
         ],
     ],
     'assets' => [

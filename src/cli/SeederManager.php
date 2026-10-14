@@ -91,6 +91,7 @@ class SeederManager extends VersaORMModel
 
             if (!class_exists($seederClass)) {
                 CLIErrorHandler::warning("El Seeder {$seederName} no existe.");
+
                 return;
             }
 

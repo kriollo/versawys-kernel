@@ -36,15 +36,22 @@ class OrmFactory
             'logging' => $voConfig['logging'] ?? false,
             'log_path' => $dbConfig['log_path'] ?? $voConfig['log_path'] ?? './versaWYS/logs/orm/',
         ];
+
         try {
             $orm = new VersaORM($config);
             $orm->setTimezone($appConfig['build']['timezone']);
 
             // Alinear la zona horaria de la sesión de BD para que NOW() y similares coincidan con PHP.
             // MySQL recibe el offset (+HH:MM) porque los nombres de zona requieren tablas tz cargadas.
-            if (str_contains(strtolower((string) $config['driver']), 'pg') || str_contains(strtolower((string) $config['driver']), 'postgres')) {
+            if (
+                str_contains(strtolower((string) $config['driver']), 'pg')
+                || str_contains(strtolower((string) $config['driver']), 'postgres')
+            ) {
                 $orm->exec("SET TIME ZONE '{$appConfig['build']['timezone']}'");
-            } elseif (str_contains(strtolower((string) $config['driver']), 'mysql') || str_contains(strtolower((string) $config['driver']), 'maria')) {
+            } elseif (
+                str_contains(strtolower((string) $config['driver']), 'mysql')
+                || str_contains(strtolower((string) $config['driver']), 'maria')
+            ) {
                 $orm->exec("SET time_zone = '" . date('P') . "'");
             }
 

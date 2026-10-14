@@ -245,7 +245,11 @@ class SecurityUtils
         flock($handle, LOCK_EX);
         $data = json_decode((string) stream_get_contents($handle), true);
 
-        if (is_array($data) && isset($data['window_start']) && self::isWithinWindow((int) $data['window_start'], $window)) {
+        if (
+            is_array($data)
+            && isset($data['window_start'])
+            && self::isWithinWindow((int) $data['window_start'], $window)
+        ) {
             $data = ['count' => (int) ($data['count'] ?? 0) + 1, 'window_start' => (int) $data['window_start']];
         } else {
             $data = $fresh;

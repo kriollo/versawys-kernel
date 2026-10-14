@@ -51,51 +51,6 @@ class Router
         self::loadRoutesFrom($path);
     }
 
-    private static function loadRoutesFrom(string $path): void
-    {
-        $files = is_dir($path) ? scandir($path) : false;
-        if ($files === false) {
-            self::routeLoadError('Cannot read routes directory: ' . $path);
-
-            return;
-        }
-
-        foreach (array_diff($files, ['.', '..']) as $file) {
-            $fullPath = $path . '/' . $file;
-            if (is_dir($fullPath)) {
-                self::loadRoutesFrom($fullPath);
-            } else {
-                self::requireRoutes($fullPath);
-            }
-        }
-    }
-
-    private static function requireRoutes(string $file): bool
-    {
-        try {
-            require_once $file;
-
-            return true;
-        } catch (Throwable $e) {
-            self::routeLoadError(sprintf("Error loading route file '%s': %s", $file, $e->getMessage()));
-
-            return false;
-        }
-    }
-
-    /**
-     * En producción un archivo de rutas roto se registra y se sigue con el resto; en debug se muestra.
-     */
-    private static function routeLoadError(string $message): void
-    {
-        global $config;
-
-        error_log($message);
-        if ($config['build']['debug'] ?? false) {
-            ErrorHandler::handleException(new \RuntimeException($message));
-        }
-    }
-
     /**
      * Firma que habilita el detalle de /up. Solo la puede calcular quien tiene config.json
      * (app:check:deploy en el servidor); vacía si no hay session.key.
@@ -121,7 +76,7 @@ class Router
     public static function health(): array
     {
         $token = self::healthToken();
-        if ($token === '' || !hash_equals($token, (string) ($_SERVER['HTTP_X_VERSAWYS_HEALTH'] ?? ''))) {
+        if ($token === '' || !hash_equals($token, $_SERVER['HTTP_X_VERSAWYS_HEALTH'] ?? '')) {
             return ['status' => 'ok'];
         }
 
@@ -129,13 +84,17 @@ class Router
 
         return [
             'status' => 'ok',
-            'kernel' => \Composer\InstalledVersions::isInstalled('versawys/kernel') ? \Composer\InstalledVersions::getPrettyVersion('versawys/kernel') : 'dev',
+            'kernel' => \Composer\InstalledVersions::isInstalled('versawys/kernel')
+                ? \Composer\InstalledVersions::getPrettyVersion('versawys/kernel')
+                : 'dev',
             'php' => PHP_VERSION,
             'sapi' => PHP_SAPI,
             'opcache' => is_array($opcache) && ($opcache['opcache_enabled'] ?? false) === true,
             'opcache_validate_timestamps' => (bool) ini_get('opcache.validate_timestamps'),
             // Con xdebug.mode=off la extensión sigue cargada pero no hace nada; ini_get devuelve '' en ese caso
-            'xdebug' => function_exists('xdebug_info') ? xdebug_info('mode') !== [] : !in_array((string) ini_get('xdebug.mode'), ['', 'off'], true),
+            'xdebug' => function_exists('xdebug_info')
+                ? xdebug_info('mode') !== []
+                : !in_array((string) ini_get('xdebug.mode'), ['', 'off'], true),
         ];
     }
 
@@ -217,51 +176,6 @@ class Router
     }
 
     /**
-     * Tabla de rutas de un método HTTP (por referencia, para registrar).
-     *
-     * @return array<string, mixed>
-     */
-    private static function &routeTable(string $method): array
-    {
-        switch ($method) {
-            case 'post':
-                return self::$postRoutes;
-            case 'put':
-                return self::$putRoutes;
-            case 'patch':
-                return self::$patchRoutes;
-            case 'delete':
-                return self::$deleteRoutes;
-            case 'query':
-                return self::$queryRoutes;
-            default:
-                return self::$getRoutes;
-        }
-    }
-
-    /**
-     * Registra una ruta con los prefijos y middlewares de los grupos que la contienen.
-     *
-     * @param array<int, array{0: class-string, 1: string}> $middlewares
-     */
-    private static function add(string $method, string $route, mixed $callback, array $middlewares): self
-    {
-        $fullRoute = implode('', self::$groupPrefixes) . $route;
-        $routes = &self::routeTable($method);
-        $routes[$fullRoute] = $callback;
-        $allMiddlewares = self::mergeMiddlewares($middlewares);
-        if ($allMiddlewares !== []) {
-            self::$middlewares[$method][$fullRoute] = $allMiddlewares;
-        }
-
-        $instance = new static();
-        $instance->lastRoute = $fullRoute;
-        $instance->lastRouteMethod = $method;
-
-        return $instance;
-    }
-
-    /**
      * Adds middleware to be executed for the last registered route.
      *
      * @param array $middlewares the array of middleware classes and methods
@@ -277,30 +191,6 @@ class Router
         self::$csrfExempt[$this->lastRouteMethod][$this->lastRoute] = true;
 
         return $this;
-    }
-
-    /**
-     * Middlewares de una ruta. Toda ruta que modifica estado (POST, PUT, PATCH, DELETE) valida
-     * primero el token CSRF, salvo que lo declare ella misma o use withoutCsrf().
-     *
-     * @return array<int, array{0: class-string, 1: string}>
-     */
-    private function routeMiddlewares(string $method, string $route): array
-    {
-        $middlewares = self::$middlewares[$method][$route] ?? [];
-
-        // GET y QUERY no cambian estado: no llevan CSRF
-        if ($method === 'get' || $method === 'query' || isset(self::$csrfExempt[$method][$route])) {
-            return $middlewares;
-        }
-
-        foreach ($middlewares as $middleware) {
-            if (($middleware[1] ?? '') === 'validateCSRFToken') {
-                return $middlewares;
-            }
-        }
-
-        return [[GlobalMiddleware::class, 'validateCSRFToken'], ...$middlewares];
     }
 
     public function middleware(array $middlewares): static
@@ -510,6 +400,120 @@ class Router
         }
 
         return false;
+    }
+
+    private static function loadRoutesFrom(string $path): void
+    {
+        $files = is_dir($path) ? scandir($path) : false;
+        if ($files === false) {
+            self::routeLoadError('Cannot read routes directory: ' . $path);
+
+            return;
+        }
+
+        foreach (array_diff($files, ['.', '..']) as $file) {
+            $fullPath = $path . '/' . $file;
+            if (is_dir($fullPath)) {
+                self::loadRoutesFrom($fullPath);
+            } else {
+                self::requireRoutes($fullPath);
+            }
+        }
+    }
+
+    private static function requireRoutes(string $file): bool
+    {
+        try {
+            require_once $file;
+
+            return true;
+        } catch (Throwable $e) {
+            self::routeLoadError(sprintf("Error loading route file '%s': %s", $file, $e->getMessage()));
+
+            return false;
+        }
+    }
+
+    /**
+     * En producción un archivo de rutas roto se registra y se sigue con el resto; en debug se muestra.
+     */
+    private static function routeLoadError(string $message): void
+    {
+        global $config;
+
+        error_log($message);
+        if ($config['build']['debug'] ?? false) {
+            ErrorHandler::handleException(new \RuntimeException($message));
+        }
+    }
+
+    /**
+     * Tabla de rutas de un método HTTP (por referencia, para registrar).
+     *
+     * @return array<string, mixed>
+     */
+    private static function &routeTable(string $method): array
+    {
+        switch ($method) {
+            case 'post':
+                return self::$postRoutes;
+            case 'put':
+                return self::$putRoutes;
+            case 'patch':
+                return self::$patchRoutes;
+            case 'delete':
+                return self::$deleteRoutes;
+            case 'query':
+                return self::$queryRoutes;
+            default:
+                return self::$getRoutes;
+        }
+    }
+
+    /**
+     * Registra una ruta con los prefijos y middlewares de los grupos que la contienen.
+     *
+     * @param array<int, array{0: class-string, 1: string}> $middlewares
+     */
+    private static function add(string $method, string $route, mixed $callback, array $middlewares): self
+    {
+        $fullRoute = implode('', self::$groupPrefixes) . $route;
+        $routes = &self::routeTable($method);
+        $routes[$fullRoute] = $callback;
+        $allMiddlewares = self::mergeMiddlewares($middlewares);
+        if ($allMiddlewares !== []) {
+            self::$middlewares[$method][$fullRoute] = $allMiddlewares;
+        }
+
+        $instance = new static();
+        $instance->lastRoute = $fullRoute;
+        $instance->lastRouteMethod = $method;
+
+        return $instance;
+    }
+
+    /**
+     * Middlewares de una ruta. Toda ruta que modifica estado (POST, PUT, PATCH, DELETE) valida
+     * primero el token CSRF, salvo que lo declare ella misma o use withoutCsrf().
+     *
+     * @return array<int, array{0: class-string, 1: string}>
+     */
+    private function routeMiddlewares(string $method, string $route): array
+    {
+        $middlewares = self::$middlewares[$method][$route] ?? [];
+
+        // GET y QUERY no cambian estado: no llevan CSRF
+        if ($method === 'get' || $method === 'query' || isset(self::$csrfExempt[$method][$route])) {
+            return $middlewares;
+        }
+
+        foreach ($middlewares as $middleware) {
+            if (($middleware[1] ?? '') === 'validateCSRFToken') {
+                return $middlewares;
+            }
+        }
+
+        return [[GlobalMiddleware::class, 'validateCSRFToken'], ...$middlewares];
     }
 
     /**
@@ -774,8 +778,7 @@ class Router
                     Loggin::error('Error renderizando template 404: ' . $th->getMessage(), 'router');
                     http_response_code(404);
                     echo
-                        '<!DOCTYPE html><html><head><title>404 - Página no encontrada</title></head><body><h1>404 - Página no encontrada</h1><p>La página que buscas no existe.</p></body></html>'
-                    ;
+                        '<!DOCTYPE html><html><head><title>404 - Página no encontrada</title></head><body><h1>404 - Página no encontrada</h1><p>La página que buscas no existe.</p></body></html>';
                     exit();
                 }
             }
@@ -924,6 +927,7 @@ class Router
     private function render404TemplateForSPA(): string
     {
         global $twig;
+
         return $twig->render('versaWYS/404Content');
     }
 }

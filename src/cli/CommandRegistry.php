@@ -82,6 +82,7 @@ class CommandRegistry
      * Obtiene los comandos desde cache o los descubre si es necesario.
      *
      * @param bool $forceRefresh Forzar redescubrimiento ignorando cache
+     *
      * @return array Array asociativo [nombre_comando => clase_completa]
      */
     public static function getCachedCommands(bool $forceRefresh = false): array
@@ -119,6 +120,43 @@ class CommandRegistry
     }
 
     /**
+     * Obtiene información de un comando específico.
+     *
+     * @param string $commandName Nombre del comando
+     *
+     * @return array|null Array con 'class', 'description', 'help' o null si no existe
+     */
+    public static function getCommandInfo(string $commandName): ?array
+    {
+        $commands = self::getCachedCommands();
+
+        if (!isset($commands[$commandName])) {
+            return null;
+        }
+
+        $className = $commands[$commandName];
+
+        if (!class_exists($className)) {
+            return null;
+        }
+
+        try {
+            $instance = new $className();
+            if (!$instance instanceof CommandInterface) {
+                return null;
+            }
+
+            return [
+                'class' => $className,
+                'description' => $instance->getDescription(),
+                'help' => $instance->getHelp(),
+            ];
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
      * Convierte nombre de clase a nombre de comando CLI.
      *
      * Ejemplos:
@@ -127,6 +165,7 @@ class CommandRegistry
      * - ReportGenerateMonthlyCommand -> report:generate:monthly
      *
      * @param string $className Nombre de la clase (sin namespace)
+     *
      * @return string Nombre del comando en formato modulo:accion[:subaccion]
      */
     private static function classNameToCommandName(string $className): string
@@ -174,41 +213,5 @@ class CommandRegistry
 
         file_put_contents(self::CACHE_FILE, $content);
         chmod(self::CACHE_FILE, 0o775);
-    }
-
-    /**
-     * Obtiene información de un comando específico.
-     *
-     * @param string $commandName Nombre del comando
-     * @return array|null Array con 'class', 'description', 'help' o null si no existe
-     */
-    public static function getCommandInfo(string $commandName): ?array
-    {
-        $commands = self::getCachedCommands();
-
-        if (!isset($commands[$commandName])) {
-            return null;
-        }
-
-        $className = $commands[$commandName];
-
-        if (!class_exists($className)) {
-            return null;
-        }
-
-        try {
-            $instance = new $className();
-            if (!$instance instanceof CommandInterface) {
-                return null;
-            }
-
-            return [
-                'class' => $className,
-                'description' => $instance->getDescription(),
-                'help' => $instance->getHelp(),
-            ];
-        } catch (\Throwable $e) {
-            return null;
-        }
     }
 }

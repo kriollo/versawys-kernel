@@ -10,6 +10,24 @@ use Random\RandomException;
 
 class Functions
 {
+    // =========================================================================
+    // HTTP REQUEST (cURL centralizado)
+    // =========================================================================
+
+    /**
+     * Opciones por defecto para httpRequest.
+     */
+    private static array $defaultHttpOptions = [
+        'timeout' => 8,
+        'connect_timeout' => 5,
+        'follow_redirects' => true,
+        'max_redirects' => 5,
+        'verify_ssl' => true,
+        'verify_host' => true,
+        'ca_bundle_path' => '',
+        'user_agent' => 'versaBOT/1.0 (PHP ' . PHP_VERSION . ')',
+    ];
+
     public static function dump($data): void
     {
         echo "<style>
@@ -83,6 +101,7 @@ class Functions
     public static function cleanString(string $string): string
     {
         $string = trim($string);
+
         return htmlspecialchars($string);
     }
 
@@ -102,62 +121,69 @@ class Functions
             $validations = [
                 // Vacío es null, texto vacío o solo espacios y arreglo vacío. 0, "0" y false son valores:
                 // con empty() un estado o una cantidad en 0 no se podían enviar
-                'required' => static fn ($field, $value): ?string => $value === null || $value === [] || (is_string($value) && trim($value) === '')
-                    ? sprintf('El campo %s es requerido', $field)
-                    : null,
-                'email' => static fn ($field, $value): ?string => filter_var($value, FILTER_VALIDATE_EMAIL)
+                'required' => static fn($field, $value): ?string => $value === null
+                    || $value === []
+                    || is_string($value) && trim($value) === ''
+                        ? sprintf('El campo %s es requerido', $field)
+                        : null,
+                'email' => static fn($field, $value): ?string => filter_var($value, FILTER_VALIDATE_EMAIL)
                     ? null
                     : sprintf('El campo %s no es un email valido', $field),
-                'rut' => static fn ($field, $value): ?string => self::validarRut($value)
+                'rut' => static fn($field, $value): ?string => self::validarRut($value)
                     ? null
                     : sprintf('El campo %s no es un rut valido', $field),
                 // Caracteres, no bytes: "José" mide 4
-                'min' => static fn ($field, $value, $param): ?string => mb_strlen((string) $value) < $param
+                'min' => static fn($field, $value, $param): ?string => mb_strlen((string) $value) < $param
                     ? sprintf('El campo %s debe tener minimo %s caracteres', $field, $param)
                     : null,
-                'max' => static fn ($field, $value, $param): ?string => mb_strlen((string) $value) > $param
+                'max' => static fn($field, $value, $param): ?string => mb_strlen((string) $value) > $param
                     ? sprintf('El campo %s debe tener maximo %s caracteres', $field, $param)
                     : null,
-                'numeric' => static fn ($field, $value): ?string => is_numeric($value)
+                'numeric' => static fn($field, $value): ?string => is_numeric($value)
                     ? null
                     : sprintf('El campo %s debe ser numerico', $field),
-                'int' => $int = static function ($field, $value, $param): ?string {
-                    // Sin parámetro ($param null) también: antes str_contains(null) fallaba y "5" quedaba inválido
-                    $param = (string) $param;
-                    if (filter_var($value, FILTER_VALIDATE_INT) === false) {
-                        return sprintf('El campo %s debe ser un número entero', $field);
-                    }
+                'int' =>
+                    $int = static function ($field, $value, $param): ?string {
+                        // Sin parámetro ($param null) también: antes str_contains(null) fallaba y "5" quedaba inválido
+                        $param = (string) $param;
+                        if (filter_var($value, FILTER_VALIDATE_INT) === false) {
+                            return sprintf('El campo %s debe ser un número entero', $field);
+                        }
 
-                    $value = (int) $value;
-                    if (str_contains($param, '-')) {
-                        [$min, $max] = explode('-', $param);
+                        $value = (int) $value;
+                        if (str_contains($param, '-')) {
+                            [$min, $max] = explode('-', $param);
 
-                        return $value < $min || $value > $max
-                            ? sprintf('El campo %s debe ser numerico entre %s y %s', $field, $min, $max)
-                            : null;
-                    }
+                            return $value < $min || $value > $max
+                                ? sprintf('El campo %s debe ser numerico entre %s y %s', $field, $min, $max)
+                                : null;
+                        }
 
-                    if (str_contains($param, ',')) {
-                        $valid = explode(',', $param);
+                        if (str_contains($param, ',')) {
+                            $valid = explode(',', $param);
 
-                        return in_array($value, $valid, strict: true)
-                            ? null
-                            : sprintf('El campo %s debe ser numerico y debe ser uno de los siguientes valores ', $field)
-                            . implode(',', $valid);
-                    }
+                            return in_array($value, $valid, strict: true)
+                                ? null
+                                : sprintf(
+                                    'El campo %s debe ser numerico y debe ser uno de los siguientes valores ',
+                                    $field,
+                                ) . implode(',', $valid);
+                        }
 
-                    if (str_contains($param, 'positive')) {
-                        return $value > 0 ? null : sprintf('El campo %s debe ser un numero positivo', $field);
-                    }
+                        if (str_contains($param, 'positive')) {
+                            return $value > 0 ? null : sprintf('El campo %s debe ser un numero positivo', $field);
+                        }
 
-                    return null;
-                },
+                        return null;
+                    },
                 'integer' => $int,
                 // Texto o número (un input numérico llega como número en JSON); nunca arreglo, objeto o booleano
-                'string' => static fn ($field, $value): ?string => is_string($value) || is_int($value) || is_float($value)
-                    ? null
-                    : sprintf('El campo %s debe ser texto', $field),
-                'time' => static fn ($field, $value): ?string => preg_match(
+                'string' => static fn($field, $value): ?string => is_string($value)
+                    || is_int($value)
+                    || is_float($value)
+                        ? null
+                        : sprintf('El campo %s debe ser texto', $field),
+                'time' => static fn($field, $value): ?string => preg_match(
                     '/^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/',
                     $value,
                 )
@@ -181,17 +207,22 @@ class Functions
                         ? null
                         : sprintf('El campo %s debe ser un arreglo', $field);
                 },
-                'url' => static fn ($field, $value): ?string => filter_var($value, FILTER_VALIDATE_URL)
+                'url' => static fn($field, $value): ?string => filter_var($value, FILTER_VALIDATE_URL)
                     ? null
                     : sprintf('El campo %s debe ser una url valida', $field),
                 // in:activo,inactivo — uno de los valores listados, comparados como texto
-                'in' => static fn ($field, $value, $param): ?string => is_scalar($value) && in_array((string) $value, explode(',', (string) $param), true)
-                    ? null
-                    : sprintf('El campo %s debe ser uno de: %s', $field, str_replace(',', ', ', (string) $param)),
+                'in' => static fn($field, $value, $param): ?string => is_scalar($value)
+                    && in_array((string) $value, explode(',', (string) $param), true)
+                        ? null
+                        : sprintf('El campo %s debe ser uno de: %s', $field, str_replace(',', ', ', (string) $param)),
                 // true/false, 1/0, "true"/"false", "1"/"0", "on"/"off" (checkbox de formulario)
-                'boolean' => static fn ($field, $value): ?string => filter_var($value, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) !== null
-                    ? null
-                    : sprintf('El campo %s debe ser verdadero o falso', $field),
+                'boolean' => static fn($field, $value): ?string => filter_var(
+                    $value,
+                    FILTER_VALIDATE_BOOL,
+                    FILTER_NULL_ON_FAILURE,
+                ) !== null
+                        ? null
+                        : sprintf('El campo %s debe ser verdadero o falso', $field),
             ];
 
             foreach ($rules as $field => $rule) {
@@ -336,8 +367,12 @@ class Functions
      *
      * @return bool returns true if the token is valid, false otherwise
      */
-    public static function validateCSRFToken(#[\SensitiveParameter] mixed $tokenSession, #[\SensitiveParameter] mixed $tokenFormUser): bool
-    {
+    public static function validateCSRFToken(
+        #[\SensitiveParameter]
+        mixed $tokenSession,
+        #[\SensitiveParameter]
+        mixed $tokenFormUser,
+    ): bool {
         // Sesión sin token, token vacío o enviado como arreglo (_csrf_token[]=…): inválido, nunca un error 500
         if (!is_string($tokenSession) || !is_string($tokenFormUser) || $tokenSession === '' || $tokenFormUser === '') {
             return false;
@@ -607,52 +642,34 @@ class Functions
         ];
     }
 
-    // =========================================================================
-    // HTTP REQUEST (cURL centralizado)
-    // =========================================================================
-
-    /**
-     * Opciones por defecto para httpRequest.
-     */
-    private static array $defaultHttpOptions = [
-        'timeout' => 8,
-        'connect_timeout' => 5,
-        'follow_redirects' => true,
-        'max_redirects' => 5,
-        'verify_ssl' => true,
-        'verify_host' => true,
-        'ca_bundle_path' => '',
-        'user_agent' => 'versaBOT/1.0 (PHP ' . PHP_VERSION . ')',
-    ];
-
     /**
      * Ejecuta una petición HTTP usando cURL.
      *
      * @param string $url URL completa de la petición
      * @param string $method Método HTTP (GET, POST, PUT, DELETE, PATCH, etc.)
      * @param array $headers Headers HTTP como array de strings ['Header-Name: value']
-     * @param string|array $body Cuerpo de la petición (string o array para POST)
+     * @param array|string $body Cuerpo de la petición (string o array para POST)
      * @param array $options Opciones adicionales:
-     *   - timeout: int (segundos, default 8)
-     *   - connect_timeout: int (segundos, default 5)
-     *   - follow_redirects: bool (default true)
-     *   - max_redirects: int (default 5)
-     *   - verify_ssl: bool (default true)
-     *   - verify_host: bool (default true)
-     *   - ca_bundle_path: string (ruta al bundle CA, default auto-detect)
-     *   - user_agent: string (User-Agent header, default versaBOT/1.0)
-     *   - cookies: string (Cookie header value)
-     *   - raw_output: bool (si true, no decodifica JSON, default false)
+     *                       - timeout: int (segundos, default 8)
+     *                       - connect_timeout: int (segundos, default 5)
+     *                       - follow_redirects: bool (default true)
+     *                       - max_redirects: int (default 5)
+     *                       - verify_ssl: bool (default true)
+     *                       - verify_host: bool (default true)
+     *                       - ca_bundle_path: string (ruta al bundle CA, default auto-detect)
+     *                       - user_agent: string (User-Agent header, default versaBOT/1.0)
+     *                       - cookies: string (Cookie header value)
+     *                       - raw_output: bool (si true, no decodifica JSON, default false)
      *
      * @return array {
-     *   status_code: int,
-     *   body: string|array,
-     *   headers: array,
-     *   error: string,
-     *   errno: int,
-     *   duration_ms: int,
-     *   success: bool
-     * }
+     *               status_code: int,
+     *               body: array|string,
+     *               headers: array,
+     *               error: string,
+     *               errno: int,
+     *               duration_ms: int,
+     *               success: bool
+     *               }
      */
     public static function httpRequest(
         string $url,
@@ -864,6 +881,7 @@ class Functions
     public static function httpPostJson(string $url, array $data = [], array $headers = [], array $options = []): array
     {
         $jsonHeaders = array_merge($headers, ['Content-Type: application/json']);
+
         return self::httpRequest(
             $url,
             'POST',

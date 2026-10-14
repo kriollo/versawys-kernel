@@ -16,6 +16,7 @@ interface CommandInterface
      * Ejecuta el comando con los parámetros proporcionados.
      *
      * @param array $params Parámetros del comando (extraídos después de modulo:accion)
+     *
      * @return int Código de salida (0 = éxito, 1+ = error)
      */
     public function execute(array $params): int;

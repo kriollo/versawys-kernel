@@ -28,10 +28,12 @@ $config = array_replace_recursive(ConfigManager::defaults(), $config);
 
 if (version_compare(PHP_VERSION, '8.3.0', '<')) {
     Loggin::error('Error inicializando VersaORM: La versión de PHP debe ser 8.3 o superior.', 'VersaWYS');
+
     throw new Exception('La versión de PHP debe ser 8.3 o superior. VersaWYS no puede continuar.');
 }
 if (!extension_loaded('intl')) {
     Loggin::error('Error inicializando VersaORM: La extensión PHP "intl" no está cargada.', 'VersaWYS');
+
     throw new Exception('La extensión PHP "intl" no está cargada. Por favor, instálala para continuar.');
 }
 
@@ -135,20 +137,18 @@ if (($config['database']['database'] ?? '') !== '') {
             } catch (Exception $twigError) {
                 // Si falla Twig, usar formato simple HTML
                 http_response_code(500);
-                echo
-                    sprintf(
-                        "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Error</title></head>"
-                        . "<body style='font-family:sans-serif;padding:20px;'>"
-                        . '<h1>⚠️ Error de Base de Datos</h1>'
-                        . '<p><strong>Mensaje:</strong> %s</p>'
-                        . '<p><strong>Framework:</strong> %s</p>'
-                        . "<hr><p style='color:#666;font-size:12px;'>También falló la renderización de la plantilla de error: %s</p>"
-                        . '</body></html>',
-                        htmlspecialchars($errorMsg),
-                        htmlspecialchars($config['framework'] ?? 'versaWYS-PHP'),
-                        htmlspecialchars($twigError->getMessage()),
-                    )
-                ;
+                echo sprintf(
+                    "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Error</title></head>"
+                    . "<body style='font-family:sans-serif;padding:20px;'>"
+                    . '<h1>⚠️ Error de Base de Datos</h1>'
+                    . '<p><strong>Mensaje:</strong> %s</p>'
+                    . '<p><strong>Framework:</strong> %s</p>'
+                    . "<hr><p style='color:#666;font-size:12px;'>También falló la renderización de la plantilla de error: %s</p>"
+                    . '</body></html>',
+                    htmlspecialchars($errorMsg),
+                    htmlspecialchars($config['framework'] ?? 'versaWYS-PHP'),
+                    htmlspecialchars($twigError->getMessage()),
+                );
                 exit(1);
             }
         }

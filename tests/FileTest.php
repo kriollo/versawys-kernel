@@ -36,14 +36,6 @@ final class FileTest extends TestCase
         rmdir($this->dir);
     }
 
-    private function upload(string $name, string $declaredType, string $content, int $error = UPLOAD_ERR_OK): array
-    {
-        $tmp = $this->dir . '/tmp-' . bin2hex(random_bytes(4));
-        file_put_contents($tmp, $content);
-
-        return ['name' => $name, 'type' => $declaredType, 'tmp_name' => $tmp, 'error' => $error, 'size' => strlen($content)];
-    }
-
     public function testAFailedUploadIsRejected(): void
     {
         $this->expectException(\Exception::class);
@@ -86,5 +78,19 @@ final class FileTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $file->moveToNewName($this->dir . '/' . $destination);
+    }
+
+    private function upload(string $name, string $declaredType, string $content, int $error = UPLOAD_ERR_OK): array
+    {
+        $tmp = $this->dir . '/tmp-' . bin2hex(random_bytes(4));
+        file_put_contents($tmp, $content);
+
+        return [
+            'name' => $name,
+            'type' => $declaredType,
+            'tmp_name' => $tmp,
+            'error' => $error,
+            'size' => strlen($content),
+        ];
     }
 }

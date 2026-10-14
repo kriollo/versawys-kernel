@@ -21,13 +21,20 @@ final class AppContractTest extends TestCase
             if ($file->getExtension() !== 'php') {
                 continue;
             }
-            preg_match_all('/^use (app\\\\(?:models|services|controllers|middleware)\\\\\w+);/m', (string) file_get_contents($file->getPathname()), $m);
+            preg_match_all(
+                '/^use (app\\\\(?:models|services|controllers|middleware)\\\\\w+);/m',
+                (string) file_get_contents($file->getPathname()),
+                $m,
+            );
             foreach ($m[1] as $class) {
                 $imported[$class] = true;
             }
         }
 
-        self::assertSame([], array_values(array_diff(array_keys($imported), array_keys(CheckDeployCommand::APP_CONTRACT))));
+        self::assertSame(
+            [],
+            array_values(array_diff(array_keys($imported), array_keys(CheckDeployCommand::APP_CONTRACT))),
+        );
     }
 
     public function testUpgradeGuideListsExactlyTheContract(): void

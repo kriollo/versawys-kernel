@@ -72,76 +72,6 @@ class VersaORMModel extends VersaModel
     private static array $tableNameCache = [];
 
     /**
-     * Inicializa la instancia global de VersaORM.
-     *
-     * @param array $config Configuración de la base de datos y otros ajustes de VersaORM.
-     *
-     * @throws RuntimeException Si VersaORM ya ha sido inicializado.
-     */
-    public static function boot(array $config): void
-    {
-        global $versaOrm;
-        $globalConfig = $GLOBALS['config'] ?? [];
-
-        if (self::$orm instanceof VersaORM) {
-            // VersaORM ya inicializado, no hacer nada o lanzar error
-            throw new RuntimeException('VersaORM ya inicializado. No llames a boot() dos veces.');
-        }
-
-        // Fusionar configuraciones: la global y la específica para ORM
-        $finalConfig = array_merge((array) ($globalConfig['db'] ?? []), $config);
-
-        // Inicializar la instancia global de VersaORM
-        self::$orm = new VersaORM($finalConfig);
-        self::$orm->setTimezone($config['build']['timezone'] ?? 'America/Santiago');
-        $versaOrm = self::$orm;
-        // Registrar en VersaModel para que sus factory methods (dispense, load, find) funcionen
-        VersaModel::setORM(self::$orm);
-    }
-
-    /**
-     * Verifica si VersaORM ya ha sido inicializado.
-     *
-     * @return bool True si VersaORM está inicializado, false en caso contrario.
-     */
-    public static function isBooted(): bool
-    {
-        return self::$orm instanceof VersaORM;
-    }
-
-    /**
-     * Establece directamente la instancia de VersaORM.
-     * Útil cuando la instancia ya ha sido creada externamente.
-     *
-     * @param VersaORM $orm Instancia de VersaORM a utilizar.
-     *
-     * @throws RuntimeException Si VersaORM ya ha sido inicializado.
-     */
-    public static function setOrmInstance(VersaORM $orm): void
-    {
-        if (self::$orm instanceof VersaORM) {
-            throw new RuntimeException('VersaORM ya inicializado. No se puede establecer una nueva instancia.');
-        }
-
-        self::$orm = $orm;
-        global $versaOrm;
-        $versaOrm = $orm;
-        // Registrar en VersaModel para que sus factory methods (dispense, load, find) funcionen
-        VersaModel::setORM($orm);
-    }
-
-    /**
-     * Reemplaza la instancia activa de VersaORM.
-     * Para el instalador, donde la configuración de BD cambia dentro de la misma petición.
-     */
-    public static function replaceOrm(VersaORM $orm): void
-    {
-        self::$orm = $orm;
-        $GLOBALS['versaOrm'] = $orm;
-        VersaModel::setORM($orm);
-    }
-
-    /**
      * Constructor que sobrescribe VersaModel para manejar la inicialización automática.
      *
      * @param string|null $table Nombre de la tabla (opcional, se autodetermina si no se proporciona)
@@ -177,6 +107,76 @@ class VersaORMModel extends VersaModel
     }
 
     /**
+     * Inicializa la instancia global de VersaORM.
+     *
+     * @param array $config configuración de la base de datos y otros ajustes de VersaORM
+     *
+     * @throws RuntimeException si VersaORM ya ha sido inicializado
+     */
+    public static function boot(array $config): void
+    {
+        global $versaOrm;
+        $globalConfig = $GLOBALS['config'] ?? [];
+
+        if (self::$orm instanceof VersaORM) {
+            // VersaORM ya inicializado, no hacer nada o lanzar error
+            throw new RuntimeException('VersaORM ya inicializado. No llames a boot() dos veces.');
+        }
+
+        // Fusionar configuraciones: la global y la específica para ORM
+        $finalConfig = array_merge((array) ($globalConfig['db'] ?? []), $config);
+
+        // Inicializar la instancia global de VersaORM
+        self::$orm = new VersaORM($finalConfig);
+        self::$orm->setTimezone($config['build']['timezone'] ?? 'America/Santiago');
+        $versaOrm = self::$orm;
+        // Registrar en VersaModel para que sus factory methods (dispense, load, find) funcionen
+        VersaModel::setORM(self::$orm);
+    }
+
+    /**
+     * Verifica si VersaORM ya ha sido inicializado.
+     *
+     * @return bool true si VersaORM está inicializado, false en caso contrario
+     */
+    public static function isBooted(): bool
+    {
+        return self::$orm instanceof VersaORM;
+    }
+
+    /**
+     * Establece directamente la instancia de VersaORM.
+     * Útil cuando la instancia ya ha sido creada externamente.
+     *
+     * @param VersaORM $orm instancia de VersaORM a utilizar
+     *
+     * @throws RuntimeException si VersaORM ya ha sido inicializado
+     */
+    public static function setOrmInstance(VersaORM $orm): void
+    {
+        if (self::$orm instanceof VersaORM) {
+            throw new RuntimeException('VersaORM ya inicializado. No se puede establecer una nueva instancia.');
+        }
+
+        self::$orm = $orm;
+        global $versaOrm;
+        $versaOrm = $orm;
+        // Registrar en VersaModel para que sus factory methods (dispense, load, find) funcionen
+        VersaModel::setORM($orm);
+    }
+
+    /**
+     * Reemplaza la instancia activa de VersaORM.
+     * Para el instalador, donde la configuración de BD cambia dentro de la misma petición.
+     */
+    public static function replaceOrm(VersaORM $orm): void
+    {
+        self::$orm = $orm;
+        $GLOBALS['versaOrm'] = $orm;
+        VersaModel::setORM($orm);
+    }
+
+    /**
      * Devuelve la instancia global de VersaORM.
      */
     public static function orm(): VersaORM
@@ -203,7 +203,7 @@ class VersaORMModel extends VersaModel
     {
         global $versaOrm;
 
-        return $this->executeWithErrorHandling(static fn () => $versaOrm->exec($sql, $params), [
+        return $this->executeWithErrorHandling(static fn() => $versaOrm->exec($sql, $params), [
             'operation' => 'exec',
             'query' => $sql,
             'bindings' => $params,
@@ -246,16 +246,6 @@ class VersaORMModel extends VersaModel
         $short = strtolower((new ReflectionClass($cls))->getShortName());
 
         return self::$tableNameCache[$cls] = $short;
-    }
-
-    /**
-     * Resuelve el nombre de tabla delegando a tableName() para respetar la
-     * propiedad protected string $table que usan las subclases de versaBOT.
-     * Esto permite que find() (VersaModel) funcione correctamente.
-     */
-    protected static function resolveTable(): string
-    {
-        return static::tableName();
     }
 
     /**
@@ -344,12 +334,22 @@ class VersaORMModel extends VersaModel
         ));
     }
 
+    /**
+     * Resuelve el nombre de tabla delegando a tableName() para respetar la
+     * propiedad protected string $table que usan las subclases de versaBOT.
+     * Esto permite que find() (VersaModel) funcione correctamente.
+     */
+    protected static function resolveTable(): string
+    {
+        return static::tableName();
+    }
+
     protected function qb(?string $table = null): QueryBuilder
     {
         global $versaOrm;
 
         return $this->executeWithErrorHandling(
-            static fn () => $versaOrm->table($table ?? static::tableName(), static::class),
+            static fn() => $versaOrm->table($table ?? static::tableName(), static::class),
             [
                 'operation' => 'queryBuilder',
                 'table' => $table ?? static::tableName(),

@@ -31,7 +31,11 @@ class CommandLineInterface
         // Remover flags globales de los argumentos
         $this->args = array_filter(
             $this->args,
-            static fn ($arg): bool => !in_array($arg, ['--verbose', '-v', '--force', '--no-interaction', '-n'], strict: true),
+            static fn($arg): bool => !in_array(
+                $arg,
+                ['--verbose', '-v', '--force', '--no-interaction', '-n'],
+                strict: true,
+            ),
         );
         $this->args = array_values($this->args); // Re-indexar array
     }
@@ -57,7 +61,8 @@ class CommandLineInterface
             echo "Puede crearlo ejecutando: php versaCLI config:init\n\n";
             $nonInteractive = in_array('--no-interaction', $argv, true) || in_array('-n', $argv, true);
             if ($nonInteractive || !CLIHelper::confirm('¿Desea intentar crear el archivo de configuración ahora?')) {
-                echo "Operación cancelada. El archivo de configuración es necesario para la mayoría de las operaciones.\n";
+                echo
+                    "Operación cancelada. El archivo de configuración es necesario para la mayoría de las operaciones.\n";
                 exit(1);
             }
 
@@ -69,7 +74,10 @@ class CommandLineInterface
             // Los comandos leen la configuración con `global $config`
             $GLOBALS['config'] = json_decode((string) file_get_contents($configPath), true);
             if (json_last_error() !== JSON_ERROR_NONE) {
-                echo "Error: El archivo de configuración JSON en '{$configPath}' está corrupto: " . json_last_error_msg() . "\n";
+                echo
+                    "Error: El archivo de configuración JSON en '{$configPath}' está corrupto: "
+                        . json_last_error_msg()
+                        . "\n";
                 echo "Considere eliminarlo y ejecutar 'php versaCLI config:init' para generar uno nuevo.\n";
                 exit(1);
             }
@@ -98,12 +106,24 @@ class CommandLineInterface
         $params = array_merge($params, $additionalArgs);
 
         // Filtrar parámetros vacíos (pero mantener "0" que es válido)
-        $params = array_filter($params, static fn (string $param): bool => trim($param) !== '');
+        $params = array_filter($params, static fn(string $param): bool => trim($param) !== '');
         // Re-indexar array
         $params = array_values($params);
 
         // Los parámetros de estos módulos terminan en nombres de archivo/clase: nunca rutas
-        $generators = ['migrate', 'seeder', 'route', 'controller', 'model', 'middleware', 'RCMD', 'versaMODULE', 'front', 'cron', 'logs'];
+        $generators = [
+            'migrate',
+            'seeder',
+            'route',
+            'controller',
+            'model',
+            'middleware',
+            'RCMD',
+            'versaMODULE',
+            'front',
+            'cron',
+            'logs',
+        ];
         if (in_array($modulo, $generators, strict: true)) {
             foreach ($params as $param) {
                 // Las opciones (--lines=50) las valida cada comando
@@ -278,7 +298,11 @@ class CommandLineInterface
                 'templateCache' => ConfigManager::setTemplateCache($params[1]),
                 'ClearCache' => ConfigManager::clearCache(),
                 'init' => ConfigManager::initConfig(),
-                'merge' => ConfigManager::merge($this->requireParam($params, 1, 'php versaCLI config:merge <archivo.json>')),
+                'merge' => ConfigManager::merge($this->requireParam(
+                    $params,
+                    1,
+                    'php versaCLI config:merge <archivo.json>',
+                )),
                 default => $this->showError('Acción de configuración no reconocida: ' . $action),
             };
         } catch (Exception $exception) {
@@ -373,6 +397,7 @@ class CommandLineInterface
     {
         if ($params === []) {
             HelpView::printModuleHelp('model');
+
             return;
         }
 
@@ -402,6 +427,7 @@ class CommandLineInterface
     {
         if ($params === []) {
             HelpView::printModuleHelp('middleware');
+
             return;
         }
 
@@ -448,7 +474,9 @@ class CommandLineInterface
             match ($action) {
                 'make' => RouteManager::createRoute($params[1]),
                 'delete' => RouteManager::deleteRoute($params[1]),
-                'list' => in_array('--all', $params, strict: true) ? RouteManager::listAllRoutes() : RouteManager::listRoutes(),
+                'list' => in_array('--all', $params, strict: true)
+                    ? RouteManager::listAllRoutes()
+                    : RouteManager::listRoutes(),
                 'check' => RouteManager::checkRoutes(in_array('--strict', $params, strict: true)),
                 default => $this->showError('Acción de ruta no reconocida: ' . $action),
             };
@@ -461,6 +489,7 @@ class CommandLineInterface
     {
         if ($params === []) {
             HelpView::printModuleHelp('controller');
+
             return;
         }
 
@@ -732,6 +761,7 @@ class CommandLineInterface
             echo "  php versaCLI command:make:email:send\n";
             echo "  php versaCLI command:make:notification:push\n";
             echo "  php versaCLI command:make:report:generate:monthly\n";
+
             return;
         }
 

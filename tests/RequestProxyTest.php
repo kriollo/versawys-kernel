@@ -74,6 +74,7 @@ final class RequestProxyTest extends TestCase
         // Antes, "/not-a-prefix" valía como /0 y confiaba en todas las IPv4
         $log = tempnam(sys_get_temp_dir(), 'proxy');
         $previous = ini_set('error_log', $log);
+
         try {
             self::assertFalse(Request::isTrustedProxy('203.0.113.8'));
             self::assertFalse(Request::isTrustedProxy('192.0.2.1'));

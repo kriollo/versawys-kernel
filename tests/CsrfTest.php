@@ -38,7 +38,7 @@ final class CsrfTest extends TestCase
 
     public function testEveryTokenIsDifferent(): void
     {
-        $tokens = array_map(static fn (): string => Functions::generateCSRFToken(), range(1, 200));
+        $tokens = array_map(static fn(): string => Functions::generateCSRFToken(), range(1, 200));
 
         self::assertCount(200, array_unique($tokens));
     }

@@ -69,19 +69,33 @@ $register();
 
 $results = [
     'Registrar 60 rutas' => measure(max(50, intdiv($iterations, 10)), $register),
-    'Resolver ruta exacta' => measure($iterations, static fn () => dispatch('/admin/modulo29')),
-    'Resolver ruta con parámetro' => measure($iterations, static fn () => dispatch('/admin/modulo29/api/item/42')),
+    'Resolver ruta exacta' => measure($iterations, static fn() => dispatch('/admin/modulo29')),
+    'Resolver ruta con parámetro' => measure($iterations, static fn() => dispatch('/admin/modulo29/api/item/42')),
     'Crear Request' => measure($iterations, static function (): void {
         $_SERVER = ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/x', 'REMOTE_ADDR' => '127.0.0.1'];
         new Request();
     }),
 ];
 
-$cpu = is_readable('/proc/cpuinfo') && preg_match('/model name\s*:\s*(.+)/', (string) file_get_contents('/proc/cpuinfo'), $m) ? trim($m[1]) : php_uname('m');
-$opcache = function_exists('opcache_get_status') && is_array($status = @opcache_get_status(false)) && ($status['opcache_enabled'] ?? false);
+$cpu = is_readable('/proc/cpuinfo')
+&& preg_match('/model name\s*:\s*(.+)/', (string) file_get_contents('/proc/cpuinfo'), $m)
+    ? trim($m[1])
+    : php_uname('m');
+$opcache =
+    function_exists('opcache_get_status')
+    && is_array($status = @opcache_get_status(false))
+    && ($status['opcache_enabled'] ?? false);
 $xdebug = extension_loaded('xdebug') && !in_array((string) ini_get('xdebug.mode'), ['', 'off'], true);
 
-printf("PHP %s (%s) · OPcache %s · Xdebug %s · %s · %d iteraciones\n\n", PHP_VERSION, PHP_SAPI, $opcache ? 'sí' : 'no', $xdebug ? 'activo' : 'no', $cpu, $iterations);
+printf(
+    "PHP %s (%s) · OPcache %s · Xdebug %s · %s · %d iteraciones\n\n",
+    PHP_VERSION,
+    PHP_SAPI,
+    $opcache ? 'sí' : 'no',
+    $xdebug ? 'activo' : 'no',
+    $cpu,
+    $iterations,
+);
 printf("| Escenario | p50 (µs) | p95 (µs) |\n|---|---|---|\n");
 foreach ($results as $name => $r) {
     printf("| %s | %.1f | %.1f |\n", $name, $r['p50'], $r['p95']);

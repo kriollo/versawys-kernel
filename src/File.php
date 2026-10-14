@@ -11,6 +11,28 @@ class File extends SplFileInfo implements \ArrayAccess
 {
     protected array $file;
 
+    protected $splFile = null;
+
+    /**
+     * Constructor for the File class.
+     *
+     * @param array $file the path to the file
+     *
+     * @throws Exception
+     */
+    public function __construct(array $file)
+    {
+        $result = $this->isValidUpload($file);
+
+        $valid = $result['valid'];
+        $message = $result['message'];
+        if (!$valid) {
+            $this->handleError($message);
+        }
+
+        $this->file = $file;
+    }
+
     /**
      * @param string $offset
      */
@@ -45,28 +67,6 @@ class File extends SplFileInfo implements \ArrayAccess
     public function offsetUnset($offset): void
     {
         unset($this->file[$offset]);
-    }
-
-    protected $splFile = null;
-
-    /**
-     * Constructor for the File class.
-     *
-     * @param array $file the path to the file
-     *
-     * @throws Exception
-     */
-    public function __construct(array $file)
-    {
-        $result = $this->isValidUpload($file);
-
-        $valid = $result['valid'];
-        $message = $result['message'];
-        if (!$valid) {
-            $this->handleError($message);
-        }
-
-        $this->file = $file;
     }
 
     /**
@@ -427,5 +427,4 @@ class File extends SplFileInfo implements \ArrayAccess
             throw new Exception('Error en operación de archivo');
         }
     }
-
 }

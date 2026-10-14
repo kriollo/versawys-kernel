@@ -109,6 +109,7 @@ class MigrationManager extends VersaORMModel
     {
         if (!file_exists(self::$path . ($fileDown . '.php'))) {
             CLIErrorHandler::warning("No existe la migración {$fileDown}.php");
+
             return;
         }
 
@@ -118,6 +119,7 @@ class MigrationManager extends VersaORMModel
         CLIErrorHandler::info(sprintf('Verificando migración %s...', $className));
         if (!$this->checkIfExecuted($className)) {
             CLIErrorHandler::info('No ejecutada.');
+
             return;
         }
 
@@ -396,10 +398,19 @@ class MigrationManager extends VersaORMModel
             $name = basename($file, '.php');
             $done = in_array($name, $executed, strict: true);
             $pending += $done ? 0 : 1;
-            echo ($done ? CLIErrorHandler::colorize('  ✓ ejecutada ', 'green') : CLIErrorHandler::colorize('  • pendiente ', 'yellow')) . $name . PHP_EOL;
+            echo
+                (
+                    $done
+                        ? CLIErrorHandler::colorize('  ✓ ejecutada ', 'green')
+                        : CLIErrorHandler::colorize('  • pendiente ', 'yellow')
+                )
+                    . $name
+                    . PHP_EOL;
         }
 
-        CLIErrorHandler::info($pending === 0 ? 'No hay migraciones pendientes.' : $pending . ' migración(es) pendiente(s).');
+        CLIErrorHandler::info(
+            $pending === 0 ? 'No hay migraciones pendientes.' : $pending . ' migración(es) pendiente(s).',
+        );
     }
 
     public function dropAll(): void

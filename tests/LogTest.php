@@ -37,7 +37,9 @@ final class LogTest extends TestCase
         // En otro proceso: requestId() se fija una vez por petición
         $script = tempnam(sys_get_temp_dir(), 'log') . '.php';
         file_put_contents($script, '<?php
-            require ' . var_export(dirname(__DIR__) . '/vendor/autoload.php', true) . ';
+            require '
+        . var_export(dirname(__DIR__) . '/vendor/autoload.php', true)
+        . ';
             $GLOBALS["config"] = ["trusted_proxies" => ["10.0.0.0/8"]];
             $_SERVER = ["REMOTE_ADDR" => $argv[1], "HTTP_X_REQUEST_ID" => "lb-1234abcd"];
             echo versaWYS\kernel\Loggin::requestId();

@@ -21,6 +21,8 @@ use versaWYS\kernel\helpers\Functions;
 
 class versaTwig extends Environment
 {
+    private const string SCRIPT_TAG = '/<script\b([^>]*)>(.*?)<\/script>/is';
+
     private Environment $twigEnvironment;
 
     /**
@@ -74,8 +76,7 @@ class versaTwig extends Environment
                             . htmlspecialchars($__TWIG_CACHE_PATH)
                             . '</div><div class="command">sudo chmod -R 775 '
                             . htmlspecialchars($__TWIG_CACHE_PATH)
-                            . '</div></div></div></div><div class="footer">VersaWYS Framework © 2026 | Sistema de Manejo de Errores</div></div></body></html>'
-                    ;
+                            . '</div></div></div></div><div class="footer">VersaWYS Framework © 2026 | Sistema de Manejo de Errores</div></div></body></html>';
                     exit();
                 }
             } else {
@@ -233,6 +234,7 @@ class versaTwig extends Environment
      *
      * @param string|TemplateWrapper $name
      * @param array<string, mixed> $context
+     *
      * @return string
      */
     public function renderDirect($name, array $context = []): string
@@ -628,9 +630,6 @@ class versaTwig extends Environment
         return $userTrace;
     }
 
-
-    private const string SCRIPT_TAG = '/<script\b([^>]*)>(.*?)<\/script>/is';
-
     /**
      * Un <script> sin `type`, o con tipo JavaScript o `module`, es código; cualquier otro tipo son datos.
      */
@@ -656,7 +655,7 @@ class versaTwig extends Environment
         // Los bloques de datos (application/json, plantillas, importmap) son contenido y se conservan.
         $contentWithoutScripts = preg_replace_callback(
             self::SCRIPT_TAG,
-            static fn (array $tag): string => self::isExecutableScript($tag[1]) ? '' : $tag[0],
+            static fn(array $tag): string => self::isExecutableScript($tag[1]) ? '' : $tag[0],
             $content,
         );
         if ($contentWithoutScripts === null) {

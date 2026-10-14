@@ -9,12 +9,6 @@ use versaWYS\kernel\cli\commands\CheckDeployCommand;
 
 final class ConfigSchemaTest extends TestCase
 {
-    /** @return list<array{0: string, 1: string, 2: ?string}> */
-    private static function findings(array $config): array
-    {
-        return CheckDeployCommand::schemaFindings($config, require dirname(__DIR__) . '/src/config/config.default.php');
-    }
-
     public function testABooleanWrittenAsTextIsSerious(): void
     {
         // "false" en texto es verdadero para PHP: el debug quedaría activo
@@ -65,18 +59,38 @@ final class ConfigSchemaTest extends TestCase
         // Si alguien vuelve a leer una de estas claves, debe sacarla de la lista
         $kernel = '';
         foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(dirname(__DIR__) . '/src')) as $file) {
-            if ($file->getExtension() === 'php' && !str_ends_with($file->getPathname(), 'config.default.php') && !str_ends_with($file->getPathname(), 'CheckDeployCommand.php')) {
+            if (
+                $file->getExtension() === 'php'
+                && !str_ends_with($file->getPathname(), 'config.default.php')
+                && !str_ends_with($file->getPathname(), 'CheckDeployCommand.php')
+            ) {
                 $kernel .= file_get_contents($file->getPathname());
             }
         }
 
         // Lecturas, no los unset() que limpian la clave
-        $reads = implode("\n", array_filter(explode("\n", $kernel), static fn (string $line): bool => !str_contains($line, 'unset(')));
+        $reads = implode("\n", array_filter(
+            explode("\n", $kernel),
+            static fn(string $line): bool => !str_contains($line, 'unset('),
+        ));
 
         foreach (array_keys(CheckDeployCommand::DEAD_KEYS) as $dead) {
             // Los dos últimos segmentos: ['api']['auth'], no cualquier ['auth']
-            $access = implode('', array_map(static fn (string $part): string => "['{$part}']", array_slice(explode('.', $dead), -2)));
-            self::assertStringNotContainsString($access, $reads, "{$dead} figura como sin efecto pero el kernel la lee");
+            $access = implode('', array_map(
+                static fn(string $part): string => "['{$part}']",
+                array_slice(explode('.', $dead), -2),
+            ));
+            self::assertStringNotContainsString(
+                $access,
+                $reads,
+                "{$dead} figura como sin efecto pero el kernel la lee",
+            );
         }
+    }
+
+    /** @return list<array{0: string, 1: string, 2: ?string}> */
+    private static function findings(array $config): array
+    {
+        return CheckDeployCommand::schemaFindings($config, require dirname(__DIR__) . '/src/config/config.default.php');
     }
 }

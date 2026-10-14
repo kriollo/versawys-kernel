@@ -133,8 +133,7 @@ class Loggin
 
         // Crear directorio de logs si no existe
         if (!is_dir(self::$logDir)) {
-            set_error_handler(static function () {
-            }, E_WARNING);
+            set_error_handler(static function () {}, E_WARNING);
             $mkdirSuccess = @mkdir(self::$logDir, 0o775, true);
             restore_error_handler();
 
@@ -158,8 +157,7 @@ class Loggin
                         . htmlspecialchars(self::$logDir)
                         . '</div><div class="command">sudo chmod -R 775 '
                         . htmlspecialchars(self::$logDir)
-                        . '</div></div></div></div><div class="footer">VersaWYS Framework © 2026 | Sistema de Manejo de Errores</div></div></body></html>'
-                ;
+                        . '</div></div></div></div><div class="footer">VersaWYS Framework © 2026 | Sistema de Manejo de Errores</div></div></body></html>';
                 exit();
             }
             // 02775 = 0775 + setgid: los archivos de log creados dentro heredan el grupo
@@ -222,7 +220,6 @@ class Loggin
 
         // Escribir en archivo
         self::writeToFile($logData, $formattedMessage);
-
 
         // Escribir en consola si está habilitado
         if (self::$useConsole) {
@@ -573,12 +570,12 @@ class Loggin
     {
         static $id = null;
         if ($id === null) {
-            $incoming = (string) ($_SERVER['HTTP_X_REQUEST_ID'] ?? '');
+            $incoming = $_SERVER['HTTP_X_REQUEST_ID'] ?? '';
             $id = $incoming !== ''
-                && preg_match('/^[A-Za-z0-9._-]{8,64}$/', $incoming) === 1
-                && Request::isTrustedProxy((string) ($_SERVER['REMOTE_ADDR'] ?? ''))
-                    ? $incoming
-                    : bin2hex(random_bytes(8));
+            && preg_match('/^[A-Za-z0-9._-]{8,64}$/', $incoming) === 1
+            && Request::isTrustedProxy($_SERVER['REMOTE_ADDR'] ?? '')
+                ? $incoming
+                : bin2hex(random_bytes(8));
         }
 
         return $id;
@@ -594,7 +591,10 @@ class Loggin
     public static function redact(array $context): array
     {
         foreach ($context as $key => $value) {
-            if (is_string($key) && preg_match('/pass(word)?|secret|token|api_?key|authorization|cookie|csrf/i', $key) === 1) {
+            if (
+                is_string($key)
+                && preg_match('/pass(word)?|secret|token|api_?key|authorization|cookie|csrf/i', $key) === 1
+            ) {
                 $context[$key] = '[oculto]';
             } elseif (is_array($value)) {
                 $context[$key] = self::redact($value);
@@ -629,7 +629,7 @@ class Loggin
                 // Remover las llamadas internas de Loggin
                 $trace = array_filter(
                     $trace,
-                    static fn (array $item): bool => !isset($item['class']) || $item['class'] !== self::class,
+                    static fn(array $item): bool => !isset($item['class']) || $item['class'] !== self::class,
                 );
                 $data['trace'] = array_values($trace);
             }
@@ -721,14 +721,14 @@ class Loggin
 
         // Verificar que el directorio existe y es escribible
         if (!is_dir(self::$logDir)) {
-            set_error_handler(static function () {
-            }, E_WARNING);
+            set_error_handler(static function () {}, E_WARNING);
             $mkdirSuccess = @mkdir(self::$logDir, 0o775, true);
             restore_error_handler();
 
             if (!$mkdirSuccess && !is_dir(self::$logDir)) {
                 // No mostrar error aquí ya que se mostró en initialize
                 error_log('Failed to create log directory: ' . self::$logDir);
+
                 return;
             }
             // 02775 = 0775 + setgid: los archivos de log creados dentro heredan el grupo
@@ -742,14 +742,14 @@ class Loggin
 
         if (!file_exists($logFile)) {
             $previousUmask = umask(0);
-            set_error_handler(static function () {
-            }, E_WARNING);
+            set_error_handler(static function () {}, E_WARNING);
             $handle = @fopen($logFile, 'ab');
             restore_error_handler();
             umask($previousUmask);
 
             if ($handle === false) {
                 error_log("Failed to create log file: {$logFile}");
+
                 return;
             }
 
@@ -786,8 +786,7 @@ class Loggin
             return;
         }
 
-        set_error_handler(static function () {
-        }, E_WARNING);
+        set_error_handler(static function () {}, E_WARNING);
         $chmodSuccess = @chmod($path, $mode);
         restore_error_handler();
 
