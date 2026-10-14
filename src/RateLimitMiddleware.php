@@ -74,14 +74,4 @@ class RateLimitMiddleware
 
         return SecurityUtils::checkRateLimit($identifier, 'sensitive');
     }
-
-    /**
-     * Rate limiting global (aplicado automáticamente por el Router).
-     */
-    public static function checkGlobalLimit(): array|true
-    {
-        global $request;
-
-        return SecurityUtils::checkGlobalRateLimit($request);
-    }
 }

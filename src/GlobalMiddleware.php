@@ -406,58 +406,11 @@ class GlobalMiddleware
     // =====================================================
 
     /**
-     * Rate limiting para endpoints de API.
-     */
-    public function checkApiRateLimit(): array|true
-    {
-        return RateLimitMiddleware::checkApiLimit();
-    }
-
-    /**
      * Rate limiting para intentos de login.
      */
     public function checkLoginRateLimit(): array|true
     {
         return RateLimitMiddleware::checkLoginLimit();
-    }
-
-    /**
-     * Rate limiting para subida de archivos.
-     */
-    public function checkUploadRateLimit(): array|true
-    {
-        return RateLimitMiddleware::checkUploadLimit();
-    }
-
-    /**
-     * Rate limiting para endpoints sensibles.
-     */
-    public function checkSensitiveRateLimit(): array|true
-    {
-        return RateLimitMiddleware::checkSensitiveLimit();
-    }
-
-    /**
-     * Password expiration check.
-     */
-    public function checkPasswordExpiration($redirect = true): bool
-    {
-        global $request, $config;
-
-        $userData = self::getLoadedUserData();
-
-        // Si los datos no están cargados, algo falló antes. Retornar false por seguridad.
-        if ($userData === null || !isset($userData['user']['expiration_pass'])) {
-            return false;
-        }
-
-        $expired = $this->isPasswordExpired($userData['user']['expiration_pass']);
-        if ($request->getUrl() !== '/' . $config['admin']['custom_url'] . '/perfiluser' && $expired && $redirect) {
-            Response::redirect('/' . $config['admin']['custom_url'] . '/perfiluser');
-            exit();
-        }
-
-        return $expired;
     }
 
     /**

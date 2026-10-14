@@ -816,19 +816,4 @@ class RouteManager
 
         return $middlewares;
     }
-
-    /**
-     * route:compile, route:cache, route:clear-cache y cache:routes desde 2.10: la caché de rutas
-     * se eliminó (medido, cargar app/routes es igual o más rápido y nunca queda desactualizado).
-     * Se mantienen para no romper hooks de despliegue y borran los archivos compilados que queden.
-     */
-    public static function routeCacheRemoved(): void
-    {
-        $files = glob('versaWYS/cache/routes.compiled*.php');
-        foreach (is_array($files) ? $files : [] as $file) {
-            unlink($file);
-        }
-
-        CLIErrorHandler::info('Desde versawys/kernel 2.10 no hay caché de rutas: se cargan desde app/routes y siempre están al día. Este comando ya no hace falta.');
-    }
 }

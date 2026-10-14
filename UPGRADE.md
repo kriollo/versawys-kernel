@@ -13,6 +13,57 @@ El panel base (`app/models`, `app/services`) se copia en cada proyecto y el kern
 
 **Agregar algo a esta lista o cambiar una firma es un cambio de versión mayor.** `php versaCLI app:check:deploy` falla si al proyecto le falta alguno.
 
+## De 2.x a 3.0
+
+La 3.0 quita lo que en 2.x quedó solo por compatibilidad. No cambia el contrato kernel ↔ app ni la ubicación de `config.json`.
+
+### 1. La entrada ya no se reescribe (`security.sanitize_input`)
+
+En 2.x, con `security.sanitize_input` en `true` (el valor si la clave faltaba), `getAllParams()` escapaba el HTML de toda la entrada y borraba frases que parecían SQL. Desde 3.0 entrega lo que envió el cliente, igual que con `false`. El escape se hace al mostrar: Twig y Vue escapan por defecto, y el SQL va con parámetros.
+
+Antes de actualizar un proyecto que tenía la opción activa:
+
+1. Buscar dónde se muestra HTML sin escapar y comprobar que no sean datos que escribe un usuario:
+   ```bash
+   grep -rn '|raw' app/templates
+   grep -rn 'v-html' src
+   ```
+   Si alguno lo es, escaparlo, o sanitizarlo como HTML (por ejemplo `Functions::sanitizeSvgContent` para SVG).
+2. Buscar SQL armado con valores de la petición (`whereRaw`, `selectRaw`, `orderByRaw` o `sprintf` con `getAllParams()`) y pasar esos valores como parámetros. El sanitizador nunca protegió de verdad contra eso, pero a veces rompía un ataque por casualidad.
+3. Quitar `security` de `config.json`. `app:check:deploy` avisa si la clave sigue ahí.
+
+Los datos guardados mientras la opción estuvo activa siguen escapados (por ejemplo `O&amp;#039;Brien`). No se corrigen solos.
+
+`getRawParams()` se mantiene y desde 3.0 es igual a `getAllParams()`.
+
+### 2. Comandos eliminados
+
+`route:compile`, `route:cache`, `route:clear-cache` y `cache:routes` no hacían nada desde 2.10. Ahora responden "acción no reconocida" (código 1), así que un `deploy.yml` que todavía los llame hará fallar el despliegue: quitarlos, o usar `php versaCLI app:deploy:finish`.
+
+### 3. Métodos públicos eliminados
+
+Ninguno se usaba en el kernel ni en los proyectos conocidos.
+
+| Clase | Métodos | Reemplazo |
+|---|---|---|
+| `GlobalMiddleware` | `checkApiRateLimit`, `checkUploadRateLimit`, `checkSensitiveRateLimit` | `RateLimitMiddleware::checkApiLimit`, `checkUploadLimit`, `checkSensitiveLimit` |
+| `GlobalMiddleware` | `checkPasswordExpiration` | `checkSession` ya redirige a cambiar la contraseña vencida |
+| `RateLimitMiddleware` | `checkGlobalLimit` | El límite global se aplica solo en cada petición |
+| `Request` | `getAccept`, `getRawBodyLength`, `validateCsrf` | `getHeader('Accept')`; el CSRF lo valida el Router |
+| `SecurityUtils` | `sanitizeInputParams`, `sanitizeForJson`, `sanitizeSqlInput`, `containsSqlInjection`, `isInputSafe`, `prepareSecureJsonData`, `generateCsrfToken`, `validateCsrfForRequest` | Ver el punto 1; para CSRF, `Functions::generateCSRFToken` |
+| `Session` | `checkTokenHash` | — |
+| `cli\CommandExecutor` | `executeSystemCommand` | `run()` o `runInBackground()` |
+| `cli\MigrationManager` | `rollbackAll` | `migrate:refresh` |
+| `cli\RouteManager` | `routeCacheRemoved` | — (era el cuerpo de los comandos eliminados) |
+| `helpers\Functions` | `generateHashMd5Time`, `httpPostForm` | `bin2hex(random_bytes(16))`; el cliente HTTP de `Functions` |
+
+### 4. Actualizar
+
+```bash
+cd versaWYS && composer require versawys/kernel:^3.0 -W
+php versaCLI app:check:deploy
+```
+
 ## De kernel copiado (≤ 2.0) a paquete (2.1)
 
 En la raíz del proyecto:

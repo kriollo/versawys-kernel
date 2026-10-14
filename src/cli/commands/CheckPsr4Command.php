@@ -23,11 +23,8 @@ class CheckPsr4Command extends BaseCommand
     private array $classMethods = [];
     private array $classInheritance = [];
 
-
-
     /** @var array<string,array<mixed>> Cache de tokens por filepath para evitar re-tokenización */
     private array $tokenCache = [];
-
 
     #[\Override]
     public function execute(array $params): int
@@ -1151,13 +1148,6 @@ class CheckPsr4Command extends BaseCommand
         }
 
         return [$current, $mismatch];
-    }
-
-    private function parsePhpFileFQCN(string $file): array
-    {
-        $details = $this->parsePhpFileDetails($file);
-
-        return ['namespace' => $details['namespace'], 'class' => $details['class']];
     }
 
     private function verifyCaseSensitivity(

@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.0.0] - 2026-10-14
+
+Versión mayor: quita lo que en 2.x quedó solo por compatibilidad. **−643 líneas** en `src/` y el baseline de phpstan baja de 2.959 a 2.815. Cómo actualizar: [UPGRADE.md](UPGRADE.md#de-2x-a-30).
+
+### Eliminado
+- **`security.sanitize_input`.** `getAllParams()` entrega la entrada tal como llega. El sanitizador escapaba el HTML dos veces y borraba frases que parecían SQL (`select from ...`), lo que alteraba los datos guardados sin proteger de verdad: el escape corresponde al mostrar (Twig y Vue) y el SQL va con parámetros. `app:check:deploy` avisa si la clave sigue en `config.json`.
+- `route:compile`, `route:cache`, `route:clear-cache` y `cache:routes`, que no hacían nada desde 2.10.
+- 22 métodos públicos sin uso en el kernel ni en los proyectos (y 9 privados que solo ellos llamaban): la cadena del sanitizador en `SecurityUtils`, los envoltorios de rate limit de `GlobalMiddleware` y otros. La lista y sus reemplazos están en UPGRADE.md.
+
+### Sin cambios
+- El contrato kernel ↔ app y la ubicación de `config.json` (incluida la ruta antigua `versaWYS/kernel/config/`).
+
 ## [2.11.1] - 2026-10-14
 
 ### Corregido

@@ -18,7 +18,7 @@ class CacheManager
             return;
         }
 
-        $allowedActions = ['clear', 'clearall', 'status', 'routes', 'twig'];
+        $allowedActions = ['clear', 'clearall', 'status', 'twig'];
         $action = self::validateAction($params[0], $allowedActions, 'cache');
 
         if ($verbose) {
@@ -29,7 +29,6 @@ class CacheManager
             match ($action) {
                 'clear', 'clearall' => self::clearAllCache(),
                 'status' => self::cacheStatus(),
-                'routes' => self::clearRoutesCache(),
                 'twig' => self::clearTwigCache(),
                 default => self::showError('Acción de cache no reconocida: ' . $action),
             };
@@ -43,11 +42,6 @@ class CacheManager
         echo CLIErrorHandler::colorize('🧹 Limpiando todo el cache...', 'cyan') . "\n\n";
 
         $cacheCleared = 0;
-
-        // Limpiar cache de rutas
-        if (self::clearRoutesCache(false)) {
-            $cacheCleared++;
-        }
 
         // Limpiar cache de Twig
         if (self::clearTwigCache(false)) {
@@ -110,14 +104,6 @@ class CacheManager
         echo CLIErrorHandler::colorize('Rate Limits: ', 'yellow') . ($rateLimitStatus . PHP_EOL);
 
         echo "\n";
-    }
-
-    private static function clearRoutesCache(bool $showMessage = true): bool
-    {
-        // Ya no hay caché de rutas: solo borra los archivos compilados que hayan quedado
-        RouteManager::routeCacheRemoved();
-
-        return true;
     }
 
     private static function clearTwigCache(bool $showMessage = true): bool
@@ -207,7 +193,6 @@ class CacheManager
 
         return $cleared > 0;
     }
-
 
     private static function deleteDirectory(string $dir): bool
     {
