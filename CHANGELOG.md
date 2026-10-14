@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [2.2.0] - 2026-10-14
+
+### Añadido
+- `php versaCLI config:merge <archivo.json>`: aplica ajustes versionados en el proyecto, sin secretos (CSP, CORS, correo...), sobre el `config.json` de la máquina. Pensado como hook de despliegue: es idempotente y reemplaza las listas enteras.
+
 ## [2.1.1] - 2026-10-13
 
 ### Corregido

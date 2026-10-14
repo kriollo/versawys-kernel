@@ -98,6 +98,44 @@ class ConfigManager
         CLIErrorHandler::success("Cache de templates {$status} exitosamente.");
     }
 
+    /**
+     * Fusiona un JSON versionado en el proyecto (ajustes sin secretos: CSP, CORS, correo...) con el
+     * config.json de esta máquina. Pensado como hook de despliegue: aplicarlo dos veces no cambia nada.
+     */
+    public static function merge(string $file): void
+    {
+        $extra = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+        if (!is_array($extra)) {
+            CLIErrorHandler::error("No se pudo leer un objeto JSON en '{$file}'.");
+            CLIErrorHandler::$failed = true;
+
+            return;
+        }
+
+        self::saveConfig(self::mergeArrays(self::getConfig(), $extra));
+        CLIErrorHandler::success("Configuración de '{$file}' aplicada en " . self::path());
+    }
+
+    /**
+     * Como array_replace_recursive, pero una lista (["a", "b"]) se reemplaza entera: mezclarla por
+     * posición dejaría orígenes de CSP viejos al final.
+     *
+     * @param array<mixed> $base
+     * @param array<mixed> $extra
+     *
+     * @return array<mixed>
+     */
+    public static function mergeArrays(array $base, array $extra): array
+    {
+        foreach ($extra as $key => $value) {
+            $base[$key] = is_array($value) && !array_is_list($value) && is_array($base[$key] ?? null)
+                ? self::mergeArrays($base[$key], $value)
+                : $value;
+        }
+
+        return $base;
+    }
+
     public static function clearCache(): void
     {
         $config = self::getConfig();
