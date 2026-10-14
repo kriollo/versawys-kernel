@@ -37,6 +37,9 @@ class CheckDeployCommand extends BaseCommand
 
     private bool $production = false;
 
+    /** URL del sitio para las sondas HTTP (--url, o build.base_url con --production) */
+    private string $url = '';
+
     #[\Override]
     public function execute(array $args = []): int
     {
@@ -44,6 +47,11 @@ class CheckDeployCommand extends BaseCommand
         $this->verbose = array_intersect(['--verbose', '-v', '--debug'], $flags) !== [];
         $this->strict = in_array('--strict', $flags, true);
         $this->production = in_array('--production', $flags, true);
+        foreach ($flags as $flag) {
+            if (is_string($flag) && str_starts_with($flag, '--url=')) {
+                $this->url = substr($flag, 6);
+            }
+        }
         $this->root = (string) getcwd();
 
         $phases = [
@@ -58,6 +66,7 @@ class CheckDeployCommand extends BaseCommand
             'Repositorio' => $this->checkRepository(...),
             'Configuración (config.json)' => $this->checkConfig(...),
             'Entorno del servidor' => $this->checkServer(...),
+            'Archivos expuestos en la web' => $this->checkExposure(...),
         ];
 
         CLIErrorHandler::printSeparator();
@@ -453,6 +462,57 @@ class CheckDeployCommand extends BaseCommand
     /**
      * Estado real del servidor. Solo con --production: en la máquina de desarrollo no dice nada útil.
      */
+    /**
+     * Pide al sitio real los archivos que nunca deben servirse. Las reglas viven en .htaccess,
+     * nginx y routerServe: esta es la única revisión que prueba el servidor tal como quedó.
+     */
+    private function checkExposure(): void
+    {
+        $base = $this->url !== '' ? $this->url : ($this->production ? (string) ($this->projectConfig()['build']['base_url'] ?? '') : '');
+        $base = rtrim($base, '/');
+        if ($base === '') {
+            if ($this->production) {
+                $this->add('info', 'No se probó qué archivos entrega el servidor web: falta la URL del sitio.', hint: 'Fijar build.base_url o usar --url=https://app.ejemplo.cl');
+            }
+
+            return;
+        }
+
+        $paths = [
+            '/.env',
+            '/.git/config',
+            '/' . ConfigManager::dir() . '/config.json',
+            '/versaWYS/composer.json',
+            '/versaWYS/composer.lock',
+            '/versaWYS/vendor/autoload.php',
+            '/versaWYS/logs/',
+            '/versaCLI',
+            '/composer.json',
+            '/package.json',
+            '/pnpm-lock.yaml',
+            '/node_modules/.modules.yaml',
+        ];
+        $routes = glob($this->root . '/app/routes/*.php');
+        if (is_array($routes) && $routes !== []) {
+            $paths[] = '/app/routes/' . basename($routes[0]);
+        }
+
+        // Sin seguir redirecciones: un 302 al login no expone nada
+        $context = stream_context_create(['http' => ['method' => 'GET', 'ignore_errors' => true, 'follow_location' => 0, 'timeout' => 5]]);
+        foreach ($paths as $path) {
+            $headers = @get_headers($base . $path, false, $context);
+            if ($headers === false) {
+                $this->add('warning', "No se pudo conectar a {$base} para probar los archivos expuestos.", hint: 'Revisar la URL, o que el servidor pueda llegar a su propio dominio.');
+
+                return;
+            }
+
+            if (preg_match('#^HTTP/\S+\s+200\b#', (string) ($headers[0] ?? '')) === 1) {
+                $this->add('critical', "{$base}{$path} responde 200: el servidor web lo entrega a cualquiera.", hint: 'Revisar .htaccess o la configuración de nginx (plantillas en configs/).');
+            }
+        }
+    }
+
     private function checkServer(): void
     {
         if (!$this->production) {
@@ -850,6 +910,8 @@ class CheckDeployCommand extends BaseCommand
               --production    Revisa además la configuración y el entorno reales. Para ejecutar
                               EN EL SERVIDOR (por ejemplo como último paso del despliegue)
               --verbose       Muestra todos los hallazgos y el detalle de PSR-4
+              --url=URL       Pide al sitio los archivos que no deben servirse (.env, config.json,
+                              vendor, logs...). Con --production usa build.base_url si no se indica
 
             EXCEPCIONES:
               Un hallazgo intencional se silencia con un comentario en el código:
@@ -869,6 +931,7 @@ class CheckDeployCommand extends BaseCommand
               10. Configuración                debug, claves de sesión, cookies seguras, CORS, caché
               11. Entorno del servidor         (--production) PHP, extensiones, permisos, dependencias,
                                                frontend compilado, conexión y migraciones pendientes
+              12. Archivos expuestos           (--url) .env, config.json, vendor, logs, rutas: nada debe responder 200
 
             NIVELES:
               🔴 Crítico      Impide desplegar
