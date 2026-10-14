@@ -336,8 +336,13 @@ class Functions
      *
      * @return bool returns true if the token is valid, false otherwise
      */
-    public static function validateCSRFToken(string $tokenSession, string $tokenFormUser): bool
+    public static function validateCSRFToken(#[\SensitiveParameter] mixed $tokenSession, #[\SensitiveParameter] mixed $tokenFormUser): bool
     {
+        // Sesión sin token, token vacío o enviado como arreglo (_csrf_token[]=…): inválido, nunca un error 500
+        if (!is_string($tokenSession) || !is_string($tokenFormUser) || $tokenSession === '' || $tokenFormUser === '') {
+            return false;
+        }
+
         return hash_equals($tokenSession, $tokenFormUser);
     }
 

@@ -86,6 +86,9 @@ class Session
         ini_set('session.cookie_secure', $config['session']['user_cookie']['secure'] ? '1' : '0');
         ini_set('session.cookie_samesite', $config['session']['user_cookie']['same_site']);
         ini_set('session.use_strict_mode', $config['session']['user_cookie']['strict_mode'] ? '1' : '0');
+        // El id de sesión solo por cookie, nunca en la URL, aunque el php.ini del servidor diga otra cosa
+        ini_set('session.use_only_cookies', '1');
+        ini_set('session.use_trans_sid', '0');
 
         if (session_status() === PHP_SESSION_NONE) {
             if (!session_start()) {
