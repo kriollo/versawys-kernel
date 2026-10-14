@@ -108,6 +108,14 @@ class CheckDeployCommand extends BaseCommand
 
     private function checkAppContract(): void
     {
+        foreach (KernelPublishCommand::stubs() as $target => $source) {
+            if (!is_file($this->root . '/' . $target)) {
+                $this->add('warning', "Falta {$target}, que trae el kernel.", hint: 'php versaCLI app:kernel:publish');
+            } elseif (file_get_contents($this->root . '/' . $target) !== file_get_contents($source)) {
+                $this->add('info', "{$target} difiere de la versión del kernel.", hint: 'php versaCLI app:kernel:publish muestra el diff');
+            }
+        }
+
         foreach (self::APP_CONTRACT as $class => $methods) {
             foreach ($methods as $method) {
                 if (!method_exists($class, $method)) {
@@ -952,7 +960,8 @@ class CheckDeployCommand extends BaseCommand
                1. Sintaxis PHP                 Archivos que no se pueden cargar
                2. PSR-4, clases y archivos     Namespaces, clases inexistentes, require con mayúsculas distintas
                3. Rutas de la aplicación       Controladores, métodos o middlewares que no existen
-               4. Contrato kernel ↔ app        Métodos de app/models y app/services que el kernel necesita
+               4. Contrato kernel ↔ app        Métodos de app/models y app/services que el kernel necesita, y
+                                               archivos base del kernel (index.php, versaCLI, .htaccess) al día
                5. Plantillas Twig              render / extends / include a plantillas inexistentes o con otra capitalización
                6. Windows → Linux              Rutas C:\, comandos de Windows, finales de línea CRLF
                7. Restos de depuración         var_dump, dd, dump, print_r, phpinfo

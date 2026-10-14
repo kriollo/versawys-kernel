@@ -27,5 +27,6 @@ En la raíz del proyecto:
    ```bash
    cd versaWYS && composer require versawys/kernel:^2.1 -W
    ```
-4. Reemplazar `index.php` y `versaCLI` por las versiones de dos líneas del esqueleto.
-5. `php versaCLI command:refresh && php versaCLI app:check:deploy`, y correr las pruebas del proyecto.
+4. `php versaCLI app:kernel:publish` crea `index.php`, `versaCLI` y los `.htaccess` que falten, y muestra el diff de los que difieren. Revisarlo y usar `--force` para tomar la versión del kernel.
+5. En `versa_deploy.yml`, reemplazar la lista de `post_deploy` por `php versaCLI app:deploy:finish`.
+6. `php versaCLI command:refresh && php versaCLI app:check:deploy`, y correr las pruebas del proyecto.

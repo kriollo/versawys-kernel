@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [2.8.0] - 2026-10-14
+
+### Añadido
+- **`php versaCLI app:deploy:finish`**: el único hook `post_deploy` que necesita un proyecto. Aplica `versaWYS/config.compartida.json` si existe, y luego corre `migrate:up`, `cache:twig`, `route:compile`, activa la caché de plantillas, `command:refresh` y `app:check:deploy --production`. Se detiene en el primer paso que falle. Cuando el kernel agregue un paso, los `versa_deploy.yml` no cambian.
+- **`php versaCLI app:kernel:publish [--force]`**: el kernel trae `index.php`, `versaCLI`, los `.htaccess` y los ejemplos de Apache y nginx. Crea los que faltan en el proyecto y muestra el diff de los que difieren; `--force` los reemplaza. `app:check:deploy` avisa si falta alguno o si difiere.
+
 ## [2.7.0] - 2026-10-14
 
 ### Añadido
