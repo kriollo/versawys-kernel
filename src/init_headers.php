@@ -18,6 +18,8 @@ if ($origin !== '' && in_array($origin, $config['cors']['allowed_origins'] ?? []
 
 header('X-Frame-Options: SAMEORIGIN');
 header('X-Content-Type-Options: nosniff');
+// El mismo identificador que llevan las entradas de log de esta petición
+header('X-Request-Id: ' . versaWYS\kernel\Loggin::requestId());
 header('Referrer-Policy: strict-origin-when-cross-origin');
 // Aísla la ventana de otros orígenes; allow-popups mantiene los popups de OAuth (Google)
 header('Cross-Origin-Opener-Policy: same-origin-allow-popups');

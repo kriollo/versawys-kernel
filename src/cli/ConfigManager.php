@@ -164,7 +164,8 @@ class ConfigManager
         // Misma fuente que usa el runtime para los valores por defecto: no pueden divergir
         $defaults = self::defaults();
         $defaults['session']['key'] = bin2hex(random_bytes(32));
-        $defaults['session']['user_cookie']['key_encript'] = bin2hex(random_bytes(32));
+        // key_encript no la lee nadie (deprecada): no se genera
+        unset($defaults['session']['user_cookie']['key_encript']);
         // Y exigen el nonce en los <script> inline: el panel base ya lo usa en todas sus plantillas
         $defaults['csp']['nonce'] = true;
         // Y sin eval: el panel base no compila plantillas en el navegador

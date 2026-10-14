@@ -42,26 +42,44 @@ git clone https://github.com/kriollo/versaWYS.git
 cd versawys-kernel && composer install && composer check
 
 # Probar el esqueleto contra este kernel (sin commitear el cambio en composer.json)
-cd ../versaWYS/versaWYS
-composer config repositories.kernel '{"type": "path", "url": "../../versawys-kernel", "options": {"symlink": true}}'
+cd ../versaWYS
+composer config repositories.kernel '{"type": "path", "url": "../versawys-kernel", "options": {"symlink": true}}'
 composer require "versawys/kernel:*@dev" -W
 composer test
 ```
 
-La CI hace lo mismo en PHP 8.3, 8.4 y 8.5.
-
-## Seguridad
-
-Ver [SECURITY.md](SECURITY.md) y el [modelo de amenazas](THREAT_MODEL.md).
+La CI hace lo mismo en PHP 8.3, 8.4 y 8.5. Si el cambio también necesita modificar el esqueleto, se crea en él una rama con el mismo nombre que la del PR del kernel: la CI la usa en vez de `main`.
 
 ## Pruebas
 
 ```bash
-composer test
-composer check
+composer test     # PHPUnit: Router, Request, archivos, rate limiting, configuración, /up
+composer check    # formato + pruebas + phpstan
+composer bench    # línea base de rendimiento (ver BENCHMARK.md)
 ```
 
-`composer check` ejecuta formato, pruebas y análisis estático. La CI también ejecuta `composer audit` y las pruebas de integración del esqueleto versaWYS-PHP.
+La CI también ejecuta `composer audit` y la suite del esqueleto contra este kernel, que cubre por HTTP lo que necesita un servidor: sesión y JWT, CSRF, CSP, `QUERY`, `app:check:deploy --url`. Las pruebas nuevas que no necesitan un servidor van en este repositorio.
+
+## Versiones y compatibilidad
+
+- **PHP:** 8.3, 8.4 y 8.5, las tres probadas en la CI. Una versión de PHP se deja de soportar solo en una versión mayor del kernel, cuando PHP termina su soporte de seguridad.
+- **SemVer:** parche = correcciones, menor = funciones nuevas compatibles, mayor = cambios incompatibles. Qué cuenta como API pública está en [API.md](API.md).
+- **Deprecación:** antes de quitar algo, pasa al menos una versión menor marcado `@deprecated`, con su reemplazo en UPGRADE.md. Se elimina en la siguiente versión mayor.
+- **Soporte:** la última versión mayor recibe correcciones; ver [SECURITY.md](SECURITY.md).
+
+## Documentos
+
+| Documento | Contenido |
+|---|---|
+| [API.md](API.md) | Qué es estable, qué es interno y qué está deprecado |
+| [LIFECYCLE.md](LIFECYCLE.md) | Recorrido de una petición, de `index.php` a la respuesta |
+| [UPGRADE.md](UPGRADE.md) | Cómo actualizar entre versiones mayores |
+| [SECURITY.md](SECURITY.md) | Soporte, cómo reportar y comportamiento ante fallos |
+| [THREAT_MODEL.md](THREAT_MODEL.md) | Activos, límites de confianza y mitigaciones con su prueba |
+| [BENCHMARK.md](BENCHMARK.md) | Línea base de rendimiento |
+| [DECISIONS.md](DECISIONS.md) | Lo que se evaluó y no se implementó, y cuándo revisarlo |
+| [ROADMAP.md](ROADMAP.md) | Trabajo pendiente |
+| [CHANGELOG.md](CHANGELOG.md) | Cambios de cada versión |
 
 ## Licencia
 

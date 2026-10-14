@@ -76,6 +76,8 @@ class SecurityUtils
      * @param string|null $token Token a validar
      *
      * @return bool True si es válido, false en caso contrario
+     *
+     * @deprecated 3.2 Usar Functions::validateCSRFToken(), que es la que usa el Router. Se elimina en 4.0.
      */
     public static function validateCsrfToken(#[\SensitiveParameter] ?string $token): bool
     {

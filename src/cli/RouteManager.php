@@ -168,6 +168,39 @@ class RouteManager
             $all[$routeFile] = self::extractRouteData($routeFile);
         }
 
+        return self::markDuplicates($all);
+    }
+
+    /**
+     * El Router guarda una ruta por método y URL: si dos declaraciones coinciden, la que se carga
+     * después reemplaza a la otra sin aviso. Se marcan las dos como error.
+     *
+     * @param array<string, array<int, array<string, mixed>>> $all
+     *
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    public static function markDuplicates(array $all): array
+    {
+        $seen = [];
+        foreach ($all as $file => $routes) {
+            foreach ($routes as $i => $route) {
+                $seen[strtolower((string) $route['method']) . ' ' . $route['url']][] = [$file, $i];
+            }
+        }
+
+        foreach ($seen as $places) {
+            if (count($places) < 2) {
+                continue;
+            }
+            foreach ($places as [$file, $i]) {
+                $others = array_map(static fn (array $place): string => $place[0], array_filter($places, static fn (array $place): bool => $place !== [$file, $i]));
+                $all[$file][$i]['issues'][] = [
+                    'level' => 'error',
+                    'message' => 'Ruta duplicada (también en ' . implode(', ', array_unique($others)) . '): solo responde la que se carga al final.',
+                ];
+            }
+        }
+
         return $all;
     }
 

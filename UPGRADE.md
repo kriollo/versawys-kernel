@@ -13,6 +13,13 @@ El panel base (`app/models`, `app/services`) se copia en cada proyecto y el kern
 
 **Agregar algo a esta lista o cambiar una firma es un cambio de versión mayor.** `php versaCLI app:check:deploy` falla si al proyecto le falta alguno.
 
+## 3.1 → 3.2 (sin cambios incompatibles)
+
+- `required` acepta `0`, `"0"` y `false` como valores. Si un formulario usaba `"0"` como "sin elegir" y dependía de `required` para rechazarlo, usar `int:positive` o `in:...`.
+- `min` y `max` de `validateParams` cuentan caracteres, no bytes. Revisar formularios con `min` sobre textos con tildes o `ñ`: antes podían pasar por contar de más.
+- `app:check:deploy` ahora valida tipos y claves de `config.json`. En un proyecto antiguo, lo esperable es un aviso con las claves sin efecto (`key_encript`, `cacheRoute`…), que se pueden borrar.
+- Para scripts y despliegues: `php versaCLI <comando> -n` nunca se queda esperando una respuesta, y un `migrate:refresh`/`dropAll` cancelado termina con código 1.
+
 ## De 2.x a 3.0
 
 La 3.0 quita lo que en 2.x quedó solo por compatibilidad. No cambia el contrato kernel ↔ app ni la ubicación de `config.json`.

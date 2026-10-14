@@ -564,6 +564,46 @@ class Loggin
      *
      * @return array
      */
+    /**
+     * Identificador de la petición: el mismo en todas las entradas de log que genera y en la
+     * cabecera X-Request-Id de la respuesta. Se acepta el de un proxy propio (trusted_proxies)
+     * para seguir la petición de punta a punta.
+     */
+    public static function requestId(): string
+    {
+        static $id = null;
+        if ($id === null) {
+            $incoming = (string) ($_SERVER['HTTP_X_REQUEST_ID'] ?? '');
+            $id = $incoming !== ''
+                && preg_match('/^[A-Za-z0-9._-]{8,64}$/', $incoming) === 1
+                && Request::isTrustedProxy((string) ($_SERVER['REMOTE_ADDR'] ?? ''))
+                    ? $incoming
+                    : bin2hex(random_bytes(8));
+        }
+
+        return $id;
+    }
+
+    /**
+     * Los valores de claves con nombre de secreto no llegan al log, en ningún nivel del contexto.
+     *
+     * @param array<mixed> $context
+     *
+     * @return array<mixed>
+     */
+    public static function redact(array $context): array
+    {
+        foreach ($context as $key => $value) {
+            if (is_string($key) && preg_match('/pass(word)?|secret|token|api_?key|authorization|cookie|csrf/i', $key) === 1) {
+                $context[$key] = '[oculto]';
+            } elseif (is_array($value)) {
+                $context[$key] = self::redact($value);
+            }
+        }
+
+        return $context;
+    }
+
     private static function prepareLogData(string $level, string $message, string $module, array $context): array
     {
         try {
@@ -577,7 +617,8 @@ class Loggin
             'level' => $level,
             'module' => $module,
             'message' => $message,
-            'context' => $context,
+            'request_id' => self::requestId(),
+            'context' => self::redact($context),
         ];
 
         // Agregar información adicional para errores
@@ -598,7 +639,8 @@ class Loggin
                 $data['request'] = [
                     'method' => $_SERVER['REQUEST_METHOD'] ?? '',
                     'uri' => $_SERVER['REQUEST_URI'] ?? '',
-                    'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+                    // La IP del cliente, no la del proxy (respeta trusted_proxies)
+                    'ip' => Request::clientIp(),
                     'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
                 ];
             }
@@ -629,8 +671,9 @@ class Loggin
 
         // Formato de texto
         $message = sprintf(
-            '[%s] [%s] [%s] %s',
+            '[%s] [%s] [%s] [%s] %s',
             $logData['timestamp'],
+            $logData['request_id'] ?? '-',
             str_pad($logData['level'], 9),
             str_pad($logData['module'], 15),
             $logData['message'],

@@ -112,6 +112,132 @@ final class RouterTest extends TestCase
         self::assertSame('id=42', $this->dispatch('GET', str_replace('{id}', '42', $path)));
     }
 
+    public function testHeadUsesTheGetRouteWithoutBody(): void
+    {
+        $path = $this->route('get', '/', [RouterTestController::class, 'unauthorized']);
+
+        self::assertSame('', $this->dispatch('HEAD', $path));
+        self::assertSame(401, http_response_code());
+    }
+
+    public function testAnUnknownMethodGets405(): void
+    {
+        $result = $this->dispatchIsolated('TRACE', '/kernel-test-405', "Router::get('/kernel-test-405', [RouterTestController::class, 'show']);");
+
+        self::assertSame(405, $result['status']);
+        self::assertStringNotContainsString('ok', $result['body']);
+    }
+
+    public function testGroupPrefixAndMiddlewareApplyToEveryRoute(): void
+    {
+        $prefix = '/kernel-test-' . bin2hex(random_bytes(4));
+        Router::group($prefix, static function (): void {
+            Router::get('/a', [RouterTestController::class, 'show']);
+        }, [[RouterTestMiddleware::class, 'deny']]);
+
+        $this->dispatch('GET', $prefix . '/a');
+
+        self::assertSame(403, http_response_code());
+    }
+
+    public function testExtraSlashesReachTheSameRoute(): void
+    {
+        $path = $this->route('get', '/x', [RouterTestController::class, 'show']);
+
+        self::assertSame('ok', $this->dispatch('GET', $path . '/'));
+        self::assertSame('ok', $this->dispatch('GET', str_replace('/x', '//x', $path)));
+    }
+
+    public function testAPostCanBecomeQueryThroughTheOverrideHeader(): void
+    {
+        // php -S responde 501 a QUERY: en desarrollo se envía como POST con el override
+        $path = $this->route('query', '/', [RouterTestController::class, 'show']);
+
+        self::assertSame('ok', $this->dispatch('POST', $path, ['HTTP_X_HTTP_METHOD_OVERRIDE' => 'QUERY']));
+    }
+
+    public function testTheOverrideNeverTurnsAGetIntoAnotherMethod(): void
+    {
+        // Un enlace o una imagen (GET desde otro sitio) no puede alcanzar una ruta que modifica datos
+        $result = $this->dispatchIsolated(
+            'GET',
+            '/kernel-test-borrar',
+            "Router::delete('/kernel-test-borrar', [RouterTestController::class, 'show']);",
+            ['HTTP_X_HTTP_METHOD_OVERRIDE' => 'DELETE'],
+        );
+
+        self::assertStringNotContainsString('ok', $result['body']);
+        self::assertContains($result['status'], [404, 405]);
+    }
+
+    public function testTheCustomPanelUrlOnlyReplacesThePrefix(): void
+    {
+        global $config;
+        $config['admin'] = ['custom_url' => 'panel', 'hide_default' => true];
+        $id = bin2hex(random_bytes(4));
+        Router::get("/admin/kernel-test-{$id}/panel", [RouterTestController::class, 'show']);
+
+        self::assertSame('ok', $this->dispatch('GET', "/panel/kernel-test-{$id}/panel"));
+    }
+
+    public function testTheDefaultPanelUrlIsHiddenWhenThereIsACustomOne(): void
+    {
+        global $config;
+        $config['admin'] = ['custom_url' => 'panel', 'hide_default' => true];
+        $id = bin2hex(random_bytes(4));
+        Router::get("/admin/kernel-test-{$id}", [RouterTestController::class, 'show']);
+
+        $output = $this->dispatch('GET', "/admin/kernel-test-{$id}", ['HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']);
+
+        self::assertSame(404, http_response_code());
+        self::assertStringNotContainsString('ok', $output);
+    }
+
+    public function testAnUnknownApiRouteGetsA404WithoutInternals(): void
+    {
+        $output = $this->dispatch('GET', '/kernel-test-nada-' . bin2hex(random_bytes(4)), ['HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']);
+
+        self::assertSame(404, http_response_code());
+        self::assertIsArray(json_decode($output, true));
+        self::assertStringNotContainsString('.php', $output);
+    }
+
+    /**
+     * Para las respuestas de error que terminan con exit(): corre la petición en otro proceso PHP y
+     * devuelve el estado HTTP (informado por una función de cierre, que corre aunque haya exit) y la salida.
+     *
+     * @param array<string, string> $server
+     *
+     * @return array{status: int, body: string}
+     */
+    private function dispatchIsolated(string $method, string $path, string $routes, array $server = []): array
+    {
+        $script = tempnam(sys_get_temp_dir(), 'router') . '.php';
+        file_put_contents($script, '<?php
+            namespace versaWYS\\kernel\\Tests;
+            use versaWYS\\kernel\\Request;
+            use versaWYS\\kernel\\Router;
+            require ' . var_export(dirname(__DIR__) . '/vendor/autoload.php', true) . ';
+            require ' . var_export(__FILE__, true) . ';
+            $GLOBALS["config"] = ' . var_export(['trusted_proxies' => [], 'rate_limiting' => ['enabled' => false], 'admin' => [], 'build' => ['debug' => false]], true) . ';
+            $_SERVER = ' . var_export(['REQUEST_METHOD' => $method, 'REQUEST_URI' => $path, 'REMOTE_ADDR' => '127.0.0.1', ...$server], true) . ';
+            $GLOBALS["request"] = new Request();
+            ' . $routes . '
+            register_shutdown_function(static function (): void { fwrite(STDERR, "STATUS:" . http_response_code()); });
+            (new Router())->resolve();
+        ');
+
+        $process = proc_open([PHP_BINARY, $script], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        $body = (string) stream_get_contents($pipes[1]);
+        $errors = (string) stream_get_contents($pipes[2]);
+        proc_close($process);
+        unlink($script);
+
+        preg_match('/STATUS:(\d+)/', $errors, $m);
+
+        return ['status' => (int) ($m[1] ?? 0), 'body' => $body];
+    }
+
     /**
      * Registra una ruta con un prefijo único (las tablas de rutas son estáticas) y devuelve su patrón.
      *
@@ -125,12 +251,15 @@ final class RouterTest extends TestCase
         return $path;
     }
 
-    private function dispatch(string $method, string $path): string
+    /**
+     * @param array<string, string> $server
+     */
+    private function dispatch(string $method, string $path, array $server = []): string
     {
         global $request;
 
         http_response_code(200);
-        $_SERVER = ['REQUEST_METHOD' => $method, 'REQUEST_URI' => $path, 'REMOTE_ADDR' => '127.0.0.1'];
+        $_SERVER = ['REQUEST_METHOD' => $method, 'REQUEST_URI' => $path, 'REMOTE_ADDR' => '127.0.0.1', ...$server];
         $request = new Request();
 
         ob_start();

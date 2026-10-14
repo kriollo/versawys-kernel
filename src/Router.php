@@ -370,7 +370,8 @@ class Router
 
             // Mapear URL personalizada a admin
             if (str_starts_with($url, sprintf('/%s/', $customAdminUrl))) {
-                $url = str_replace(sprintf('/%s/', $customAdminUrl), '/admin/', $url);
+                // Solo el prefijo: la URL del panel puede repetirse más adelante en la ruta
+                $url = '/admin/' . substr($url, strlen($customAdminUrl) + 2);
             } elseif ($url === '/' . $customAdminUrl) {
                 $url = '/admin';
             }

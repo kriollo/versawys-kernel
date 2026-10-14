@@ -298,6 +298,11 @@ class Request
             $host = $forwardedHost !== '' ? $forwardedHost : $host;
         }
 
+        // Solo nombre de host o IP y puerto: el valor viene del cliente y termina dentro de enlaces de correo
+        if (preg_match('/^(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:.]+\])(?::\d{1,5})?$/', $host) !== 1) {
+            $host = 'localhost';
+        }
+
         return ($https ? 'https://' : 'http://') . $host;
     }
 

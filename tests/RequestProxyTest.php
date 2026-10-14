@@ -115,6 +115,49 @@ final class RequestProxyTest extends TestCase
         self::assertSame('203.0.113.8', Request::clientIp());
     }
 
+    public function testTheConfiguredBaseUrlWinsOverTheHostHeader(): void
+    {
+        global $config;
+        $config['build'] = ['base_url' => 'https://app.ejemplo.cl/'];
+        $_SERVER = ['REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'atacante.test', 'REMOTE_ADDR' => '203.0.113.8'];
+
+        self::assertSame('https://app.ejemplo.cl', (new Request())->getBaseUrl());
+    }
+
+    public function testForwardedHostFromAnUntrustedClientIsIgnored(): void
+    {
+        $_SERVER = [
+            'REQUEST_METHOD' => 'GET',
+            'HTTP_HOST' => 'app.ejemplo.cl',
+            'HTTP_X_FORWARDED_HOST' => 'atacante.test',
+            'HTTP_X_FORWARDED_PROTO' => 'https',
+            'REMOTE_ADDR' => '203.0.113.8',
+        ];
+
+        self::assertSame('http://app.ejemplo.cl', (new Request())->getBaseUrl());
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: string}>
+     */
+    public static function hosts(): iterable
+    {
+        yield 'dominio' => ['app.ejemplo.cl', 'http://app.ejemplo.cl'];
+        yield 'con puerto' => ['localhost:8000', 'http://localhost:8000'];
+        yield 'IPv6' => ['[::1]:8080', 'http://[::1]:8080'];
+        yield 'con comillas' => ['evil.test"><img src=x>', 'http://localhost'];
+        yield 'con ruta' => ['evil.test/reset?x=', 'http://localhost'];
+        yield 'con usuario' => ['app.ejemplo.cl@evil.test', 'http://localhost'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('hosts')]
+    public function testTheHostHeaderMustBeAHostName(string $host, string $expected): void
+    {
+        $_SERVER = ['REQUEST_METHOD' => 'GET', 'HTTP_HOST' => $host, 'REMOTE_ADDR' => '203.0.113.8'];
+
+        self::assertSame($expected, (new Request())->getBaseUrl());
+    }
+
     public function testRequestDefaultsToGetAndPreservesSubmittedValues(): void
     {
         $_GET = ['query' => '<script>alert(1)</script>'];

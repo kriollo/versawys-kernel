@@ -35,7 +35,12 @@ Esto inicia la base de pruebas, pero **no completa** el inventario de contratos,
 
 ## Paso 1 — Completar contratos, pruebas y línea base
 
-**Estado: iniciado; falta completar.**
+**Estado: completo (3.2.0).**
+1. Inventario en `API.md`: estable / interno / deprecado, con reglas de compatibilidad.
+2. Contrato kernel ↔ app probado (`AppContractTest`): el kernel solo importa clases del contrato y UPGRADE.md lo lista exacto.
+3. Suite PHPUnit con 64 pruebas: Router, Request, archivos, rate limiting, validación, configuración, logs, CLI y comandos. CSRF, sesión y JWT siguen cubiertos por HTTP en el esqueleto.
+4. Regresiones: CSP/nonce (esqueleto), proxies, entrada sin reescribir, rate limiting con concurrencia y estado HTTP desde `code`.
+5. Línea base en `BENCHMARK.md` (`composer bench`), con entorno y comandos.
 
 ### Trabajo pendiente
 
@@ -58,7 +63,13 @@ Esto inicia la base de pruebas, pero **no completa** el inventario de contratos,
 
 ## Paso 2 — Reforzar seguridad y fiabilidad
 
-**Estado: iniciado. Hecho: modelo de amenazas (1); comportamiento ante fallos de rate limiting y revocación de JWT documentado, registrado y detectado en el despliegue (3); validación de `trusted_proxies` en `app:check:deploy` (4, parcial).**
+**Estado: completo (3.1.2 y 3.2.0).**
+1. `THREAT_MODEL.md`.
+2. Pruebas de abuso: override, panel oculto, barras, `Host` y `X-Forwarded-*`, traversal y extensiones en subidas, 404/405 sin detalles, escape de comandos. Encontraron y corrigieron: traversal en `moveToNewName`, `Host` sin validar, reemplazo de la URL del panel.
+3. Fallos de almacenamiento: `SECURITY.md`, log `security` y `app:check:deploy`.
+4. `app:check:deploy` valida tipos, claves desconocidas en secciones de seguridad, claves sin efecto y `trusted_proxies`.
+5. Valores por defecto probados (esqueleto: «nace con valores seguros»).
+6. PHP 8.3–8.5 en la CI, `composer audit`, Dependabot y proceso de divulgación en `SECURITY.md`.
 
 ### Trabajo pendiente
 
@@ -83,7 +94,10 @@ Esto inicia la base de pruebas, pero **no completa** el inventario de contratos,
 
 ## Paso 3 — Ordenar fundamentos e interoperabilidad
 
-**Estado: pendiente; depende de contratos y pruebas de los pasos 1 y 2.**
+**Estado: hecho lo que tiene consumidores (3.2.0); el resto, decidido en `DECISIONS.md`.**
+1. `LIFECYCLE.md`.
+2. Rutas duplicadas detectadas en `route:check` y `app:check:deploy`; los callbacks inexistentes ya se detectaban.
+3–5. Contenedor de dependencias, PSR-3/11/14 y Request sin superglobales: evaluados y no adoptados, con la señal que haría revisarlos.
 
 ### Trabajo pendiente
 
@@ -101,7 +115,12 @@ Esto inicia la base de pruebas, pero **no completa** el inventario de contratos,
 
 ## Paso 4 — Completar herramientas de desarrollo y servicios
 
-**Estado: pendiente; priorizar según necesidades de los proyectos que consumen el kernel.**
+**Estado: completo para los casos de uso actuales (3.2.0).**
+1. CLI: `--no-interaction`; una operación destructiva cancelada sale con código 1.
+2. Validación: `nullable`, `in`, `boolean`; longitudes en caracteres. Mensajes traducibles: ver `DECISIONS.md`.
+3. Utilidades HTTP: sin capa nueva; `LIFECYCLE.md` documenta las existentes.
+4. Migraciones en transacción, una por migración.
+5. Eventos: ver `DECISIONS.md`.
 
 ### Trabajo pendiente
 
@@ -119,7 +138,11 @@ Esto inicia la base de pruebas, pero **no completa** el inventario de contratos,
 
 ## Paso 5 — Mejorar operación, escalado y rendimiento
 
-**Estado: pendiente; requiere línea base del paso 1 y contratos estables.**
+**Estado: hecho lo que aplica a un servidor (3.1.2 y 3.2.0); varios nodos, decidido en `DECISIONS.md`.**
+1–2. Almacenamiento compartido (Redis): no hay proyectos con más de un servidor; límite documentado y diseño previsto en `DECISIONS.md`.
+3. Observabilidad: `request_id` en logs y en `X-Request-Id`, secretos ocultos, IP real del cliente.
+4. `/up` solo da detalle con firma.
+5. Perfilado: `BENCHMARK.md`; las cachés de rutas y configuración se descartaron con mediciones.
 
 ### Trabajo pendiente
 
@@ -137,7 +160,11 @@ Esto inicia la base de pruebas, pero **no completa** el inventario de contratos,
 
 ## Paso 6 — Documentar compatibilidad y publicación
 
-**Estado: pendiente; actividad continua y cierre de cada versión.**
+**Estado: al día en 3.2.0; continuo en cada versión.**
+1. Documentación del kernel: `README.md` (índice), `API.md`, `LIFECYCLE.md`, `SECURITY.md`, `THREAT_MODEL.md`, `BENCHMARK.md`, `DECISIONS.md`; la del uso del framework vive en `documentacion/` del esqueleto.
+2. Versiones de PHP, SemVer y deprecación en `README.md`.
+3. `UPGRADE.md` por versión; `app:check:deploy` detecta contratos rotos.
+4. Cada entrega con CHANGELOG, pruebas, auditoría, phpstan y la CI del esqueleto.
 
 ### Trabajo pendiente
 
