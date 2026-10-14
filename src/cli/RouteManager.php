@@ -214,7 +214,7 @@ class RouteManager
      */
     private static function csrfMode(array $route): string
     {
-        if ($route['method'] === 'GET') {
+        if ($route['method'] === 'GET' || $route['method'] === 'QUERY') {
             return 'none';
         }
 
@@ -356,7 +356,7 @@ class RouteManager
             }
 
             $method = strtolower($tokens[$methodIndex][1]);
-            if (!in_array($method, ['group', 'get', 'post', 'put', 'patch', 'delete'], true)) {
+            if (!in_array($method, ['group', 'get', 'post', 'put', 'patch', 'delete', 'query'], true)) {
                 continue;
             }
 
@@ -861,7 +861,7 @@ class RouteManager
             $compiledContent .= $content;
 
             // Contar rutas en el archivo
-            $routeMatches = preg_match_all('/Router::(group|get|post|put|delete|patch|options)\s*\(/', $content);
+            $routeMatches = preg_match_all('/Router::(group|get|post|put|delete|patch|query|options)\s*\(/', $content);
             $totalRoutes += $routeMatches;
         }
 
@@ -1020,7 +1020,7 @@ class RouteManager
             $routeFilePath = self::$path . $routeFile;
             if (file_exists($routeFilePath)) {
                 $content = file_get_contents($routeFilePath);
-                $routeMatches = preg_match_all('/Router::(group|get|post|put|delete|patch|options)\s*\(/', $content);
+                $routeMatches = preg_match_all('/Router::(group|get|post|put|delete|patch|query|options)\s*\(/', $content);
                 $totalRoutes += $routeMatches;
             }
         }

@@ -13,12 +13,6 @@ parameters:
 			path: src/CacheUsers.php
 
 		-
-			message: '#^Only booleans are allowed in an if condition, array given\.$#'
-			identifier: if.condNotBoolean
-			count: 1
-			path: src/CacheUsers.php
-
-		-
 			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
 			identifier: ternary.shortNotAllowed
 			count: 1
@@ -145,12 +139,6 @@ parameters:
 			path: src/File.php
 
 		-
-			message: '#^Method versaWYS\\kernel\\File\:\:sanitizeFileName\(\) should return string but returns string\|null\.$#'
-			identifier: return.type
-			count: 1
-			path: src/File.php
-
-		-
 			message: '#^Only booleans are allowed in a negated boolean, int\<0, max\>\|false given\.$#'
 			identifier: booleanNot.exprNotBoolean
 			count: 1
@@ -205,38 +193,8 @@ parameters:
 			path: src/File.php
 
 		-
-			message: '#^Call to function is_numeric\(\) with 0 will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: src/GlobalControllers.php
-
-		-
-			message: '#^Call to function is_numeric\(\) with 0\.0 will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: src/GlobalControllers.php
-
-		-
-			message: '#^Casting to int something that''s already int\<1, max\>\.$#'
-			identifier: cast.useless
-			count: 1
-			path: src/GlobalControllers.php
-
-		-
 			message: '#^Method versaWYS\\kernel\\GlobalControllers\:\:__construct\(\) has parameter \$session with no type specified\.$#'
 			identifier: missingType.parameter
-			count: 1
-			path: src/GlobalControllers.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\GlobalControllers\:\:getParamsPaginate\(\) has parameter \$filedsToFilters with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/GlobalControllers.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\GlobalControllers\:\:getParamsPaginate\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
 			count: 1
 			path: src/GlobalControllers.php
 
@@ -363,7 +321,7 @@ parameters:
 		-
 			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
 			identifier: ternary.shortNotAllowed
-			count: 4
+			count: 3
 			path: src/GlobalMiddleware.php
 
 		-
@@ -805,12 +763,6 @@ parameters:
 			path: src/Response.php
 
 		-
-			message: '#^Access to an undefined static property versaWYS\\kernel\\Router\:\:\$optionsRoutes\.$#'
-			identifier: staticProperty.notFound
-			count: 1
-			path: src/Router.php
-
-		-
 			message: '#^Call to function array_filter\(\) requires parameter \#2 to be passed to avoid loose comparison semantics\.$#'
 			identifier: arrayFilter.strict
 			count: 2
@@ -819,12 +771,6 @@ parameters:
 		-
 			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
-			count: 1
-			path: src/Router.php
-
-		-
-			message: '#^Cannot access offset ''code'' on array\<mixed, mixed\>\|object\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: src/Router.php
 
@@ -967,24 +913,6 @@ parameters:
 			path: src/Router.php
 
 		-
-			message: '#^PHPDoc tag @return with type versaWYS\\kernel\\Router is not subtype of native type static\(versaWYS\\kernel\\Router\)\.$#'
-			identifier: return.phpDocType
-			count: 1
-			path: src/Router.php
-
-		-
-			message: '#^Parameter \#1 \$data of static method versaWYS\\kernel\\Response\:\:json\(\) expects array, array\<mixed, mixed\>\|object given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/Router.php
-
-		-
-			message: '#^Parameter \#1 \$string of function ltrim expects string, int\|string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Router.php
-
-		-
 			message: '#^Property versaWYS\\kernel\\Router\:\:\$deleteRoutes type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -1041,7 +969,7 @@ parameters:
 		-
 			message: '#^Unsafe usage of new static\(\)\.$#'
 			identifier: new.static
-			count: 5
+			count: 1
 			path: src/Router.php
 
 		-
@@ -1051,20 +979,8 @@ parameters:
 			path: src/Router.php
 
 		-
-			message: '#^Variable static property access on versaWYS\\kernel\\Router\.$#'
-			identifier: staticProperty.dynamicName
-			count: 2
-			path: src/Router.php
-
-		-
 			message: '#^Call to an undefined method object\:\:getIp\(\)\.$#'
 			identifier: method.notFound
-			count: 1
-			path: src/SecurityUtils.php
-
-		-
-			message: '#^Dynamic call to static method versaWYS\\kernel\\ErrorHandler\:\:handleException\(\)\.$#'
-			identifier: staticMethod.dynamicCall
 			count: 1
 			path: src/SecurityUtils.php
 
@@ -1076,12 +992,6 @@ parameters:
 
 		-
 			message: '#^Method versaWYS\\kernel\\SecurityUtils\:\:checkRateLimit\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/SecurityUtils.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\SecurityUtils\:\:getStoredLimits\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/SecurityUtils.php
@@ -1123,12 +1033,6 @@ parameters:
 			path: src/SecurityUtils.php
 
 		-
-			message: '#^Method versaWYS\\kernel\\SecurityUtils\:\:storeLimits\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/SecurityUtils.php
-
-		-
 			message: '#^Method versaWYS\\kernel\\SecurityUtils\:\:validateCsrfForRequest\(\) has parameter \$params with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -1150,12 +1054,6 @@ parameters:
 			message: '#^Only booleans are allowed in a negated boolean, string\|null given\.$#'
 			identifier: booleanNot.exprNotBoolean
 			count: 1
-			path: src/SecurityUtils.php
-
-		-
-			message: '#^Parameter \#1 \$json of function json_decode expects string, string\|false given\.$#'
-			identifier: argument.type
-			count: 2
 			path: src/SecurityUtils.php
 
 		-
@@ -1185,7 +1083,7 @@ parameters:
 		-
 			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
 			identifier: ternary.shortNotAllowed
-			count: 2
+			count: 1
 			path: src/SecurityUtils.php
 
 		-
@@ -1203,7 +1101,7 @@ parameters:
 		-
 			message: '#^Dynamic call to static method versaWYS\\kernel\\ErrorHandler\:\:handleException\(\)\.$#'
 			identifier: staticMethod.dynamicCall
-			count: 4
+			count: 2
 			path: src/Session.php
 
 		-
@@ -1305,12 +1203,6 @@ parameters:
 		-
 			message: '#^Parameter \#3 \$context of static method versaWYS\\kernel\\Loggin\:\:error\(\) expects array, array\<string, int\|string\>\|null given\.$#'
 			identifier: argument.type
-			count: 1
-			path: src/Session.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between stdClass and false will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
 			count: 1
 			path: src/Session.php
 
@@ -1921,18 +1813,6 @@ parameters:
 			path: src/cli/ModelManager.php
 
 		-
-			message: '#^Argument of an invalid type list\<string\>\|false supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 1
-			path: src/cli/RouteManager.php
-
-		-
-			message: '#^Cannot access offset \(float\|int\) on list\<string\>\|false\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/cli/RouteManager.php
-
-		-
 			message: '#^Method versaWYS\\kernel\\cli\\RouteManager\:\:extractRouteData\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -1941,24 +1821,6 @@ parameters:
 		-
 			message: '#^Method versaWYS\\kernel\\cli\\RouteManager\:\:getRoutes\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/RouteManager.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\cli\\RouteManager\:\:getRoutesFromRouteFile\(\) has parameter \$routeFile with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/cli/RouteManager.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\cli\\RouteManager\:\:getRoutesFromRouteFile\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/RouteManager.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\cli\\RouteManager\:\:listarRutasFromRoute\(\) has parameter \$routeFile with no type specified\.$#'
-			identifier: missingType.parameter
 			count: 1
 			path: src/cli/RouteManager.php
 
@@ -1989,7 +1851,7 @@ parameters:
 		-
 			message: '#^Only booleans are allowed in an if condition, int\|false given\.$#'
 			identifier: if.condNotBoolean
-			count: 7
+			count: 3
 			path: src/cli/RouteManager.php
 
 		-
@@ -2047,18 +1909,6 @@ parameters:
 			path: src/cli/RouteManager.php
 
 		-
-			message: '#^Parameter \#1 \$value of function count expects array\|Countable, list\<string\>\|false given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/cli/RouteManager.php
-
-		-
-			message: '#^Parameter \#2 \$haystack of function array_search expects array, list\<string\>\|false given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/cli/RouteManager.php
-
-		-
 			message: '#^Parameter \#2 \$string of function explode expects string, string\|null given\.$#'
 			identifier: argument.type
 			count: 3
@@ -2073,13 +1923,7 @@ parameters:
 		-
 			message: '#^Parameter \#2 \$subject of function preg_match_all expects string, string\|null given\.$#'
 			identifier: argument.type
-			count: 3
-			path: src/cli/RouteManager.php
-
-		-
-			message: '#^Parameter \#2 \$subject of function preg_split expects string, string\|false given\.$#'
-			identifier: argument.type
-			count: 1
+			count: 2
 			path: src/cli/RouteManager.php
 
 		-
@@ -2091,7 +1935,7 @@ parameters:
 		-
 			message: '#^Parameter \#3 \$subject of function preg_replace expects array\<float\|int\|string\>\|string, string\|false given\.$#'
 			identifier: argument.type
-			count: 2
+			count: 1
 			path: src/cli/RouteManager.php
 
 		-
@@ -2215,110 +2059,8 @@ parameters:
 			path: src/cli/VersionManager.php
 
 		-
-			message: '#^Method versaWYS\\kernel\\cli\\commands\\CheckDeployCommand\:\:checkConfigCredentials\(\) has parameter \$config with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
 			message: '#^Method versaWYS\\kernel\\cli\\commands\\CheckDeployCommand\:\:execute\(\) has parameter \$args with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\cli\\commands\\CheckDeployCommand\:\:extractPathsFromConfig\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\cli\\commands\\CheckDeployCommand\:\:getNestedConfigValue\(\) has parameter \$config with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\cli\\commands\\CheckDeployCommand\:\:scanDirectoryForPatterns\(\) has parameter \$patterns with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Only booleans are allowed in a negated boolean, int\|false given\.$#'
-			identifier: booleanNot.exprNotBoolean
-			count: 4
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Only booleans are allowed in a negated boolean, mixed given\.$#'
-			identifier: booleanNot.exprNotBoolean
-			count: 1
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Only booleans are allowed in an if condition, int\|false given\.$#'
-			identifier: if.condNotBoolean
-			count: 2
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Parameter \#1 \$haystack of function str_contains expects string, string\|false given\.$#'
-			identifier: argument.type
-			count: 3
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Parameter \#1 \$json of function json_decode expects string, string\|false given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Parameter \#1 \$string of function rtrim expects string, string\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Parameter \#2 \$needle of function str_starts_with expects string, string\|false given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Parameter \#2 \$string of function explode expects string, string\|false given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Property versaWYS\\kernel\\cli\\commands\\CheckDeployCommand\:\:\$info type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Property versaWYS\\kernel\\cli\\commands\\CheckDeployCommand\:\:\$issues type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Property versaWYS\\kernel\\cli\\commands\\CheckDeployCommand\:\:\$scannedFiles type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Property versaWYS\\kernel\\cli\\commands\\CheckDeployCommand\:\:\$warnings type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/commands/CheckDeployCommand.php
-
-		-
-			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
-			identifier: ternary.shortNotAllowed
 			count: 1
 			path: src/cli/commands/CheckDeployCommand.php
 
@@ -2480,12 +2222,6 @@ parameters:
 
 		-
 			message: '#^Method versaWYS\\kernel\\cli\\commands\\CheckPsr4Command\:\:verifyCaseSensitivity\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/commands/CheckPsr4Command.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\cli\\commands\\CheckPsr4Command\:\:verifyPathCaseSensitivity\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/cli/commands/CheckPsr4Command.php
