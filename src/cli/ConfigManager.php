@@ -165,6 +165,8 @@ class ConfigManager
         $defaults = self::defaults();
         $defaults['session']['key'] = bin2hex(random_bytes(32));
         $defaults['session']['user_cookie']['key_encript'] = bin2hex(random_bytes(32));
+        // Los proyectos nuevos reciben la entrada tal cual: el escape se hace al mostrar
+        $defaults['security']['sanitize_input'] = false;
         $template = json_encode($defaults, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         // Asegurarse de que el directorio de configuración exista
