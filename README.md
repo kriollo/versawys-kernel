@@ -53,10 +53,14 @@ La CI hace lo mismo en PHP 8.3, 8.4 y 8.5. Si el cambio también necesita modifi
 ## Pruebas
 
 ```bash
-composer test     # PHPUnit: Router, Request, archivos, rate limiting, configuración, /up
-composer check    # formato + pruebas + phpstan
-composer bench    # línea base de rendimiento (ver BENCHMARK.md)
+composer test           # PHPUnit: Router, Request, archivos, rate limiting, configuración, /up
+composer mago           # linter mago (con mago-baseline.toml)
+composer check          # formato (Pint) + mago + pruebas + phpstan
+composer bench          # línea base de rendimiento (ver BENCHMARK.md)
+composer mago:analyze   # analizador de mago, opcional (el del CI es phpstan)
 ```
+
+`mago lint` falla solo con hallazgos nuevos: los heredados están en `mago-baseline.toml`. Al corregir algunos, `composer mago:baseline` regenera la línea base para que no vuelvan. El formato lo da Pint: no usar `mago fmt`, que aplicaría otro estilo.
 
 La CI también ejecuta `composer audit` y la suite del esqueleto contra este kernel, que cubre por HTTP lo que necesita un servidor: sesión y JWT, CSRF, CSP, `QUERY`, `app:check:deploy --url`. Las pruebas nuevas que no necesitan un servidor van en este repositorio.
 

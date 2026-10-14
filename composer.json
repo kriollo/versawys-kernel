@@ -37,7 +37,8 @@
         "laravel/pint": "^1.30",
         "phpstan/phpstan": "^2.2",
         "phpstan/phpstan-strict-rules": "^2.0",
-        "phpunit/phpunit": "^11.5"
+        "phpunit/phpunit": "^11.5",
+        "carthage-software/mago": "^1.57"
     },
     "autoload": {
         "psr-4": {
@@ -51,10 +52,19 @@
         "test": "phpunit",
         "bench": "@php -d xdebug.mode=off -d opcache.enable_cli=1 bench/run.php",
         "stan": "phpstan analyse --ansi --memory-limit=1G",
+        "mago": "mago lint --baseline mago-baseline.toml",
+        "mago:baseline": "mago lint --baseline mago-baseline.toml --generate-baseline",
+        "mago:analyze": "mago analyze",
         "check": [
             "@pint:check",
+            "@mago",
             "@test",
             "@stan"
         ]
+    },
+    "config": {
+        "allow-plugins": {
+            "carthage-software/mago": true
+        }
     }
 }

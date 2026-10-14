@@ -1,0 +1,32 @@
+# Linter y analizador del kernel. El formato lo da Pint (composer pint): no usar `mago fmt`.
+# Documentación: https://mago.carthage.software
+php-version = "8.3.0"
+
+[source]
+paths = ["src", "tests", "bench"]
+excludes = ["vendor"]
+
+[linter]
+integrations = ["phpunit"]
+
+[linter.rules]
+# El kernel expone $config, $request, $session y $twig como globales a propósito (ver LIFECYCLE.md)
+no-global = { enabled = false }
+# Métricas de tamaño: el código heredado las supera; se revisan al tocar cada archivo, no como error
+halstead = { enabled = false }
+cyclomatic-complexity = { enabled = false }
+kan-defect = { enabled = false }
+too-many-methods = { enabled = false }
+excessive-parameter-list = { enabled = false }
+# Nombres en español y clases heredadas con minúscula (versaTwig, versaController): API pública
+class-name = { enabled = false }
+ambiguous-function-call = { enabled = false }
+literal-named-argument = { enabled = false }
+no-boolean-flag-parameter = { enabled = false }
+no-else-clause = { enabled = false }
+# isset() es idiomático y más claro que array_key_exists() para el caso común
+no-isset = { enabled = false }
+# Session endurece la cookie con ini_set() a propósito (no depende del php.ini del servidor)
+no-ini-set = { enabled = false }
+# Las pruebas usan self::assert…()
+assertion-style = { style = "self" }
