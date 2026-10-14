@@ -429,7 +429,7 @@ class CommandLineInterface
             return;
         }
 
-        $allowedActions = ['make', 'delete', 'list', 'check', 'compile', 'cache', 'clear-cache'];
+        $allowedActions = ['make', 'delete', 'list', 'check'];
         $action = $this->validateAction($params[0], $allowedActions, 'route');
 
         if (in_array($action, ['make', 'delete'], strict: true)) {
@@ -444,7 +444,6 @@ class CommandLineInterface
                 'delete' => RouteManager::deleteRoute($params[1]),
                 'list' => in_array('--all', $params, strict: true) ? RouteManager::listAllRoutes() : RouteManager::listRoutes(),
                 'check' => RouteManager::checkRoutes(in_array('--strict', $params, strict: true)),
-                'compile', 'cache', 'clear-cache' => RouteManager::routeCacheRemoved(),
                 default => $this->showError('Acción de ruta no reconocida: ' . $action),
             };
         } catch (Exception $exception) {

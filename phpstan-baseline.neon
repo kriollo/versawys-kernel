@@ -229,37 +229,13 @@ parameters:
 			path: src/GlobalControllers.php
 
 		-
-			message: '#^Method versaWYS\\kernel\\GlobalMiddleware\:\:checkApiRateLimit\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/GlobalMiddleware.php
-
-		-
 			message: '#^Method versaWYS\\kernel\\GlobalMiddleware\:\:checkLoginRateLimit\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/GlobalMiddleware.php
 
 		-
-			message: '#^Method versaWYS\\kernel\\GlobalMiddleware\:\:checkPasswordExpiration\(\) has parameter \$redirect with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/GlobalMiddleware.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\GlobalMiddleware\:\:checkSensitiveRateLimit\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/GlobalMiddleware.php
-
-		-
 			message: '#^Method versaWYS\\kernel\\GlobalMiddleware\:\:checkSession\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/GlobalMiddleware.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\GlobalMiddleware\:\:checkUploadRateLimit\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/GlobalMiddleware.php
@@ -512,12 +488,6 @@ parameters:
 
 		-
 			message: '#^Method versaWYS\\kernel\\RateLimitMiddleware\:\:checkApiLimit\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/RateLimitMiddleware.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\RateLimitMiddleware\:\:checkGlobalLimit\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/RateLimitMiddleware.php
@@ -979,51 +949,9 @@ parameters:
 			path: src/SecurityUtils.php
 
 		-
-			message: '#^Method versaWYS\\kernel\\SecurityUtils\:\:prepareSecureJsonData\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/SecurityUtils.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\SecurityUtils\:\:prepareSecureJsonData\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/SecurityUtils.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\SecurityUtils\:\:sanitizeInputParams\(\) has parameter \$params with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/SecurityUtils.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\SecurityUtils\:\:sanitizeInputParams\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/SecurityUtils.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\SecurityUtils\:\:sanitizeJsonField\(\) should return string but returns string\|false\.$#'
-			identifier: return.type
-			count: 1
-			path: src/SecurityUtils.php
-
-		-
 			message: '#^Method versaWYS\\kernel\\SecurityUtils\:\:sanitizeUrl\(\) should return string but returns string\|false\.$#'
 			identifier: return.type
 			count: 1
-			path: src/SecurityUtils.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\SecurityUtils\:\:validateCsrfForRequest\(\) has parameter \$params with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/SecurityUtils.php
-
-		-
-			message: '#^Only booleans are allowed in a negated boolean, int\|false given\.$#'
-			identifier: booleanNot.exprNotBoolean
-			count: 3
 			path: src/SecurityUtils.php
 
 		-
@@ -1045,19 +973,7 @@ parameters:
 			path: src/SecurityUtils.php
 
 		-
-			message: '#^Parameter \#1 \$string of function trim expects string, string\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/SecurityUtils.php
-
-		-
 			message: '#^Parameter \#3 \$subject of function preg_replace expects array\<float\|int\|string\>\|string, string\|null given\.$#'
-			identifier: argument.type
-			count: 3
-			path: src/SecurityUtils.php
-
-		-
-			message: '#^Parameter \#3 \$subject of function str_replace expects array\<string\>\|string, string\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: src/SecurityUtils.php
@@ -1084,12 +1000,6 @@ parameters:
 			message: '#^Dynamic call to static method versaWYS\\kernel\\ErrorHandler\:\:handleException\(\)\.$#'
 			identifier: staticMethod.dynamicCall
 			count: 2
-			path: src/Session.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\Session\:\:checkTokenHash\(\) has parameter \$token with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
 			path: src/Session.php
 
 		-
@@ -1333,25 +1243,7 @@ parameters:
 			path: src/cli/CacheManager.php
 
 		-
-			message: '#^Call to function array_filter\(\) requires parameter \#2 to be passed to avoid loose comparison semantics\.$#'
-			identifier: arrayFilter.strict
-			count: 1
-			path: src/cli/CommandExecutor.php
-
-		-
 			message: '#^Method versaWYS\\kernel\\cli\\CommandExecutor\:\:buildParamsString\(\) has parameter \$params with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/CommandExecutor.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\cli\\CommandExecutor\:\:executeSystemCommand\(\) has parameter \$params with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/CommandExecutor.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\cli\\CommandExecutor\:\:executeSystemCommand\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/cli/CommandExecutor.php
@@ -1701,7 +1593,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method object\:\:down\(\)\.$#'
 			identifier: method.notFound
-			count: 3
+			count: 2
 			path: src/cli/MigrationManager.php
 
 		-
@@ -1719,7 +1611,7 @@ parameters:
 		-
 			message: '#^Dynamic call to static method versaWYS\\kernel\\model\\VersaORMModel\:\:orm\(\)\.$#'
 			identifier: staticMethod.dynamicCall
-			count: 13
+			count: 11
 			path: src/cli/MigrationManager.php
 
 		-
@@ -2029,18 +1921,6 @@ parameters:
 			path: src/cli/commands/CheckPsr4Command.php
 
 		-
-			message: '#^Method versaWYS\\kernel\\cli\\commands\\CheckPsr4Command\:\:parsePhpFileFQCN\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: src/cli/commands/CheckPsr4Command.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\cli\\commands\\CheckPsr4Command\:\:parsePhpFileFQCN\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/cli/commands/CheckPsr4Command.php
-
-		-
 			message: '#^Method versaWYS\\kernel\\cli\\commands\\CheckPsr4Command\:\:printIssue\(\) has parameter \$issue with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -2318,30 +2198,6 @@ parameters:
 
 		-
 			message: '#^Method versaWYS\\kernel\\helpers\\Functions\:\:httpGet\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/helpers/Functions.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\helpers\\Functions\:\:httpPostForm\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/helpers/Functions.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\helpers\\Functions\:\:httpPostForm\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/helpers/Functions.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\helpers\\Functions\:\:httpPostForm\(\) has parameter \$options with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/helpers/Functions.php
-
-		-
-			message: '#^Method versaWYS\\kernel\\helpers\\Functions\:\:httpPostForm\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/helpers/Functions.php

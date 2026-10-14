@@ -165,43 +165,25 @@ class Request
     }
 
     /**
-     * Obtiene todos los parámetros de la solicitud.
-     * Ahora incluye sanitización de seguridad.
+     * Parámetros de la solicitud tal como los envió el cliente. El escape se hace al mostrar
+     * (Twig y Vue escapan por defecto) y el SQL va siempre con parámetros.
      *
      * @return array los parámetros de la solicitud
      */
     public function getAllParams(): array
     {
-        global $config;
-
-        // security.sanitize_input (true si falta, por compatibilidad) reescribe la entrada: escapa HTML
-        // dos veces y borra frases que parecen SQL. Con false se recibe lo que envió el cliente y el
-        // escape queda donde corresponde: al mostrar (Twig y Vue escapan por defecto)
-        if (($config['security']['sanitize_input'] ?? true) !== true) {
-            return $this->params;
-        }
-
-        return SecurityUtils::sanitizeInputParams($this->params);
+        return $this->params;
     }
 
     /**
-     * Obtiene los parámetros sin sanitizar (para casos especiales).
+     * Igual que getAllParams(). Desde 3.0 la entrada ya no se reescribe; se mantiene porque los
+     * proyectos la usan donde necesitaban el valor sin sanitizar.
      *
      * @return array Los parámetros originales
      */
     public function getRawParams(): array
     {
         return $this->params;
-    }
-
-    /**
-     * Valida el token CSRF para la petición actual.
-     *
-     * @return bool True si es válido, false en caso contrario
-     */
-    public function validateCsrf(): bool
-    {
-        return SecurityUtils::validateCsrfForRequest($this->params);
     }
 
     /**
@@ -285,19 +267,9 @@ class Request
         return $this->ip;
     }
 
-    public function getAccept(): string
-    {
-        return $this->accept;
-    }
-
     public function getRawBody(): mixed
     {
         return $this->rawBody;
-    }
-
-    public function getRawBodyLength(): mixed
-    {
-        return $this->rawBodyLength;
     }
 
     /**
@@ -556,5 +528,4 @@ class Request
             'from' => 'formData',
         ];
     }
-
 }

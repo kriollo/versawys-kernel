@@ -323,16 +323,6 @@ class Functions
     }
 
     /**
-     * Generates an MD5 hash based on the current time.
-     *
-     * @return string the generated MD5 hash
-     */
-    public static function generateHashMd5Time(): string
-    {
-        return md5((string) time());
-    }
-
-    /**
      * Generates the URL for an asset file.
      *
      * @param string $assetsPath the path to the asset file
@@ -836,7 +826,6 @@ class Functions
         ];
     }
 
-
     /**
      * Atajo para peticiones GET.
      */
@@ -858,15 +847,6 @@ class Functions
             (string) json_encode($data, JSON_UNESCAPED_UNICODE),
             $options,
         );
-    }
-
-    /**
-     * Atajo para peticiones POST con datos form-urlencoded.
-     */
-    public static function httpPostForm(string $url, array $data = [], array $headers = [], array $options = []): array
-    {
-        $formHeaders = array_merge($headers, ['Content-Type: application/x-www-form-urlencoded']);
-        return self::httpRequest($url, 'POST', $formHeaders, http_build_query($data), $options);
     }
 
     /**

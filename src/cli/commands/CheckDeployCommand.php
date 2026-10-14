@@ -457,7 +457,7 @@ class CheckDeployCommand extends BaseCommand
             [$minor, ($config['twig']['cache'] ?? false) !== true, 'twig.cache está desactivado: las plantillas se compilan en cada petición.', 'php versaCLI config:templateCache:true'],
             [$minor, ($config['rate_limiting']['enabled'] ?? false) !== true, 'rate_limiting está desactivado: el login queda sin límite de intentos por IP.', null],
             [$minor, ($config['csp']['enabled'] ?? true) !== true, 'csp.enabled está desactivado.', null],
-            ['info', ($config['security']['sanitize_input'] ?? true) === true, 'security.sanitize_input está activo: getAllParams() escapa el HTML dos veces y borra frases que parecen SQL ("select from ..."), y eso altera los datos guardados.', 'Revisar los |raw y v-html que muestran datos de usuarios y pasarlo a false.'],
+            ['info', isset($config['security']['sanitize_input']), 'security.sanitize_input ya no existe (kernel 3.0): getAllParams() entrega la entrada tal como llega.', 'Quitar la clave de config.json. Ver UPGRADE.md: revisar los |raw y v-html que muestran datos de usuarios.'],
             ['info', (string) ($config['mail']['host'] ?? '') === '', 'mail.host está vacío: no se enviarán correos (recuperación de contraseña).', null],
         ];
 

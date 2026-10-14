@@ -214,33 +214,6 @@ class MigrationManager extends VersaORMModel
         return false;
     }
 
-    public function rollbackAll(): void
-    {
-        $migrations = $this->orm()->exec('SELECT * FROM versa_migrations ORDER BY name DESC');
-        foreach ($migrations as $m) {
-            CLIErrorHandler::info(sprintf('Ejecutando rollback... %s... :', $m['name']));
-
-            if (!file_exists(self::$path . $m['name'] . '.php')) {
-                CLIErrorHandler::warning('No existe la migración ' . $m['name'] . '.php');
-                $this->orm()->table('versa_migrations')->where('name', '=', $m['name'])->delete();
-
-                continue;
-            }
-
-            $className = basename($m['name'], '.php');
-            $fullClassName = self::$pathClass . $className;
-
-            // prettier-ignore
-            $result = (new $fullClassName())->down();
-
-            if (!$result['success']) {
-                CLIErrorHandler::handleMigrationResultError($result['message'], $m['name'], 'down');
-            }
-
-            echo $result['message'] . PHP_EOL;
-        }
-    }
-
     public function rollback(): void
     {
         // Los nombres llevan timestamp (mYYYYMMDDHHMMSS_), así que el mayor es la última migración

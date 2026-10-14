@@ -184,48 +184,4 @@ class CommandExecutor
             }
         }
     }
-
-    /**
-     * Ejecuta cualquier comando del sistema (no solo comandos app:).
-     *
-     * @param string $module Módulo del comando (ej: 'migrate', 'cache', 'cron')
-     * @param string $action Acción a ejecutar (ej: 'up', 'clear', 'run')
-     * @param array $params Parámetros adicionales
-     * @param bool $async Si es true, ejecuta en background
-     *
-     * @return array|void Array con resultado si es síncrono, void si es asíncrono
-     */
-    public static function executeSystemCommand(
-        string $module,
-        string $action = '',
-        array $params = [],
-        bool $async = false,
-    ): mixed {
-        $cliPath = self::getCliPath();
-        $commandParts = array_filter([$module, $action, ...$params]);
-        $commandString = implode(':', $commandParts);
-        $fullCommand = sprintf(
-            '%s %s %s',
-            'php',
-            escapeshellarg($cliPath),
-            escapeshellarg($commandString),
-        );
-
-        if ($async) {
-            self::executeBackgroundCommand($fullCommand);
-
-            return null;
-        }
-
-        $output = [];
-        $exitCode = 0;
-
-        exec($fullCommand . ' 2>&1', $output, $exitCode);
-
-        return [
-            'success' => $exitCode === 0,
-            'exitCode' => $exitCode,
-            'output' => implode("\n", $output),
-        ];
-    }
 }

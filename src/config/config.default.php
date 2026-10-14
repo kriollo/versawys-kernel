@@ -72,10 +72,6 @@ return [
         ],
     ],
     'api' => ['auth' => true],
-    // sanitize_input: reescribe toda la entrada de getAllParams() (escapa HTML, borra frases que
-    // parecen SQL). Se mantiene en true para no cambiar proyectos existentes; config:init crea los
-    // nuevos con false. Desactivarlo tras revisar que las plantillas no usen |raw ni v-html con datos
-    'security' => ['sanitize_input' => true],
     'login_attempt' => ['max' => 5, 'time' => 120],
     'mail' => [
         'host' => '',

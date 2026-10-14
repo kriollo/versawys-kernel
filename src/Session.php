@@ -875,26 +875,6 @@ class Session
         }
     }
 
-    public function checkTokenHash(#[\SensitiveParameter] $token): bool
-    {
-        if (empty($token) || !is_string($token) || $token === 'undefined') {
-            return false;
-        }
-
-        $tks = explode('.', $token);
-        if (count($tks) !== 3) {
-            return false;
-        }
-
-        try {
-            $decoded = $this->decodeJWT($token);
-        } catch (RuntimeException) {
-            return false;
-        }
-
-        return isset($decoded['id_user'], $decoded['empresa_id']) && $decoded['exp'] > time();
-    }
-
     /**
      * Destroys the session.
      */
@@ -903,5 +883,4 @@ class Session
         session_unset();
         session_destroy();
     }
-
 }
