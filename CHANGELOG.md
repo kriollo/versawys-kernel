@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [2.7.0] - 2026-10-14
+
+### Añadido
+- Método HTTP **`QUERY`** (IETF): `Router::query($ruta, $callback)`, una consulta segura e idempotente con cuerpo (filtros y búsquedas que no caben en la URL o no deben quedar en los logs). No exige CSRF, igual que GET. Responde con `Accept-Query`, aparece en `Allow` (405), en CORS y en `/doc`.
+- `X-HTTP-Method-Override` en peticiones POST, además del campo `_method`. `php -S` (`versaCLI serve`) responde **501** a `QUERY`, así que en desarrollo, o detrás de proxies que no lo dejan pasar, se envía como POST con esa cabecera.
+
+### Corregido
+- PUT, PATCH, DELETE y QUERY ignoraban el cuerpo JSON si el `Content-Type` traía `; charset=utf-8`.
+
+### Interno
+- Las 5 copias de `get`/`post`/`put`/`patch`/`delete` pasan a un `add()` común, y las rutas se guardan sin acceso dinámico a propiedades. El baseline de phpstan baja de 3.367 a 3.103 líneas.
+
 ## [2.6.0] - 2026-10-14
 
 ### Añadido

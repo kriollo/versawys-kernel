@@ -11,8 +11,8 @@ if ($origin !== '' && in_array($origin, $config['cors']['allowed_origins'] ?? []
     header("Access-Control-Allow-Origin: {$origin}");
     header('Vary: Origin');
     header('Access-Control-Allow-Credentials: true');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token, X-SPA');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, QUERY, OPTIONS');
+    header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token, X-SPA, X-HTTP-Method-Override');
     header('Access-Control-Max-Age: 86400');
 }
 

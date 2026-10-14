@@ -13,6 +13,9 @@ use Throwable;
  */
 class Router
 {
+    /** Métodos con tabla de rutas propia (HEAD usa la de GET; OPTIONS lo responde init_headers) */
+    private const array METHODS = ['get', 'post', 'put', 'patch', 'delete', 'query'];
+
     // Stacks para prefijos y middlewares de grupo
     protected static array $groupPrefixes = [];
 
@@ -27,6 +30,9 @@ class Router
     protected static array $patchRoutes = [];
 
     protected static array $deleteRoutes = [];
+
+    /** @var array<string, mixed> */
+    protected static array $queryRoutes = [];
 
     protected static array $middlewares = []; // Estructura: $middlewares[method][route][]
 
@@ -170,117 +176,85 @@ class Router
         self::$groupMiddlewares = $currentGroupMiddlewares;
     }
 
-    /**
-     * Registra una ruta GET, soportando prefijos y middlewares de grupo y ruta.
-     */
     public static function get(string $route, mixed $callback, array $middlewares = []): self
     {
-        $fullRoute = implode('', self::$groupPrefixes) . $route;
-        self::$getRoutes[$fullRoute] = $callback;
-        $allMiddlewares = self::mergeMiddlewares($middlewares);
-        if ($allMiddlewares !== []) {
-            self::$middlewares['get'][$fullRoute] = $allMiddlewares;
-        }
-
-        $instance = new static();
-        $instance->lastRoute = $fullRoute;
-        $instance->lastRouteMethod = 'get';
-
-        return $instance;
+        return self::add('get', $route, $callback, $middlewares);
     }
 
-    /**
-     * Registers a POST route with the specified route and callback.
-     *
-     * @param string $route the route pattern
-     * @param mixed $callback the callback function or method to be executed
-     *
-     * @return Router the Router instance
-     */
     public static function post(string $route, mixed $callback, array $middlewares = []): self
     {
-        $fullRoute = implode('', self::$groupPrefixes) . $route;
-        self::$postRoutes[$fullRoute] = $callback;
-        $allMiddlewares = self::mergeMiddlewares($middlewares);
-        if ($allMiddlewares !== []) {
-            self::$middlewares['post'][$fullRoute] = $allMiddlewares;
-        }
-
-        $instance = new static();
-        $instance->lastRoute = $fullRoute;
-        $instance->lastRouteMethod = 'post';
-
-        return $instance;
+        return self::add('post', $route, $callback, $middlewares);
     }
 
-    /**
-     * Registers a PUT route with the specified route and callback.
-     *
-     * @param string $route the route pattern
-     * @param mixed $callback the callback function or method to be executed
-     *
-     * @return Router the Router instance
-     */
     public static function put(string $route, mixed $callback, array $middlewares = []): self
     {
-        $fullRoute = implode('', self::$groupPrefixes) . $route;
-        self::$putRoutes[$fullRoute] = $callback;
-        $allMiddlewares = self::mergeMiddlewares($middlewares);
-        if ($allMiddlewares !== []) {
-            self::$middlewares['put'][$fullRoute] = $allMiddlewares;
-        }
-
-        $instance = new static();
-        $instance->lastRoute = $fullRoute;
-        $instance->lastRouteMethod = 'put';
-
-        return $instance;
+        return self::add('put', $route, $callback, $middlewares);
     }
 
-    /**
-     * Registers a PATCH route with the specified route and callback.
-     *
-     * @param string $route the route pattern
-     * @param mixed $callback the callback function or method to be executed
-     *
-     * @return Router the Router instance
-     */
     public static function patch(string $route, mixed $callback, array $middlewares = []): self
     {
-        $fullRoute = implode('', self::$groupPrefixes) . $route;
-        self::$patchRoutes[$fullRoute] = $callback;
-        $allMiddlewares = self::mergeMiddlewares($middlewares);
-        if ($allMiddlewares !== []) {
-            self::$middlewares['patch'][$fullRoute] = $allMiddlewares;
-        }
+        return self::add('patch', $route, $callback, $middlewares);
+    }
 
-        $instance = new static();
-        $instance->lastRoute = $fullRoute;
-        $instance->lastRouteMethod = 'patch';
-
-        return $instance;
+    public static function delete(string $route, mixed $callback, array $middlewares = []): self
+    {
+        return self::add('delete', $route, $callback, $middlewares);
     }
 
     /**
-     * Registers a DELETE route with the specified route and callback.
-     *
-     * @param string $route the route pattern
-     * @param mixed $callback the callback function or method to be executed
-     *
-     * @return Router the Router instance
+     * Método HTTP QUERY: una consulta segura e idempotente con cuerpo (filtros, búsquedas). Como
+     * GET, no exige CSRF. `php -S` no lo acepta: ahí se envía como POST con la cabecera
+     * `X-HTTP-Method-Override: QUERY` (o el campo `_method`).
      */
-    public static function delete(string $route, mixed $callback, array $middlewares = []): self
+    /**
+     * @param array<int, array{0: class-string, 1: string}> $middlewares
+     */
+    public static function query(string $route, mixed $callback, array $middlewares = []): self
+    {
+        return self::add('query', $route, $callback, $middlewares);
+    }
+
+    /**
+     * Tabla de rutas de un método HTTP (por referencia, para registrar).
+     *
+     * @return array<string, mixed>
+     */
+    private static function &routeTable(string $method): array
+    {
+        switch ($method) {
+            case 'post':
+                return self::$postRoutes;
+            case 'put':
+                return self::$putRoutes;
+            case 'patch':
+                return self::$patchRoutes;
+            case 'delete':
+                return self::$deleteRoutes;
+            case 'query':
+                return self::$queryRoutes;
+            default:
+                return self::$getRoutes;
+        }
+    }
+
+    /**
+     * Registra una ruta con los prefijos y middlewares de los grupos que la contienen.
+     *
+     * @param array<int, array{0: class-string, 1: string}> $middlewares
+     */
+    private static function add(string $method, string $route, mixed $callback, array $middlewares): self
     {
         $fullRoute = implode('', self::$groupPrefixes) . $route;
-        self::$deleteRoutes[$fullRoute] = $callback;
+        $routes = &self::routeTable($method);
+        $routes[$fullRoute] = $callback;
         $allMiddlewares = self::mergeMiddlewares($middlewares);
         if ($allMiddlewares !== []) {
-            self::$middlewares['delete'][$fullRoute] = $allMiddlewares;
+            self::$middlewares[$method][$fullRoute] = $allMiddlewares;
         }
 
         $instance = new static();
         $instance->lastRoute = $fullRoute;
-        $instance->lastRouteMethod = 'delete';
+        $instance->lastRouteMethod = $method;
 
         return $instance;
     }
@@ -313,7 +287,8 @@ class Router
     {
         $middlewares = self::$middlewares[$method][$route] ?? [];
 
-        if ($method === 'get' || isset(self::$csrfExempt[$method][$route])) {
+        // GET y QUERY no cambian estado: no llevan CSRF
+        if ($method === 'get' || $method === 'query' || isset(self::$csrfExempt[$method][$route])) {
             return $middlewares;
         }
 
@@ -355,7 +330,7 @@ class Router
         try {
             // 🔒 VALIDAR MÉTODOS HTTP PERMITIDOS PRIMERO
             $method = strtolower($request->getMethod());
-            $allowedMethods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
+            $allowedMethods = ['get', 'post', 'put', 'patch', 'delete', 'query', 'options', 'head'];
 
             if (!in_array($method, $allowedMethods, true)) {
                 // Método no permitido, responder 405
@@ -413,10 +388,15 @@ class Router
                 return null;
             }
 
+            if ($method === 'query') {
+                // RFC del método QUERY: los tipos de cuerpo que se aceptan
+                header('Accept-Query: application/json, application/x-www-form-urlencoded');
+            }
+
             // Las peticiones HEAD deben usar las rutas GET (estándar HTTP)
             // HEAD es idéntico a GET pero sin cuerpo de respuesta
             $routeMethod = $method === 'head' ? 'get' : $method;
-            $routes = self::${$routeMethod . 'Routes'} ?? [];
+            $routes = in_array($routeMethod, self::METHODS, true) ? self::routeTable($routeMethod) : [];
 
             // === OPTIMIZACIÓN: Validación rápida de prefijos ===
             // Extraer todos los prefijos de las rutas registradas (incluyendo rutas parametrizadas)
@@ -844,6 +824,7 @@ class Router
             self::$putRoutes,
             self::$patchRoutes,
             self::$deleteRoutes,
+            self::$queryRoutes,
         );
 
         $routeExists = false;
@@ -871,8 +852,8 @@ class Router
 
         // Si la ruta existe, determinar qué métodos están permitidos
         if ($routeExists) {
-            foreach (['get', 'post', 'put', 'patch', 'delete'] as $httpMethod) {
-                $routes = self::${$httpMethod . 'Routes'} ?? [];
+            foreach (self::METHODS as $httpMethod) {
+                $routes = self::routeTable($httpMethod);
                 if (array_key_exists($url, $routes)) {
                     $allowedMethods[] = strtoupper($httpMethod);
                 } else {

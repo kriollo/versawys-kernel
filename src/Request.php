@@ -45,9 +45,12 @@ class Request
             $this->rawBody = file_get_contents('php://input') ?? null;
             $this->rawBodyLength = strlen($this->rawBody) ?? 0;
 
-            // _method solo puede elevar un POST de formulario: nunca convertir un GET en escritura
-            if ($this->method === 'POST' && isset($this->params['_method'])) {
-                $this->method = strtoupper($this->params['_method']);
+            // Solo un POST puede cambiar de método (nunca convertir un GET en escritura): por el campo
+            // _method de un formulario o por X-HTTP-Method-Override, que además permite usar QUERY
+            // donde el servidor no lo acepta (php -S responde 501)
+            $override = $_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'] ?? $this->params['_method'] ?? null;
+            if ($this->method === 'POST' && is_string($override) && $override !== '') {
+                $this->method = strtoupper($override);
             }
         } catch (Throwable $throwable) {
             $error_message = 'Error al inicializar la solicitud: ' . $throwable->getMessage();
@@ -500,7 +503,8 @@ class Request
     {
         $params = file_get_contents('php://input');
 
-        if ($this->contentType !== '' && strtolower($this->contentType) === 'application/json') {
+        // str_starts_with: el Content-Type suele llevar "; charset=utf-8"
+        if (str_starts_with(strtolower($this->contentType), 'application/json')) {
             $this->params = $params === '' || $params === null || !Functions::validateJson($params)
                 ? []
                 : json_decode($params, true);
