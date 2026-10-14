@@ -39,8 +39,6 @@ return [
         'timezone' => 'America/Santiago',
         'locale' => 'es_CL.UTF-8',
         'charset' => 'utf-8',
-        'cacheRoute' => false,
-        'cacheRouteFile' => './versaWYS/cache/routes.compiled.php',
         // URL pública (https://app.ejemplo.cl). Vacía: se deduce de la petición. Fijarla en producción
         'base_url' => '',
     ],
@@ -96,7 +94,6 @@ return [
         'dir' => './versaWYS/logs/',
         'min_level' => 'INFO',
         'default_module' => 'app',
-        'use_redis' => false,
         'use_console' => false,
         'format' => 'json',
         'max_file_size' => 10485760,

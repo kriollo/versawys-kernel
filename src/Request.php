@@ -78,7 +78,7 @@ class Request
             Loggin::error('Request initialization error in production: ' . $error_message, 'request');
 
             // Use our static method to determine if it's an API call
-            $isApi = $this->isStaticApiCall();
+            $isApi = Request::isApiRequest();
 
             if ($isApi) {
                 Response::jsonError([
@@ -438,45 +438,33 @@ class Request
      */
     public function isApiCall(): bool
     {
-        $url = strtolower($this->getUrl());
-        $contentType = $this->getHeader('Content-Type'); // Puede ser null
-        $acceptHeader = strtolower($this->getHeader('Accept') ?? '');
+        return self::isApiRequest();
+    }
 
-        if ($this->getHeader('X-Spa')) {
+    /**
+     * ¿La petición en curso espera JSON? Versión estática para quien no tiene un Request a mano
+     * (Session, File, versaTwig). Una navegación SPA (X-Spa) no es una llamada API.
+     */
+    public static function isApiRequest(): bool
+    {
+        if (isset($_SERVER['HTTP_X_SPA'])) {
             return false;
         }
 
-        // Comprobación prioritaria por URL
-        if (str_contains($url, '/api/')) {
+        if (str_contains(strtolower((string) ($_SERVER['REQUEST_URI'] ?? '')), '/api/')
+            || str_contains(strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? '')), 'application/json')) {
             return true;
         }
 
-        // Comprobación por encabezado Accept, común para APIs RESTful
-        if (str_contains($acceptHeader, 'application/json')) {
-            return true;
-        }
-
-        // Comprobación por Content-Type para solicitudes con cuerpo (POST, PUT, PATCH)
-        if ($contentType !== null) {
-            $apiContentTypes = [
-                'application/json',
-                'application/xml',
-                'multipart/form-data', // A menudo usado por APIs para subida de archivos
-                'application/x-www-form-urlencoded', // A veces usado por APIs
-                // 'text/plain' es muy genérico, podría eliminarse si causa falsos positivos
-            ];
-
-            foreach ($apiContentTypes as $type) {
-                if (!str_starts_with(strtolower($contentType), $type)) {
-                    continue;
-                }
-
+        // Cuerpos típicos de API (incluye formularios enviados por fetch)
+        $contentType = strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? ''));
+        foreach (['application/json', 'application/xml', 'multipart/form-data', 'application/x-www-form-urlencoded'] as $type) {
+            if ($contentType !== '' && str_starts_with($contentType, $type)) {
                 return true;
             }
         }
 
-        // Si un cliente XHR (como fetch o XMLHttpRequest) establece X-Requested-With
-        return strtolower($this->getHeader('X-Requested-With') ?? '') === 'xmlhttprequest';
+        return strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
     }
 
     protected function prepareParams(): void
@@ -569,47 +557,4 @@ class Request
         ];
     }
 
-    /**
-     * Método estático para determinar si es una llamada API sin necesidad de instancia completa.
-     * Útil para usar en el constructor cuando la instancia no está completamente inicializada.
-     */
-    private function isStaticApiCall(): bool
-    {
-        $url = strtolower($_SERVER['REQUEST_URI'] ?? '');
-        $acceptHeader = strtolower($_SERVER['HTTP_ACCEPT'] ?? '');
-        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-
-        // Comprobación prioritaria por URL
-        if (str_contains($url, '/api/')) {
-            return true;
-        }
-
-        // Comprobación por encabezado Accept, común para APIs RESTful
-        if (str_contains($acceptHeader, 'application/json')) {
-            return true;
-        }
-
-        // Comprobación por Content-Type para solicitudes con cuerpo (POST, PUT, PATCH)
-        if ($contentType !== '') {
-            $apiContentTypes = [
-                'application/json',
-                'application/xml',
-                'multipart/form-data',
-                'application/x-www-form-urlencoded',
-            ];
-
-            foreach ($apiContentTypes as $type) {
-                if (!str_starts_with(strtolower($contentType), $type)) {
-                    continue;
-                }
-
-                return true;
-            }
-        }
-
-        // Si un cliente XHR (como fetch o XMLHttpRequest) establece X-Requested-With
-        $headers = getallheaders();
-
-        return isset($headers['X-Requested-With']) && strtolower($headers['X-Requested-With']) === 'xmlhttprequest';
-    }
 }

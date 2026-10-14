@@ -579,12 +579,12 @@ class CheckDeployCommand extends BaseCommand
         // Directorios donde la aplicación escribe
         $writable = [
             $config['logging']['dir'] ?? './versaWYS/logs/',
-            dirname((string) ($config['build']['cacheRouteFile'] ?? './versaWYS/cache/routes.compiled.php')),
+            'versaWYS/cache',
             $config['twig']['compiled_dir'] ?? './versaWYS/cache/twig/.cache',
             $config['rate_limiting']['cache_dir'] ?? './versaWYS/cache/rate_limits/',
             $config['assets']['dashboard']['avatars']['dist'] ?? 'public/dashboard/img/avatars',
             $config['assets']['dashboard']['store']['dist'] ?? 'public/dashboard/store',
-            'versaWYS/kernel/config',
+            ConfigManager::dir(),
         ];
         foreach (array_unique($writable) as $directory) {
             $path = $this->root . '/' . trim((string) $directory, './');
@@ -615,9 +615,6 @@ class CheckDeployCommand extends BaseCommand
         // Instalación y base de datos
         if (is_file($this->root . '/' . ConfigManager::dir() . '/install.token')) {
             $this->add('warning', 'Existe install.token: el instalador web (/install) sigue disponible para quien tenga el token.', hint: 'Completar la instalación o borrar el archivo.');
-        }
-        if (($config['build']['cacheRoute'] ?? false) === true && !is_file($this->root . '/' . trim((string) $config['build']['cacheRouteFile'], './'))) {
-            $this->add('critical', 'build.cacheRoute está activo pero no existe el archivo de rutas compiladas.', hint: 'php versaCLI route:compile');
         }
 
         $this->checkDatabase($config);

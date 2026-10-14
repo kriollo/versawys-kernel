@@ -666,17 +666,13 @@ class Functions
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (bool) $opts['verify_ssl']);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, (bool) $opts['verify_host'] ? 2 : 0);
 
+        // Sin ca_bundle_path, curl usa curl.cainfo / openssl.cafile del php.ini o los certificados del
+        // sistema; en Windows, el almacén nativo (CURLSSLOPT_NATIVE_CA)
         $caPath = trim((string) $opts['ca_bundle_path']);
-        if ($caPath === '') {
-            $caPath = self::detectCaBundlePath();
-        }
-
         $useNativeCa = false;
         if ($caPath !== '' && file_exists($caPath) && is_readable($caPath)) {
             curl_setopt($ch, CURLOPT_CAINFO, $caPath);
-        } elseif ((bool) $opts['verify_ssl']) {
-            // Si no hay CA bundle pero SSL está habilitado, intentar usar el store nativo del SO
-            // Windows Certificate Store o Linux system certificates
+        } elseif ((bool) $opts['verify_ssl'] && ini_get('curl.cainfo') === '' && ini_get('openssl.cafile') === '') {
             if (defined('CURLOPT_SSL_OPTIONS') && defined('CURLSSLOPT_NATIVE_CA')) {
                 curl_setopt($ch, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
                 $useNativeCa = true;
@@ -828,151 +824,6 @@ class Functions
         ];
     }
 
-    /**
-     * Detecta automáticamente la ruta al bundle CA de certificados.
-     * Soporta Windows, Linux, macOS y entornos comunes (XAMPP, Docker, etc).
-     */
-    private static function detectCaBundlePath(): string
-    {
-        // 1. Prioridad: configuración explícita en php.ini
-        $iniCurlCaInfo = trim((string) ini_get('curl.cainfo'));
-        if ($iniCurlCaInfo !== '' && file_exists($iniCurlCaInfo) && is_readable($iniCurlCaInfo)) {
-            return $iniCurlCaInfo;
-        }
-
-        $iniOpenSslCaFile = trim((string) ini_get('openssl.cafile'));
-        if ($iniOpenSslCaFile !== '' && file_exists($iniOpenSslCaFile) && is_readable($iniOpenSslCaFile)) {
-            return $iniOpenSslCaFile;
-        }
-
-        // 2. Detectar sistema operativo
-        $isWindows = DIRECTORY_SEPARATOR === '\\';
-        $phpDir = dirname(PHP_BINARY);
-        $candidates = [];
-
-        // deploy-check:ignore-start (ubicaciones que solo se consultan en Windows)
-        if ($isWindows) {
-            // Windows: buscar en múltiples ubicaciones
-            $programFiles = trim((string) getenv('ProgramFiles'));
-            $programFilesX86 = trim((string) getenv('ProgramFiles(x86)'));
-            $systemRoot = trim((string) getenv('SystemRoot'));
-            $localAppData = trim((string) getenv('LOCALAPPDATA'));
-            $userProfile = trim((string) getenv('USERPROFILE'));
-
-            // Directorio de PHP
-            $candidates[] = $phpDir . '\\extras\\ssl\\cacert.pem';
-            $candidates[] = $phpDir . '\\cacert.pem';
-            $candidates[] = $phpDir . '\\ssl\\cacert.pem';
-
-            // XAMPP
-            $candidates[] = $phpDir . '\\..\\apache\\conf\\cacert.pem';
-            $candidates[] = $phpDir . '\\..\\..\\apache\\conf\\cacert.pem';
-            $candidates[] = 'C:\\xampp\\php\\extras\\openssl\\cacert.pem';
-            $candidates[] = 'C:\\xampp\\php\\extras\\ssl\\cacert.pem';
-            $candidates[] = 'C:\\xampp\\apache\\conf\\cacert.pem';
-
-            // WAMP
-            $candidates[] = 'C:\\wamp\\bin\\php\\php' . PHP_VERSION . '\\extras\\ssl\\cacert.pem';
-            $candidates[] = 'C:\\wamp64\\bin\\php\\php' . PHP_VERSION . '\\extras\\ssl\\cacert.pem';
-
-            // Git for Windows (múltiples versiones)
-            $gitPaths = [
-                $programFiles . '\\Git\\mingw64\\ssl\\certs\\ca-bundle.crt',
-                $programFiles . '\\Git\\mingw64\\bin\\curl-ca-bundle.crt',
-                $programFiles . '\\Git\\usr\\ssl\\certs\\ca-bundle.crt',
-                $programFilesX86 . '\\Git\\mingw64\\ssl\\certs\\ca-bundle.crt',
-                $programFilesX86 . '\\Git\\mingw64\\bin\\curl-ca-bundle.crt',
-                'C:\\Program Files\\Git\\mingw64\\ssl\\certs\\ca-bundle.crt',
-                'C:\\Program Files\\Git\\mingw64\\bin\\curl-ca-bundle.crt',
-                'C:\\Program Files (x86)\\Git\\mingw64\\ssl\\certs\\ca-bundle.crt',
-            ];
-            foreach ($gitPaths as $gitPath) {
-                $candidates[] = $gitPath;
-            }
-
-            // Windows System32 (Windows 10+ incluye curl nativo)
-            if ($systemRoot !== '') {
-                $candidates[] = $systemRoot . '\\System32\\curl-ca-bundle.crt';
-                $candidates[] = $systemRoot . '\\System32\\drivers\\etc\\ssl\\certs\\ca-bundle.crt';
-            }
-
-            // Scoop (gestor de paquetes Windows)
-            if ($userProfile !== '') {
-                $candidates[] = $userProfile . '\\scoop\\apps\\git\\current\\mingw64\\ssl\\certs\\ca-bundle.crt';
-                $candidates[] = $userProfile . '\\scoop\\apps\\curl\\current\\bin\\curl-ca-bundle.crt';
-            }
-
-            // Chocolatey
-            $candidates[] = 'C:\\ProgramData\\chocolatey\\lib\\git\\tools\\mingw64\\ssl\\certs\\ca-bundle.crt';
-            $candidates[] = 'C:\\ProgramData\\chocolatey\\lib\\curl\\tools\\curl-ca-bundle.crt';
-            // deploy-check:ignore-end
-        } else {
-            // Linux/macOS: buscar en ubicaciones estándar
-            $candidates = [
-                // Debian/Ubuntu/GNU Linux
-                '/etc/ssl/certs/ca-certificates.crt',
-                '/etc/ssl/certs/ca-bundle.crt',
-                '/etc/ssl/certs/ca-bundle.pem',
-                '/etc/ssl/ca-bundle.pem',
-                '/etc/ssl/cert.pem',
-
-                // RHEL/CentOS/Fedora
-                '/etc/pki/tls/certs/ca-bundle.crt',
-                '/etc/pki/tls/certs/ca-bundle.trust.crt',
-                '/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem',
-                '/etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt',
-
-                // Alpine Linux
-                '/etc/ssl/cert.pem',
-                '/etc/ssl/certs/ca-certificates.crt',
-
-                // Arch Linux
-                '/etc/ca-certificates/extracted/ca-bundle.trust.crt',
-                '/etc/ca-certificates/extracted/tls-ca-bundle.pem',
-
-                // macOS
-                '/etc/ssl/cert.pem',
-                '/usr/local/etc/openssl/cert.pem',
-                '/usr/local/etc/openssl@1.1/cert.pem',
-                '/usr/local/etc/openssl@3/cert.pem',
-                '/opt/homebrew/etc/openssl@1.1/cert.pem',
-                '/opt/homebrew/etc/openssl@3/cert.pem',
-                '/usr/local/share/certs/ca-root-nss.crt',
-
-                // Docker/Contenedores comunes
-                '/etc/ssl/certs/ca-certificates.crt',
-                '/etc/ca-certificates/extracted/tls-ca-bundle.pem',
-
-                // OpenSUSE
-                '/var/lib/ca-certificates/ca-bundle.pem',
-                '/etc/ssl/ca-bundle.pem',
-
-                // Archivos sueltos comunes
-                '/usr/share/curl/curl-ca-bundle.crt',
-                '/usr/local/share/curl/curl-ca-bundle.crt',
-                '/usr/share/ssl/certs/ca-bundle.crt',
-            ];
-
-            // PHP compilado desde código fuente en Linux
-            $candidates[] = $phpDir . '/extras/ssl/cacert.pem';
-            $candidates[] = $phpDir . '/cacert.pem';
-
-            // cURL instalado manualmente
-            $candidates[] = '/usr/local/curl/ssl/cert.pem';
-            $candidates[] = '/opt/curl/ssl/cert.pem';
-        }
-
-        // Buscar el primer archivo existente y legible
-        foreach ($candidates as $candidate) {
-            if (!($candidate !== '' && file_exists($candidate) && is_readable($candidate))) {
-                continue;
-            }
-
-            return $candidate;
-        }
-
-        return '';
-    }
 
     /**
      * Atajo para peticiones GET.

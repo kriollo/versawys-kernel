@@ -21,7 +21,6 @@ class DeployFinishCommand extends BaseCommand
         'config:merge ' . self::SHARED_CONFIG => 'Ajustes versionados → config.json',
         'migrate:up' => 'Migraciones pendientes',
         'cache:twig' => 'Caché de Twig (es compartida entre releases)',
-        'route:compile' => 'Caché de rutas',
         'config:templateCache:true' => 'Caché de plantillas activa',
         'command:refresh' => 'Registro de comandos',
         'app:check:deploy --production' => 'Revisión final del servidor',

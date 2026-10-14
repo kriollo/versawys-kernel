@@ -53,11 +53,6 @@ class StatusManager
             if ($config) {
                 echo '   Debug: ' . ($config['build']['debug'] ?? false ? '🟢 Activado' : '🔴 Desactivado') . "\n";
                 echo '   Cache Twig: ' . ($config['twig']['cache'] ?? false ? '🟢 Activado' : '🔴 Desactivado') . "\n";
-                echo
-                    '   Cache Rutas: '
-                        . ($config['build']['cacheRoute'] ?? false ? '🟢 Activado' : '🔴 Desactivado')
-                        . "\n"
-                ;
             }
         } else {
             echo "   ❌ Archivo de configuración no encontrado\n";
