@@ -118,9 +118,11 @@ class Functions
                 'numeric' => static fn ($field, $value): ?string => is_numeric($value)
                     ? null
                     : sprintf('El campo %s debe ser numerico', $field),
-                'int' => static function ($field, $value, $param): ?string {
-                    if (!is_numeric($value)) {
-                        return sprintf('El campo %s debe ser numerico', $field);
+                'int' => $int = static function ($field, $value, $param): ?string {
+                    // Sin parámetro ($param null) también: antes str_contains(null) fallaba y "5" quedaba inválido
+                    $param = (string) $param;
+                    if (filter_var($value, FILTER_VALIDATE_INT) === false) {
+                        return sprintf('El campo %s debe ser un número entero', $field);
                     }
 
                     $value = (int) $value;
@@ -147,6 +149,11 @@ class Functions
 
                     return null;
                 },
+                'integer' => $int,
+                // Texto o número (un input numérico llega como número en JSON); nunca arreglo, objeto o booleano
+                'string' => static fn ($field, $value): ?string => is_string($value) || is_int($value) || is_float($value)
+                    ? null
+                    : sprintf('El campo %s debe ser texto', $field),
                 'time' => static fn ($field, $value): ?string => preg_match(
                     '/^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/',
                     $value,
@@ -185,7 +192,11 @@ class Functions
                     // Verificar si el campo existe
                     if (!isset($params[$field])) {
                         $errors[$field] = sprintf('El campo %s no existe', $field);
-                    } elseif (isset($validations[$rulName])) {
+                    } elseif (!isset($validations[$rulName])) {
+                        // Una regla mal escrita no puede dejar pasar el dato sin validar
+                        $errors[$field] = sprintf('Regla de validación desconocida para %s: %s', $field, $rulName);
+                        break;
+                    } else {
                         // Ejecutar la validación correspondiente
                         // Un valor de tipo inesperado (arreglo, null) es un dato inválido, no un error 500
                         try {

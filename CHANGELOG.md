@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [2.9.0] - 2026-10-14
+
+### Corregido
+- **Validación de parámetros:**
+  - `int` sin parámetro rechazaba números válidos (`"5"` daba "no es válido").
+  - `integer` y `string` no existían y dejaban pasar **cualquier** valor. Ahora `integer` es un alias de `int`, `int` rechaza decimales y `string` acepta texto o números pero no arreglos ni booleanos.
+  - Una regla desconocida es un error de validación: ya no deja pasar el dato en silencio.
+- `app:check:psr4`, `status` y la lectura de `composer.lock` le preguntan a Composer qué `composer.json` instaló el vendor en uso. Funciona con `composer.json` en la raíz del proyecto (`composer create-project`) o en `versaWYS/`, aunque el proyecto tenga otro `composer.json` solo para scripts.
+- `app:check:deploy --url` también prueba `/composer.lock`.
+
 ## [2.8.0] - 2026-10-14
 
 ### Añadido

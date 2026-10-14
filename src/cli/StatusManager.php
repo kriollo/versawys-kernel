@@ -167,7 +167,7 @@ class StatusManager
         $config = self::readProjectConfig();
 
         if ($extensions === []) {
-            echo "   ⚠ No se pudo leer versaWYS/composer.lock para validar extensiones\n\n";
+            echo "   ⚠ No se pudo leer composer.lock para validar extensiones\n\n";
             return;
         }
 
@@ -343,7 +343,7 @@ class StatusManager
      */
     private static function getComposerRuntimeExtensions(): array
     {
-        $lockPath = getcwd() . '/versaWYS/composer.lock';
+        $lockPath = CLIHelper::composerDir() . '/composer.lock';
         if (!file_exists($lockPath)) {
             return [];
         }
