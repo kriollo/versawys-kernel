@@ -15,10 +15,10 @@ jobs:
         steps:
             # Kernel y esqueleto lado a lado, igual que en local: phpstan lee app/ del esqueleto
             # y las pruebas del esqueleto corren contra este kernel
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
               with:
                   path: versawys-kernel
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
               with:
                   repository: kriollo/versaWYS
                   path: versaWYS
