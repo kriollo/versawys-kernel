@@ -251,7 +251,7 @@ class CommandLineInterface
             return;
         }
 
-        $allowedActions = ['debug', 'templateCache', 'ClearCache', 'init'];
+        $allowedActions = ['debug', 'templateCache', 'ClearCache', 'init', 'merge'];
         $action = $this->validateAction($params[0], $allowedActions, 'config');
 
         if (in_array($action, ['debug', 'templateCache'], strict: true)) {
@@ -272,6 +272,7 @@ class CommandLineInterface
                 'templateCache' => ConfigManager::setTemplateCache($params[1]),
                 'ClearCache' => ConfigManager::clearCache(),
                 'init' => ConfigManager::initConfig(),
+                'merge' => ConfigManager::merge($this->requireParam($params, 1, 'php versaCLI config:merge <archivo.json>')),
                 default => $this->showError('Acción de configuración no reconocida: ' . $action),
             };
         } catch (Exception $exception) {
