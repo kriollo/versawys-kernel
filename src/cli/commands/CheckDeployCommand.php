@@ -498,6 +498,8 @@ class CheckDeployCommand extends BaseCommand
             $paths[] = '/app/routes/' . basename($routes[0]);
         }
 
+        $this->checkWebServerRuntime($base);
+
         // Sin seguir redirecciones: un 302 al login no expone nada
         $context = stream_context_create(['http' => ['method' => 'GET', 'ignore_errors' => true, 'follow_location' => 0, 'timeout' => 5]]);
         foreach ($paths as $path) {
@@ -513,6 +515,31 @@ class CheckDeployCommand extends BaseCommand
             if ($body !== false && $body !== '' && preg_match('#^HTTP/\S+\s+200\b#', $status) === 1) {
                 $this->add('critical', "{$base}{$path} responde 200: el servidor web lo entrega a cualquiera.", hint: 'Revisar .htaccess o la configuración de nginx (plantillas en configs/).');
             }
+        }
+    }
+
+    /**
+     * Cómo corre PHP en el servidor web, preguntándole a /up: el PHP de la terminal suele tener
+     * otra configuración que FPM. Medido: sin OPcache, o con Xdebug activo, una página tarda ~10 veces más.
+     */
+    private function checkWebServerRuntime(string $base): void
+    {
+        $context = stream_context_create(['http' => ['method' => 'GET', 'ignore_errors' => true, 'timeout' => 5]]);
+        $health = json_decode((string) @file_get_contents($base . '/up', false, $context), true);
+        if (!is_array($health) || !array_key_exists('opcache', $health)) {
+            $this->add('info', 'No se pudo leer la configuración de PHP del servidor web en /up (solo responde con detalle a peticiones del propio servidor).');
+
+            return;
+        }
+
+        if ($health['opcache'] !== true) {
+            $this->add($this->production ? 'critical' : 'warning', 'OPcache está desactivado en el servidor web: cada petición vuelve a compilar el código (~10 veces más lento).', hint: 'opcache.enable=1 en el php.ini de FPM/Apache y recargar el servicio.');
+        }
+        if ($health['xdebug'] === true) {
+            $this->add($this->production ? 'critical' : 'warning', 'Xdebug está activo en el servidor web: hace cada petición varias veces más lenta.', hint: 'Desinstalarlo en producción o fijar xdebug.mode=off.');
+        }
+        if ($this->production && $health['opcache_validate_timestamps'] === true) {
+            $this->add('info', 'opcache.validate_timestamps está activo: PHP revisa si cada archivo cambió.', hint: 'Con versaDeploy (recarga php-fpm tras desplegar) puede desactivarse.');
         }
     }
 
@@ -934,7 +961,8 @@ class CheckDeployCommand extends BaseCommand
               10. Configuración                debug, claves de sesión, cookies seguras, CORS, caché
               11. Entorno del servidor         (--production) PHP, extensiones, permisos, dependencias,
                                                frontend compilado, conexión y migraciones pendientes
-              12. Archivos expuestos           (--url) .env, config.json, vendor, logs, rutas: nada debe responder 200
+              12. Archivos expuestos           (--url) .env, config.json, vendor, logs, rutas: nada debe responder 200;
+                                               y por /up, OPcache y Xdebug tal como los usa el servidor web
 
             NIVELES:
               🔴 Crítico      Impide desplegar
