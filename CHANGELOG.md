@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [2.4.1] - 2026-10-14
+
+### Corregido
+- `app:check:deploy --url`: un 200 con cuerpo vacío ya no cuenta como archivo expuesto. Los kernels anteriores a 2.1 responden así a los archivos inexistentes, y un PHP ejecutado sin salida, como `vendor/autoload.php`, tampoco expone nada.
+
 ## [2.4.0] - 2026-10-14
 
 ### Añadido

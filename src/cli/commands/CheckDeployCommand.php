@@ -500,14 +500,16 @@ class CheckDeployCommand extends BaseCommand
         // Sin seguir redirecciones: un 302 al login no expone nada
         $context = stream_context_create(['http' => ['method' => 'GET', 'ignore_errors' => true, 'follow_location' => 0, 'timeout' => 5]]);
         foreach ($paths as $path) {
-            $headers = @get_headers($base . $path, false, $context);
-            if ($headers === false) {
+            // Basta un byte: un 200 vacío (algunos kernels antiguos lo daban para archivos inexistentes) no expone nada
+            $body = @file_get_contents($base . $path, false, $context, 0, 1);
+            $status = $http_response_header[0] ?? '';
+            if ($status === '') {
                 $this->add('warning', "No se pudo conectar a {$base} para probar los archivos expuestos.", hint: 'Revisar la URL, o que el servidor pueda llegar a su propio dominio.');
 
                 return;
             }
 
-            if (preg_match('#^HTTP/\S+\s+200\b#', (string) ($headers[0] ?? '')) === 1) {
+            if ($body !== false && $body !== '' && preg_match('#^HTTP/\S+\s+200\b#', $status) === 1) {
                 $this->add('critical', "{$base}{$path} responde 200: el servidor web lo entrega a cualquiera.", hint: 'Revisar .htaccess o la configuración de nginx (plantillas en configs/).');
             }
         }
