@@ -21,7 +21,7 @@ Avance del ROADMAP: pasos 1 y 2 completos, decisiones de los pasos 3 a 5 documen
 - **Rutas duplicadas:** `route:check` y `app:check:deploy` marcan como error dos declaraciones con el mismo método y URL, porque la que se carga después reemplaza a la otra sin aviso.
 - `composer bench` y `BENCHMARK.md`: línea base de rendimiento repetible, con el entorno de cada medición.
 - Documentos: `API.md` (qué es estable, interno o deprecado), `LIFECYCLE.md` (recorrido de una petición), `DECISIONS.md` (lo evaluado y no implementado, con su señal de revisión).
-- Pruebas del kernel: de 15 a 64. Cubren Router (HEAD, 405, grupos, barras, override, panel oculto, 404 sin detalles), archivos, rate limiting (incluida concurrencia con 8 procesos), validación, configuración, contrato kernel ↔ app, logs y escape de comandos.
+- Pruebas del kernel: de 15 a 65. Cubren Router (HEAD, 405, grupos, barras, override, panel oculto, 404 sin detalles), archivos, rate limiting (incluida concurrencia con 8 procesos), validación, configuración, contrato kernel ↔ app, logs y escape de comandos.
 
 ### Corregido
 - **`required` rechazaba `0`, `"0"` y `false`** (usaba `empty()`): un estado o una cantidad en 0 no se podían enviar. Ahora solo cuentan como vacíos `null`, un texto vacío o con solo espacios y un arreglo vacío.

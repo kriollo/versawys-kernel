@@ -38,7 +38,7 @@ Esto inicia la base de pruebas, pero **no completa** el inventario de contratos,
 **Estado: completo (3.2.0).**
 1. Inventario en `API.md`: estable / interno / deprecado, con reglas de compatibilidad.
 2. Contrato kernel ↔ app probado (`AppContractTest`): el kernel solo importa clases del contrato y UPGRADE.md lo lista exacto.
-3. Suite PHPUnit con 64 pruebas: Router, Request, archivos, rate limiting, validación, configuración, logs, CLI y comandos. CSRF, sesión y JWT siguen cubiertos por HTTP en el esqueleto.
+3. Suite PHPUnit con 65 pruebas: Router, Request, archivos, rate limiting, validación, configuración, logs, CLI y comandos. CSRF, sesión y JWT siguen cubiertos por HTTP en el esqueleto.
 4. Regresiones: CSP/nonce (esqueleto), proxies, entrada sin reescribir, rate limiting con concurrencia y estado HTTP desde `code`.
 5. Línea base en `BENCHMARK.md` (`composer bench`), con entorno y comandos.
 
