@@ -16,7 +16,7 @@ Qué puede usar una aplicación y qué puede cambiar sin aviso. Inventario del 2
 | Método | Reemplazo |
 |---|---|
 | `SecurityUtils::validateCsrfToken()` | `Functions::validateCSRFToken()`, que es la que usa el Router |
-| Configuración `session.user_cookie.key_encript`, `twig.default_template_404`, `api.auth`, `rate_limiting.storage`, `build.cacheRoute*` | Ninguno: no tienen efecto. `app:check:deploy` avisa si siguen en `config.json` (lista en `CheckDeployCommand::DEAD_KEYS`) |
+| Configuración `session.user_cookie.key_encript`, `twig.default_template_404`, `twig.auto_escape`, `api.auth`, `rate_limiting.storage`, `build.cacheRoute*` | Ninguno: no tienen efecto. `app:check:deploy` avisa si siguen en `config.json` (lista en `CheckDeployCommand::DEAD_KEYS`) |
 
 ## Configuración
 

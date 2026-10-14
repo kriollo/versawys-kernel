@@ -75,6 +75,32 @@ final class RateLimitTest extends TestCase
         self::assertTrue(SecurityUtils::checkRateLimit('198.51.100.7', 'login'));
     }
 
+    public function testOneAccountIsLimitedEvenFromManyAddresses(): void
+    {
+        global $request;
+
+        // Un ataque repartido entre IPs contra el mismo correo: se cuenta también por cuenta
+        $attempt = static function (string $ip, string $email): array|true {
+            $_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/admin/login', 'REMOTE_ADDR' => $ip];
+            $_REQUEST = ['email' => $email];
+            $GLOBALS['request'] = new \versaWYS\kernel\Request();
+            $GLOBALS['request']->setParam('email', $email);
+
+            return \versaWYS\kernel\RateLimitMiddleware::checkLoginLimit();
+        };
+
+        self::assertTrue($attempt('198.51.100.1', 'ana@ejemplo.cl'));
+        self::assertTrue($attempt('198.51.100.2', 'ANA@ejemplo.cl'));
+        self::assertTrue($attempt('198.51.100.3', ' ana@ejemplo.cl '));
+
+        $blocked = $attempt('198.51.100.4', 'Ana@Ejemplo.cl');
+        self::assertIsArray($blocked);
+        self::assertSame(429, $blocked['code']);
+        // Otra cuenta desde una IP nueva sigue pudiendo entrar
+        self::assertTrue($attempt('198.51.100.5', 'pedro@ejemplo.cl'));
+        unset($request);
+    }
+
     public function testConcurrentRequestsAreAllCounted(): void
     {
         // flock: 8 procesos a la vez sobre el mismo contador no pierden incrementos

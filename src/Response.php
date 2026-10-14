@@ -41,13 +41,14 @@ class Response
             // controlador devuelva 'error' => $exception->getMessage(), que expone SQL y rutas.
             if (in_array($data['success'] ?? 1, [0, false, '0'], true) && ($GLOBALS['config']['build']['debug'] ?? false) !== true) {
                 unset($data['error'], $data['exception'], $data['trace'], $data['file'], $data['line']);
+                $data = self::hideInternalMessages($data);
             }
 
             header('Content-Type: application/json');
             http_response_code($code);
 
             // Para peticiones HEAD, solo enviamos headers, no el cuerpo
-            if ($_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+            if (!self::isHead()) {
                 echo json_encode($data);
             }
         } else {
@@ -88,7 +89,7 @@ class Response
             http_response_code($code);
 
             // Para peticiones HEAD, solo enviamos headers, no el cuerpo
-            if ($_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+            if (!self::isHead()) {
                 echo self::renderSimpleError($data);
             }
 
@@ -128,7 +129,7 @@ class Response
             // Si es un error específico de plantilla de Twig, usar directamente renderSimpleError
             if ($isTwigTemplateError) {
                 // Para peticiones HEAD, solo enviamos headers, no el cuerpo
-                if ($_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+                if (!self::isHead()) {
                     echo self::renderSimpleError($data);
                 }
 
@@ -138,7 +139,7 @@ class Response
             // ✅ Verificar que Twig esté disponible antes de usarlo
             if ($twig === null || !is_object($twig)) {
                 // Para peticiones HEAD, solo enviamos headers, no el cuerpo
-                if ($_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+                if (!self::isHead()) {
                     echo self::renderSimpleError($data);
                 }
 
@@ -146,7 +147,7 @@ class Response
             }
 
             // Para peticiones HEAD, solo enviamos headers, no el cuerpo
-            if ($_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+            if (!self::isHead()) {
                 // Usar renderDirect para evitar la lógica SPA que envuelve en JSON
                 echo $twig->renderDirect('versaWYS/debugError.twig', ['data' => $data]);
             }
@@ -155,7 +156,7 @@ class Response
             if (str_contains($e->getMessage(), 'does not exist') || str_contains($e->getMessage(), 'Key ')) {
                 // Es un error de variable no definida en la plantilla, usar renderSimpleError
                 // Para peticiones HEAD, solo enviamos headers, no el cuerpo
-                if ($_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+                if (!self::isHead()) {
                     echo self::renderSimpleError($data);
                 }
 
@@ -168,7 +169,7 @@ class Response
             // Si falla la plantilla completa, intentar con la simple
             try {
                 // Para peticiones HEAD, solo enviamos headers, no el cuerpo
-                if ($_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+                if (!self::isHead()) {
                     // Usar renderDirect para evitar la lógica SPA
                     echo $twig->renderDirect('versaWYS/simpleError.twig', ['data' => $data]);
                 }
@@ -176,14 +177,14 @@ class Response
                 // Si falla la simple, intentar con la de emergencia
                 try {
                     // Para peticiones HEAD, solo enviamos headers, no el cuerpo
-                    if ($_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+                    if (!self::isHead()) {
                         // Usar renderDirect para evitar la lógica SPA
                         echo $twig->renderDirect('versaWYS/emergencyError.twig', ['data' => $data]);
                     }
                 } catch (Exception) {
                     // Si todo falla, mostrar error HTML básico
                     // Para peticiones HEAD, solo enviamos headers, no el cuerpo
-                    if ($_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+                    if (!self::isHead()) {
                         echo self::renderSimpleError($data);
                     }
                 }
@@ -288,7 +289,7 @@ class Response
         http_response_code($code);
 
         // Para peticiones HEAD, solo enviamos headers, no el cuerpo
-        if ($_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+        if (!self::isHead()) {
             echo $data;
         }
 
@@ -464,6 +465,54 @@ class Response
             return $data;
         }
 
-        return array_intersect_key($data, array_flip(['success', 'message', 'errors', 'code', 'type', 'timestamp']));
+        return self::hideInternalMessages(array_intersect_key($data, array_flip(['success', 'message', 'errors', 'code', 'type', 'timestamp'])));
+    }
+
+    /** Una respuesta a HEAD lleva solo las cabeceras. */
+    private static function isHead(): bool
+    {
+        return ($_SERVER['REQUEST_METHOD'] ?? '') === 'HEAD';
+    }
+
+    /** Rastros de un detalle interno: SQL y errores de PDO/VersaORM, trazas y rutas de archivos del servidor. */
+    private const string INTERNAL_DETAIL = '/SQLSTATE|SQL failed|engine execution error|PDOException|VersaORMException|Stack trace|\.php\b|\/(?:home|var|usr|srv|opt|tmp)\//i';
+
+    /**
+     * En producción, un `message` o `errors` con detalle interno no llega al cliente. Es habitual que
+     * un controlador devuelva `'errors' => $e->getMessage()`, y el mensaje de VersaORM trae la consulta
+     * SQL completa. Se reemplaza por un texto genérico con la referencia de la petición, y el original
+     * queda en el log `security` con esa misma referencia.
+     *
+     * @param array<mixed> $data
+     *
+     * @return array<mixed>
+     */
+    public static function hideInternalMessages(array $data): array
+    {
+        $hidden = [];
+        $walk = static function (mixed $value) use (&$walk, &$hidden): mixed {
+            if (is_array($value)) {
+                return array_map($walk, $value);
+            }
+            if (is_string($value) && preg_match(self::INTERNAL_DETAIL, $value) === 1) {
+                $hidden[] = $value;
+
+                return 'Error interno del servidor (ref. ' . Loggin::requestId() . ').';
+            }
+
+            return $value;
+        };
+
+        foreach (['message', 'errors', 'error'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $data[$key] = $walk($data[$key]);
+            }
+        }
+
+        if ($hidden !== []) {
+            Loggin::error('Respuesta con detalle interno: se ocultó al cliente', 'security', ['detalle' => $hidden]);
+        }
+
+        return $data;
     }
 }

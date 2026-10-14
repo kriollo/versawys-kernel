@@ -2,6 +2,22 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.2.1] - 2026-10-14
+
+Ampliación de las pruebas de seguridad: de 65 a 98. Lo que encontraron:
+
+### Seguridad
+- **Detalles internos en respuestas de error.** En los proyectos hay 44 respuestas con `'errors' => $e->getMessage()` y 370 con el mensaje de una excepción en `message`; el de VersaORM trae la consulta SQL completa. En producción, un `message`, `error` o `errors` de una respuesta fallida con rastros internos (SQLSTATE, `SQL failed`, PDO, trazas, rutas del servidor) se reemplaza por "Error interno del servidor (ref. <request_id>)", y el original queda en el log `security` con la misma referencia. Los errores de validación no cambian.
+- **Sesión solo por cookie:** `session.use_only_cookies` y `session.use_trans_sid` se fijan en el kernel; antes dependían del php.ini y, mal configurados, ponían el id de sesión en la URL.
+- **CSRF:** una sesión sin token o un token enviado como arreglo (`_csrf_token[]=…`) terminaban en un `TypeError` y una respuesta 500; ahora son simplemente inválidos (403).
+
+### Corregido
+- `twig.auto_escape` nunca tuvo efecto: Twig llama a la opción `autoescape`. El escape HTML queda siempre activo y la clave pasa a las deprecadas (`app:check:deploy` la lista).
+- `Response` no emite un aviso si falta `REQUEST_METHOD` (comandos de CLI).
+
+### Pruebas nuevas
+JWT (emisión, payload alterado, otra clave, `alg: none`, vencido, revocación, `jti` con `../`), CSRF con entradas malformadas, cookie de sesión con un php.ini inseguro, escape de Twig y `csp_nonce()`, límite de intentos por cuenta desde varias IP, rutas con `..` codificado, byte nulo y barras invertidas, y excepciones no controladas en producción (API y navegador).
+
 ## [3.2.0] - 2026-10-14
 
 Avance del ROADMAP: pasos 1 y 2 completos, decisiones de los pasos 3 a 5 documentadas.

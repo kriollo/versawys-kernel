@@ -492,6 +492,7 @@ class CheckDeployCommand extends BaseCommand
         'twig.default_template_404' => 'el 404 siempre usa versaWYS/404',
         'api.auth' => 'la autenticación de cada ruta la deciden sus middlewares',
         'rate_limiting.storage' => 'los contadores se guardan siempre en archivos locales; con varios servidores cada uno cuenta por separado',
+        'twig.auto_escape' => 'Twig escapa siempre el HTML; la opción nunca se aplicó',
         'build.cacheRoute' => 'la caché de rutas se eliminó en 2.10',
         'build.cacheRouteFile' => 'la caché de rutas se eliminó en 2.10',
         'build.cacheRouteMinifyLevel' => 'la caché de rutas se eliminó en 2.10',

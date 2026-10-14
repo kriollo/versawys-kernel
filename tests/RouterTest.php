@@ -193,6 +193,48 @@ final class RouterTest extends TestCase
         self::assertStringNotContainsString('ok', $output);
     }
 
+    /**
+     * @return iterable<string, array{0: string}>
+     */
+    public static function trickyPaths(): iterable
+    {
+        yield 'punto-punto codificado' => ['/kernel-test-otra/%2e%2e/kernel-test-destino'];
+        yield 'punto-punto en mayúsculas' => ['/kernel-test-otra/%2E%2E/kernel-test-destino'];
+        yield 'barra codificada' => ['/kernel-test-otra%2fkernel-test-destino'];
+        yield 'byte nulo' => ['/kernel-test-destino%00.css'];
+        yield 'barra invertida' => ['/kernel-test-otra\\..\\kernel-test-destino'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('trickyPaths')]
+    public function testEncodedTraversalNeverReachesAnotherRoute(string $path): void
+    {
+        Router::get('/kernel-test-destino', [RouterTestController::class, 'show']);
+
+        $output = $this->dispatch('GET', $path, ['HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']);
+
+        self::assertStringNotContainsString('ok', $output);
+        self::assertSame(404, http_response_code());
+    }
+
+    /**
+     * @return iterable<string, array{0: array<string, string>}>
+     */
+    public static function clients(): iterable
+    {
+        yield 'API' => [['HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest', 'HTTP_ACCEPT' => 'application/json']];
+        yield 'navegador' => [['HTTP_ACCEPT' => 'text/html']];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('clients')]
+    public function testAnUncaughtExceptionAnswers500WithoutItsDetails(array $client): void
+    {
+        $result = $this->dispatchIsolated('GET', '/kernel-test-falla', "Router::get('/kernel-test-falla', [RouterTestController::class, 'explode']);", $client);
+
+        self::assertSame(500, $result['status']);
+        self::assertStringNotContainsString('SELECT', $result['body']);
+        self::assertStringNotContainsString('/var/www', $result['body']);
+    }
+
     public function testAnUnknownApiRouteGetsA404WithoutInternals(): void
     {
         $output = $this->dispatch('GET', '/kernel-test-nada-' . bin2hex(random_bytes(4)), ['HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']);
@@ -295,6 +337,11 @@ final class RouterTestController
     public function echo(string $id): string
     {
         return 'id=' . $id;
+    }
+
+    public function explode(): never
+    {
+        throw new \RuntimeException('PDO engine execution error: SQL failed (get): SELECT password FROM versa_users en /var/www/app/models/Users.php:40');
     }
 }
 

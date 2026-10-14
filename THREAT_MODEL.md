@@ -24,15 +24,15 @@ Todo lo que llega en la petición es **no confiable**: parámetros, cuerpo, cook
 
 | Amenaza | Mitigación en el kernel | Prueba |
 |---|---|---|
-| CSRF | Token obligatorio en `POST/PUT/PATCH/DELETE`; `GET` y `QUERY` no cambian estado. Excepción explícita: `->withoutCsrf()`. | HttpTest: «exige el token CSRF», «acepta el token por cabecera» |
-| Robo o reutilización de sesión | Cookie `HttpOnly`/`SameSite`; id de sesión y CSRF se renuevan al iniciar sesión; JWT firmado y revocado en el logout | HttpTest: «regenera el id de sesión…», «el logout invalida el token», «rechaza un JWT manipulado» |
-| Fuerza bruta en el login | Rate limiting por IP y por cuenta | HttpTest: «bloquea el login tras demasiados intentos» |
+| CSRF | Token obligatorio en `POST/PUT/PATCH/DELETE`; `GET` y `QUERY` no cambian estado. Excepción explícita: `->withoutCsrf()`. Solo dos cadenas no vacías e iguales validan. | CsrfTest; HttpTest: «exige el token CSRF», «acepta el token por cabecera» |
+| Robo o reutilización de sesión | Cookie `HttpOnly`/`Secure`/`SameSite`, modo estricto y id solo por cookie (aunque el php.ini diga otra cosa); id de sesión y CSRF se renuevan al iniciar sesión; JWT HS256 firmado con `session.key` y revocable por `jti` | SessionCookieTest; JwtTest (alterado, otra clave, `alg: none`, vencido, revocación); HttpTest: «el logout invalida el token» |
+| Fuerza bruta en el login | Rate limiting por IP y por cuenta (correo normalizado) | RateLimitTest; HttpTest: «bloquea el login tras demasiados intentos» |
 | IP o esquema falsificados (`X-Forwarded-*`) | Solo se creen desde `trusted_proxies`; las entradas inválidas se ignoran y `app:check:deploy` las marca | RequestProxyTest |
 | Envenenamiento de enlaces de recuperación (`Host`) | `build.base_url` fija la URL pública; sin ella, `Host` solo se acepta si es un nombre de host o IP con puerto | RequestProxyTest: base URL, `X-Forwarded-Host`, formatos de `Host` |
 | Inyección SQL en listados | `getParamsPaginate` devuelve marcadores y `bindings`; solo columnas de `allowedFilters`; `order` solo `columna [asc\|desc]` | KernelTest: «filtros de listados»; HttpTest: «no se ejecutan como SQL» |
-| XSS | La entrada se guarda tal cual y se escapa al mostrar (Twig y Vue). CSP con nonce y sin `eval` limita lo que un escape faltante permite ejecutar. | HttpTest: «entrada sin reescribir», «CSP con nonce», «unsafe_eval» |
+| XSS | La entrada se guarda tal cual y se escapa al mostrar (Twig siempre, Vue por defecto). CSP con nonce y sin `eval` limita lo que un escape faltante permite ejecutar. | TwigTest; HttpTest: «entrada sin reescribir», «CSP con nonce», «unsafe_eval» |
 | Subida de archivos ejecutables o fuera de su carpeta | Tipo detectado en el contenido; sin extensiones ejecutables, archivos ocultos ni `..` en el destino; `public/` sin PHP | FileTest; HttpTest: «rechaza un PHP disfrazado de imagen» |
-| Filtración de detalles internos | En producción, los errores responden 500 sin SQL ni rutas; `/up` da detalle solo con firma | HttpTest: «un fallo de base de datos responde 500…»; HealthTest |
+| Filtración de detalles internos | En producción, los errores responden 500 sin SQL ni rutas, y un `message`/`errors` con rastros internos (p. ej. `$e->getMessage()` de VersaORM) se reemplaza por una referencia; `/up` da detalle solo con firma | ResponseTest; RouterTest: excepción no controlada; HttpTest: «un fallo de base de datos responde 500…»; HealthTest |
 | Archivos internos servidos por la web | `.htaccess`/nginx del kernel; `app:check:deploy --url` los pide al sitio real | HttpTest: «app:check:deploy --url» |
 | Inyección de comandos | `CommandExecutor` escapa el comando y cada parámetro con `escapeshellarg`; los nombres de generadores solo aceptan letras, números, `_`, `-` y `.` | KernelTest: «rechaza rutas en los nombres de generadores» |
 | Correo interceptado | SMTP verifica el certificado salvo `mail.verify_peer: false` | — |

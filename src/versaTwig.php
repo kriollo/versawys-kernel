@@ -138,7 +138,8 @@ class versaTwig extends Environment
             'cache' => $config['twig']['cache'] ? $config['twig']['compiled_dir'] : false,
             'debug' => $config['build']['debug'],
             'charset' => $config['build']['charset'],
-            'auto_escape' => $config['twig']['auto_escape'],
+            // El escape HTML queda siempre activo (valor por defecto de Twig): no se apaga por configuración.
+            // twig.auto_escape nunca tuvo efecto (Twig llama a la opción `autoescape`) y está deprecada
             'strict_variables' => $config['build']['debug']
                 ? $config['twig']['strict_variables']
                 : $config['build']['debug'],
