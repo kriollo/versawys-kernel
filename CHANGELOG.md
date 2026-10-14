@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [2.5.0] - 2026-10-14
+
+### Añadido
+- `security.sanitize_input`. Con `true` (también si falta la clave, como hasta ahora), `getAllParams()` reescribe la entrada: escapa el HTML **dos veces** (`O'Brien` se guarda como `O&amp;#39;Brien`) y borra frases que parecen SQL (`select from tabla` → `tabla`). Con `false` entrega lo que envió el cliente; el escape se hace al mostrar, porque Twig y Vue escapan por defecto.
+- `config:init` crea los proyectos nuevos con `false`. `app:check:deploy` recuerda la opción cuando sigue activa.
+
+### Para pasar un proyecto existente a `false`
+Revisar que ningún `|raw` (Twig) ni `v-html` (Vue) muestre datos que escribe un usuario sin sanitizarlos. Los datos ya guardados con entidades se quedan como están.
+
 ## [2.4.1] - 2026-10-14
 
 ### Corregido

@@ -169,7 +169,15 @@ class Request
      */
     public function getAllParams(): array
     {
-        // Aplicar sanitización de seguridad a los parámetros
+        global $config;
+
+        // security.sanitize_input (true si falta, por compatibilidad) reescribe la entrada: escapa HTML
+        // dos veces y borra frases que parecen SQL. Con false se recibe lo que envió el cliente y el
+        // escape queda donde corresponde: al mostrar (Twig y Vue escapan por defecto)
+        if (($config['security']['sanitize_input'] ?? true) !== true) {
+            return $this->params;
+        }
+
         return SecurityUtils::sanitizeInputParams($this->params);
     }
 
