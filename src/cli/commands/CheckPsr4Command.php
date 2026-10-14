@@ -8,6 +8,7 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use versaWYS\kernel\cli\BaseCommand;
 use versaWYS\kernel\cli\CLIErrorHandler;
+use versaWYS\kernel\cli\CLIHelper;
 
 class CheckPsr4Command extends BaseCommand
 {
@@ -38,7 +39,7 @@ class CheckPsr4Command extends BaseCommand
     public function execute(array $params): int
     {
         $projectRoot = getcwd();
-        $composerDir = $projectRoot . DIRECTORY_SEPARATOR . 'versaWYS';
+        $composerDir = CLIHelper::composerDir();
         $composerFile = $composerDir . DIRECTORY_SEPARATOR . 'composer.json';
 
         if (!file_exists($composerFile)) {

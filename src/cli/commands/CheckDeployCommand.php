@@ -497,6 +497,7 @@ class CheckDeployCommand extends BaseCommand
             '/versaWYS/logs/',
             '/versaCLI',
             '/composer.json',
+            '/composer.lock',
             '/package.json',
             '/pnpm-lock.yaml',
             '/node_modules/.modules.yaml',

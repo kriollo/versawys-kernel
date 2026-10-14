@@ -36,8 +36,11 @@ jobs:
                   composer audit
 
             - name: Pruebas del esqueleto contra este kernel
-              working-directory: versaWYS/versaWYS
+              working-directory: versaWYS
               run: |
-                  composer config repositories.kernel '{"type": "path", "url": "../../versawys-kernel", "options": {"symlink": true}}'
+                  # composer.json en la raíz (desde 2.9) o en versaWYS/ (esqueletos anteriores)
+                  if [ ! -f composer.json ]; then cd versaWYS; fi
+                  kernel=$(cd "$GITHUB_WORKSPACE/versawys-kernel" && pwd)
+                  composer config repositories.kernel "{\"type\": \"path\", \"url\": \"$kernel\", \"options\": {\"symlink\": true}}"
                   composer require --no-interaction --no-progress -W "versawys/kernel:*@dev"
                   composer test

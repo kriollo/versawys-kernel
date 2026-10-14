@@ -9,6 +9,18 @@ use RuntimeException;
 class CLIHelper
 {
     /**
+     * Carpeta del composer.json que instaló el vendor en uso: la raíz en proyectos creados con
+     * composer create-project, o versaWYS/ en los anteriores. Se le pregunta a Composer, porque
+     * un proyecto puede tener otro composer.json solo para scripts de herramientas.
+     */
+    public static function composerDir(): string
+    {
+        $path = realpath(\Composer\InstalledVersions::getRootPackage()['install_path']);
+
+        return $path !== false ? $path : getcwd() . '/versaWYS';
+    }
+
+    /**
      * Ask a question and return the user's input.
      */
     public static function ask(string $question, string $default = ''): string
