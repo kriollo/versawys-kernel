@@ -8,7 +8,6 @@ use DateTime;
 use DateTimeZone;
 use Exception;
 use Throwable;
-use versaWYS\kernel\model\RedisModel;
 
 /**
  * Sistema de Logging Centralizado para versaWYS Framework.
@@ -17,7 +16,7 @@ use versaWYS\kernel\model\RedisModel;
  * - Múltiples niveles (DEBUG, INFO, WARNING, ERROR, CRITICAL, etc.)
  * - Módulos para organización
  * - Contexto adicional
- * - Múltiples handlers (archivo, Redis, consola)
+ * - Handlers de archivo y consola
  * - Rotación automática de logs
  * - Stack traces para errores
  */
@@ -68,11 +67,6 @@ class Loggin
      * Módulo por defecto.
      */
     private static string $defaultModule = 'app';
-
-    /**
-     * Habilitar logs en Redis.
-     */
-    private static bool $useRedis = false;
 
     /**
      * Habilitar logs en consola.
@@ -130,7 +124,6 @@ class Loggin
         self::$logDir = $logConfig['dir'] ?? getcwd() . '/versaWYS/logs/';
         self::$minLevel = $logConfig['min_level'] ?? self::DEBUG;
         self::$defaultModule = $logConfig['default_module'] ?? 'app';
-        self::$useRedis = $logConfig['use_redis'] ?? false;
         self::$useConsole = $logConfig['use_console'] ?? false;
         self::$format = $logConfig['format'] ?? 'text';
         self::$maxFileSize = $logConfig['max_file_size'] ?? 10_485_760;
@@ -230,10 +223,6 @@ class Loggin
         // Escribir en archivo
         self::writeToFile($logData, $formattedMessage);
 
-        // Escribir en Redis si está habilitado
-        if (self::$useRedis) {
-            self::writeToRedis($logData);
-        }
 
         // Escribir en consola si está habilitado
         if (self::$useConsole) {
@@ -546,50 +535,6 @@ class Loggin
     }
 
     /**
-     * Obtener estadísticas de logs.
-     *
-     * @param string $module
-     * @param string|null $date
-     *
-     * @return array
-     */
-    public static function stats(string $module, ?string $date = null): array
-    {
-        $logs = self::read($module, $date);
-        $stats = [
-            'total' => count($logs),
-            'by_level' => [],
-        ];
-
-        foreach (array_keys(self::LEVEL_PRIORITY) as $level) {
-            $stats['by_level'][$level] = 0;
-        }
-
-        if (self::$format === 'json') {
-            foreach ($logs as $log) {
-                if (!isset($log['level'])) {
-                    continue;
-                }
-
-                $stats['by_level'][$log['level']]++;
-            }
-        } else {
-            foreach ($logs as $line) {
-                foreach (array_keys(self::LEVEL_PRIORITY) as $level) {
-                    if (!str_contains($line, sprintf('[%s]', $level))) {
-                        continue;
-                    }
-
-                    $stats['by_level'][$level]++;
-                    break;
-                }
-            }
-        }
-
-        return $stats;
-    }
-
-    /**
      * Obtener configuración actual.
      *
      * @return array
@@ -600,7 +545,6 @@ class Loggin
             'log_dir' => self::$logDir,
             'min_level' => self::$minLevel,
             'default_module' => self::$defaultModule,
-            'use_redis' => self::$useRedis,
             'use_console' => self::$useConsole,
             'format' => self::$format,
             'max_file_size' => self::$maxFileSize,
@@ -836,40 +780,6 @@ class Loggin
         }
 
         rename($logFile, $rotatedFile);
-    }
-
-    /**
-     * Escribir log en Redis.
-     *
-     * @param array $logData
-     *
-     * @return void
-     */
-    private static function writeToRedis(array $logData): void
-    {
-        try {
-            if (!class_exists('versaWYS\kernel\model\RedisModel')) {
-                return;
-            }
-
-            $redisKey = 'logs:' . $logData['module'] . ':' . date('Y-m-d');
-
-            // Usar RedisModel para almacenar
-            RedisModel::rPush($redisKey, $logData);
-
-            // Establecer expiración según retención
-            $ttl = self::$retentionDays * 86_400;
-            RedisModel::expire($redisKey, $ttl);
-
-            // Mantener solo últimos 1000 logs por día/módulo
-            $length = RedisModel::lLen($redisKey);
-            if ($length > 1000) {
-                $redis = RedisModel::getInstance();
-                $redis->ltrim($redisKey, -1000, -1);
-            }
-        } catch (Exception) {
-            // Ignorar errores de Redis para no afectar la aplicación
-        }
     }
 
     /**

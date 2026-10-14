@@ -80,13 +80,6 @@ class CacheManager
             $config = json_decode(file_get_contents($configPath), true) ?? [];
         }
 
-        // Cache de rutas
-        $routesCache = 'versaWYS/cache/routes.compiled.php';
-        $routesStatus = file_exists($routesCache)
-            ? '🟢 Activo (' . self::formatBytes(filesize($routesCache)) . ')'
-            : '🔴 Vacío';
-        echo CLIErrorHandler::colorize('Rutas: ', 'yellow') . ($routesStatus . PHP_EOL);
-
         // Cache de Twig (usar ruta de configuración)
         $twigCacheDir = $config['twig']['compiled_dir'] ?? 'app/templates/.cache';
         // Convertir ruta relativa a absoluta si es necesario
@@ -121,9 +114,8 @@ class CacheManager
 
     private static function clearRoutesCache(bool $showMessage = true): bool
     {
-        // Una sola implementación: borra el archivo compilado y el minificado, y desactiva
-        // build.cacheRoute para que las rutas vuelvan a leerse desde app/routes
-        RouteManager::clearCache();
+        // Ya no hay caché de rutas: solo borra los archivos compilados que hayan quedado
+        RouteManager::routeCacheRemoved();
 
         return true;
     }
@@ -216,16 +208,6 @@ class CacheManager
         return $cleared > 0;
     }
 
-    private static function formatBytes(int $bytes, int $precision = 2): string
-    {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-
-        for ($i = 0; $bytes > 1024 && $i < (count($units) - 1); $i++) {
-            $bytes /= 1024;
-        }
-
-        return round($bytes, $precision) . ' ' . $units[$i];
-    }
 
     private static function deleteDirectory(string $dir): bool
     {

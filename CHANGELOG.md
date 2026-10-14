@@ -2,6 +2,20 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [2.10.0] - 2026-10-14
+
+Limpieza a partir de la auditoría de sobreingeniería: **−2.060 líneas**. El baseline de phpstan baja de 3.103 a 2.959 líneas.
+
+### Eliminado
+- **Caché de rutas.** Medido con OPcache: cargar `app/routes` tarda 308 µs y la caché concatenada 463 µs, así que no aceleraba nada y además podía servir rutas desactualizadas. Las rutas se leen siempre de `app/routes` y se ignora `build.cacheRoute`. `route:compile`, `route:cache`, `route:clear-cache` y `cache:routes` se mantienen para no romper hooks antiguos: solo avisan y borran los archivos compilados que hayan quedado. `app:deploy:finish` ya no los ejecuta.
+- **`app:check:psr4 --deadcode`**, un analizador estático hecho a mano de ~760 líneas. Para métodos y variables sin uso: phpstan o mago. El chequeo PSR-4 y de mayúsculas no cambia.
+- **Logs en Redis** (`logging.use_redis`) y `Loggin::stats()`: no los usaba ningún proyecto. Los logs siguen en archivo.
+- **Búsqueda de `cacert.pem`** en rutas de XAMPP, WAMP y Git para Windows dentro de `Functions::httpRequest`. curl usa `curl.cainfo` y `openssl.cafile` del php.ini o los certificados del sistema (en Windows, `CURLSSLOPT_NATIVE_CA`). Probado: HTTPS con verificación funciona sin nada configurado.
+
+### Cambiado
+- Las cuatro copias de la detección de "petición API" (Session, File, versaTwig, Request) pasan a una sola, `Request::isApiRequest()`. Una navegación SPA (`X-Spa`) no cuenta como API en ningún caso, igual que en el router.
+- `app:check:deploy` revisa permisos de escritura en la carpeta real de configuración (antes, `versaWYS/kernel/config` fijo).
+
 ## [2.9.0] - 2026-10-14
 
 ### Corregido

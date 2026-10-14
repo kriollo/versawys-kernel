@@ -101,7 +101,7 @@ class versaTwig extends Environment
                 }
 
                 // Check if this is an API request using our improved detection
-                $isApi = $this->isStaticApiCall();
+                $isApi = Request::isApiRequest();
 
                 if ($isApi) {
                     Response::jsonError([
@@ -407,20 +407,8 @@ class versaTwig extends Environment
         $dataNow = new DateTime();
         $dataNow = $dataNow->format('Y-m-d H:i:s');
 
-        $cacheRouteStatus = 'Desactivado';
-        if (isset($config['build']['cacheRoute'])) {
-            $useCache = $config['build']['cacheRoute'] ?? false;
-            $cacheFile = $config['build']['cacheRouteFile'] ?? './versaWYS/cache/routes.compiled.php';
-            $minifiedFile = str_replace('.compiled.php', '.compiled.min.php', $cacheFile);
-
-            if ($useCache && (file_exists($minifiedFile) || file_exists($cacheFile))) {
-                $cacheRouteStatus = file_exists($minifiedFile) ? 'Activado (Min)' : 'Activado';
-            }
-        }
-
         return sprintf(
-            "<div class='flex justify-between w-full bottom-0 left-0 bg-red-900 text-white fixed z-50 p-2 animate-Debugfade' id='debug'><div class='flex justify-between gap-2'><span>Modo Debug: Activado</span>-<span>Cache de Rutas: %s </span></div><div class='flex items-center gap-1'><img class='w-6 h-6' src='/public/dashboard/img/favicon.webp'></img>VersaWYS Framework </div><div id='tiempoCarga'></div></div><script type='module'>console.log('%%c%s', 'color: #fff; background-color: #f00; padding: 5px; border-radius: 5px; font-size: 1em;');const antes=new Date('%s').getTime(); function tdc(){ return (new Date().getTime() - antes) / 1e3 + 's';} window.onload=function (){ document.getElementById('tiempoCarga').innerHTML='CARGA: ' + tdc();}; </script>",
-            $cacheRouteStatus,
+            "<div class='flex justify-between w-full bottom-0 left-0 bg-red-900 text-white fixed z-50 p-2 animate-Debugfade' id='debug'><div class='flex justify-between gap-2'><span>Modo Debug: Activado</span></div><div class='flex items-center gap-1'><img class='w-6 h-6' src='/public/dashboard/img/favicon.webp'></img>VersaWYS Framework </div><div id='tiempoCarga'></div></div><script type='module'>console.log('%%c%s', 'color: #fff; background-color: #f00; padding: 5px; border-radius: 5px; font-size: 1em;');const antes=new Date('%s').getTime(); function tdc(){ return (new Date().getTime() - antes) / 1e3 + 's';} window.onload=function (){ document.getElementById('tiempoCarga').innerHTML='CARGA: ' + tdc();}; </script>",
             $version,
             $dataNow,
         );
@@ -639,52 +627,6 @@ class versaTwig extends Environment
         return $userTrace;
     }
 
-    /**
-     * Método estático para determinar si es una llamada API sin necesidad de instancia de Request.
-     * Útil para usar en contextos donde Request no está disponible.
-     */
-    private function isStaticApiCall(): bool
-    {
-        $url = strtolower($_SERVER['REQUEST_URI'] ?? '');
-        $acceptHeader = strtolower($_SERVER['HTTP_ACCEPT'] ?? '');
-        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-        $headers = getallheaders();
-
-        if (isset($headers['X-Spa'])) {
-            return false;
-        }
-
-        // Comprobación prioritaria por URL
-        if (str_contains($url, '/api/')) {
-            return true;
-        }
-
-        // Comprobación por encabezado Accept, común para APIs RESTful
-        if (str_contains($acceptHeader, 'application/json')) {
-            return true;
-        }
-
-        // Comprobación por Content-Type para solicitudes con cuerpo (POST, PUT, PATCH)
-        if ($contentType !== '') {
-            $apiContentTypes = [
-                'application/json',
-                'application/xml',
-                'multipart/form-data',
-                'application/x-www-form-urlencoded',
-            ];
-
-            foreach ($apiContentTypes as $type) {
-                if (!str_starts_with(strtolower($contentType), $type)) {
-                    continue;
-                }
-
-                return true;
-            }
-        }
-
-        // Si un cliente XHR (como fetch o XMLHttpRequest) establece X-Requested-With
-        return isset($headers['X-Requested-With']) && strtolower($headers['X-Requested-With']) === 'xmlhttprequest';
-    }
 
     private const string SCRIPT_TAG = '/<script\b([^>]*)>(.*?)<\/script>/is';
 

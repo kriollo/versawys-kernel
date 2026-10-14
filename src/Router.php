@@ -44,23 +44,10 @@ class Router
     protected string $lastRouteMethod = '';
 
     /**
-     * Carga las rutas de la aplicación: la caché compilada si está activa, o los archivos de $path.
+     * Carga las rutas de la aplicación desde los archivos de $path (y sus subcarpetas).
      */
     public static function loadRoutes(string $path): void
     {
-        global $config;
-
-        if ($config['build']['cacheRoute'] ?? false) {
-            $cacheFile = $config['build']['cacheRouteFile'] ?? './versaWYS/cache/routes.compiled.php';
-
-            // Primero el archivo minificado, luego el original
-            foreach ([str_replace('.compiled.php', '.compiled.min.php', $cacheFile), $cacheFile] as $file) {
-                if (file_exists($file) && self::requireRoutes($file)) {
-                    return;
-                }
-            }
-        }
-
         self::loadRoutesFrom($path);
     }
 

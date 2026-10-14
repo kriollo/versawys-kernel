@@ -95,9 +95,6 @@ class HelpView
         echo "  {$yellow}route:delete:[nombre]{$reset}     Eliminar archivo de rutas\n";
         echo "  {$yellow}route:list{$reset}               Listar rutas de un archivo (--all: todas, sin preguntar)\n";
         echo "  {$yellow}route:check{$reset}              Detectar rutas rotas o sin documentar (--strict)\n";
-        echo "  {$yellow}route:compile{$reset}             Compilar rutas\n";
-        echo "  {$yellow}route:cache{$reset}               Estado del cache de rutas\n";
-        echo "  {$yellow}route:clear-cache{$reset}         Limpiar cache de rutas\n";
         echo "\n";
         echo "  {$yellow}middleware:make:[nombre]{$reset}  Crear middleware (sin sufijo 'Middleware')\n";
         echo "  {$yellow}middleware:delete:[nombre]{$reset} Eliminar middleware\n";
@@ -122,7 +119,6 @@ class HelpView
         echo sprintf('%s%s🗂️  Cache%s%s', $bold, $green, $reset, PHP_EOL);
         echo "  {$yellow}cache:clear{$reset}               Limpiar todo el cache del sistema\n";
         echo "  {$yellow}cache:status{$reset}              Mostrar estado del cache\n";
-        echo "  {$yellow}cache:routes{$reset}              Limpiar solo el cache de rutas\n";
         echo "  {$yellow}cache:twig{$reset}                Limpiar solo el cache de Twig\n";
         echo "\n";
         echo sprintf('%s%s🔧 Comandos de Aplicación%s%s', $bold, $green, $reset, PHP_EOL);
@@ -183,9 +179,6 @@ class HelpView
         echo "  {$color}route:delete:[nombre]{$reset}     Eliminar archivo de rutas\n";
         echo "  {$color}route:list{$reset}               Listar rutas de un archivo (--all: todas, sin preguntar)\n";
         echo "  {$color}route:check{$reset}              Detectar rutas rotas o sin documentar (--strict)\n";
-        echo "  {$color}route:compile{$reset}             Compilar rutas\n";
-        echo "  {$color}route:cache{$reset}               Estado del cache de rutas\n";
-        echo "  {$color}route:clear-cache{$reset}         Limpiar cache de rutas\n";
     }
 
     private static function printMigrateHelp(string $color, string $reset): void
@@ -268,7 +261,6 @@ class HelpView
     {
         echo "  {$color}cache:clear{$reset}               Limpiar todo el cache del sistema\n";
         echo "  {$color}cache:status{$reset}              Mostrar estado del cache\n";
-        echo "  {$color}cache:routes{$reset}              Limpiar solo el cache de rutas\n";
         echo "  {$color}cache:twig{$reset}                Limpiar solo el cache de Twig\n";
     }
 

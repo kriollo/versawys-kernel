@@ -444,9 +444,7 @@ class CommandLineInterface
                 'delete' => RouteManager::deleteRoute($params[1]),
                 'list' => in_array('--all', $params, strict: true) ? RouteManager::listAllRoutes() : RouteManager::listRoutes(),
                 'check' => RouteManager::checkRoutes(in_array('--strict', $params, strict: true)),
-                'compile' => RouteManager::compileRoutes(),
-                'cache' => RouteManager::cacheStatus(),
-                'clear-cache' => RouteManager::clearCache(),
+                'compile', 'cache', 'clear-cache' => RouteManager::routeCacheRemoved(),
                 default => $this->showError('Acción de ruta no reconocida: ' . $action),
             };
         } catch (Exception $exception) {

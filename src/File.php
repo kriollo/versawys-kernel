@@ -396,7 +396,7 @@ class File extends SplFileInfo implements \ArrayAccess
         $isDebug = isset($config['build']['debug']) && $config['build']['debug'];
 
         // Check if this is an API request using our improved detection
-        $isApi = $this->isStaticApiCall();
+        $isApi = Request::isApiRequest();
 
         if ($isDebug) {
             // In debug mode, show detailed error
@@ -426,47 +426,4 @@ class File extends SplFileInfo implements \ArrayAccess
         }
     }
 
-    /**
-     * Método estático para determinar si es una llamada API sin necesidad de instancia de Request.
-     * Útil para usar en contextos donde Request no está disponible.
-     */
-    private function isStaticApiCall(): bool
-    {
-        $url = strtolower($_SERVER['REQUEST_URI'] ?? '');
-        $acceptHeader = strtolower($_SERVER['HTTP_ACCEPT'] ?? '');
-        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-
-        // Comprobación prioritaria por URL
-        if (str_contains($url, '/api/')) {
-            return true;
-        }
-
-        // Comprobación por encabezado Accept, común para APIs RESTful
-        if (str_contains($acceptHeader, 'application/json')) {
-            return true;
-        }
-
-        // Comprobación por Content-Type para solicitudes con cuerpo (POST, PUT, PATCH)
-        if ($contentType !== '') {
-            $apiContentTypes = [
-                'application/json',
-                'application/xml',
-                'multipart/form-data',
-                'application/x-www-form-urlencoded',
-            ];
-
-            foreach ($apiContentTypes as $type) {
-                if (!str_starts_with(strtolower($contentType), $type)) {
-                    continue;
-                }
-
-                return true;
-            }
-        }
-
-        // Si un cliente XHR (como fetch o XMLHttpRequest) establece X-Requested-With
-        $headers = getallheaders();
-
-        return isset($headers['X-Requested-With']) && strtolower($headers['X-Requested-With']) === 'xmlhttprequest';
-    }
 }
