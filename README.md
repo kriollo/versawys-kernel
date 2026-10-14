@@ -52,7 +52,16 @@ La CI hace lo mismo en PHP 8.3, 8.4 y 8.5.
 
 ## Seguridad
 
-Ver [SECURITY.md](SECURITY.md).
+Ver [SECURITY.md](SECURITY.md) y el [modelo de amenazas](THREAT_MODEL.md).
+
+## Pruebas
+
+```bash
+composer test
+composer check
+```
+
+`composer check` ejecuta formato, pruebas y análisis estático. La CI también ejecuta `composer audit` y las pruebas de integración del esqueleto versaWYS-PHP.
 
 ## Licencia
 

@@ -1,6 +1,6 @@
 {
     "preset": "psr12",
-    "exclude": ["tests", "vendor", "var"],
+    "exclude": ["vendor", "var"],
     "rules": {
         "ordered_imports": false,
         "single_line_comment_style": false,

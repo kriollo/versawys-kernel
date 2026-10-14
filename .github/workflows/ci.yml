@@ -39,7 +39,7 @@ jobs:
                   extensions: intl, mbstring, pdo_mysql, pdo_pgsql, pdo_sqlite, curl, fileinfo, zip
                   coverage: none
 
-            - name: Kernel (formato, análisis estático, auditoría)
+            - name: Kernel (formato, pruebas, análisis estático, auditoría)
               working-directory: versawys-kernel
               run: |
                   composer install --no-interaction --no-progress

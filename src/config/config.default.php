@@ -43,7 +43,7 @@ return [
         'base_url' => '',
     ],
     // IPs o rangos CIDR de los proxies propios (balanceador, Cloudflare): solo desde ellos se
-    // aceptan X-Forwarded-For / -Proto / -Host
+    // aceptan X-Forwarded-For / -Proto / -Host. Rangos inválidos se ignoran y se registran.
     'trusted_proxies' => [],
     'auth' => [
         'inactive_account_days' => 30,
