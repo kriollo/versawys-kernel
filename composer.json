@@ -2,7 +2,13 @@
     "name": "versawys/kernel",
     "description": "Núcleo del framework versaWYS-PHP: enrutamiento, middlewares, sesión/JWT, Twig, CLI y VersaORM.",
     "type": "library",
-    "keywords": ["framework", "php", "mvc", "twig", "versaorm"],
+    "keywords": [
+        "framework",
+        "php",
+        "mvc",
+        "twig",
+        "versaorm"
+    ],
     "homepage": "https://github.com/kriollo/versaWYS",
     "license": "MIT",
     "authors": [
@@ -22,9 +28,8 @@
         "ext-pdo": "*",
         "composer-runtime-api": "^2.2",
         "firebase/php-jwt": "^7.1",
-        "symfony/mailer": "^8.1",
+        "symfony/mailer": "^7.3 || ^8.1",
         "twig/cssinliner-extra": "^3.26",
-        "twig/extra-bundle": "^3.24",
         "twig/twig": "^3.28",
         "versaorm/versaorm-php": "^1.9 || ^2.0"
     },

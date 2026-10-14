@@ -1,5 +1,7 @@
 parameters:
     level: 8
+    # Firmas de funciones de la versión mínima soportada: el resultado no depende del PHP del runner
+    phpVersion: 80300
     paths:
         - src
     # El kernel llama a clases del panel base (app\models, app\services): se leen del esqueleto
