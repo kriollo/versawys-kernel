@@ -37,7 +37,7 @@ class Request
             $this->url = $_SERVER['REQUEST_URI'] ?? '/';
             $this->params = $_REQUEST;
             $this->files = $_FILES;
-            $this->ip = $_SERVER['REMOTE_ADDR'];
+            $this->ip = self::clientIp();
             $this->accept = $_SERVER['HTTP_ACCEPT'] ?? '*/*';
             $this->prepareFiles();
             $this->prepareParams();
@@ -296,18 +296,80 @@ class Request
      */
     public function getBaseUrl(): string
     {
-        if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
-            $_SERVER['HTTPS'] = 'on';
-            // Opcional: ajustar puerto y host si es necesario
-            if (isset($_SERVER['HTTP_X_FORWARDED_HOST'])) {
-                $_SERVER['HTTP_HOST'] = $_SERVER['HTTP_X_FORWARDED_HOST'];
+        global $config;
+
+        // Con build.base_url fijo, los enlaces de los correos no dependen de cabeceras del cliente
+        $configured = rtrim((string) ($config['build']['base_url'] ?? ''), '/');
+        if ($configured !== '') {
+            return $configured;
+        }
+
+        $https = in_array(strtolower((string) ($_SERVER['HTTPS'] ?? '')), ['on', '1'], true);
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+
+        // Las cabeceras X-Forwarded-* solo valen si las puso un proxy propio: si no, cualquiera
+        // podría apuntar el enlace de recuperación de contraseña a su dominio
+        if (self::isTrustedProxy((string) ($_SERVER['REMOTE_ADDR'] ?? ''))) {
+            $https = $https || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+            $forwardedHost = trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_HOST'] ?? ''))[0]);
+            $host = $forwardedHost !== '' ? $forwardedHost : $host;
+        }
+
+        return ($https ? 'https://' : 'http://') . $host;
+    }
+
+    /**
+     * IP del cliente. X-Forwarded-For solo se cree si la petición llega desde `trusted_proxies`.
+     */
+    public static function clientIp(): string
+    {
+        $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        if (!self::isTrustedProxy($remote)) {
+            return $remote;
+        }
+
+        // De derecha a izquierda: la primera IP que no es un proxy propio es la del cliente
+        $chain = array_map(trim(...), explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '')));
+        foreach (array_reverse($chain) as $ip) {
+            if (filter_var($ip, FILTER_VALIDATE_IP) !== false && !self::isTrustedProxy($ip)) {
+                return $ip;
             }
         }
 
-        $protocol = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        return $remote;
+    }
 
-        return $protocol . $host;
+    /**
+     * ¿Está la IP en `trusted_proxies`? Acepta IPs sueltas y rangos CIDR (IPv4 e IPv6).
+     */
+    public static function isTrustedProxy(string $ip): bool
+    {
+        global $config;
+
+        $ipBin = @inet_pton($ip);
+        if ($ipBin === false) {
+            return false;
+        }
+
+        foreach ((array) ($config['trusted_proxies'] ?? []) as $range) {
+            $parts = explode('/', (string) $range, 2);
+            $subnetBin = @inet_pton($parts[0]);
+            if ($subnetBin === false || strlen($subnetBin) !== strlen($ipBin)) {
+                continue;
+            }
+
+            $bits = isset($parts[1]) ? (int) $parts[1] : strlen($ipBin) * 8;
+            $bytes = intdiv($bits, 8);
+            $mask = (0xFF << (8 - $bits % 8)) & 0xFF;
+            if (
+                substr($ipBin, 0, $bytes) === substr($subnetBin, 0, $bytes)
+                && ($bits % 8 === 0 || (ord($ipBin[$bytes]) & $mask) === (ord($subnetBin[$bytes]) & $mask))
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

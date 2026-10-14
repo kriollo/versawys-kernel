@@ -41,7 +41,12 @@ return [
         'charset' => 'utf-8',
         'cacheRoute' => false,
         'cacheRouteFile' => './versaWYS/cache/routes.compiled.php',
+        // URL pública (https://app.ejemplo.cl). Vacía: se deduce de la petición. Fijarla en producción
+        'base_url' => '',
     ],
+    // IPs o rangos CIDR de los proxies propios (balanceador, Cloudflare): solo desde ellos se
+    // aceptan X-Forwarded-For / -Proto / -Host
+    'trusted_proxies' => [],
     'auth' => [
         'inactive_account_days' => 30,
         'expiration_days_password' => 90,

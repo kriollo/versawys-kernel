@@ -435,6 +435,7 @@ class CheckDeployCommand extends BaseCommand
             [$serious, ($config['session']['user_cookie']['http_only'] ?? false) !== true, 'session.user_cookie.http_only está desactivado: JavaScript podría leer la sesión.', null],
             [$serious, (string) ($config['database']['database'] ?? '') === '', 'database.database está vacío: no hay base de datos configurada.', null],
             [$serious, in_array('*', (array) ($config['cors']['allowed_origins'] ?? []), true), 'cors.allowed_origins contiene "*".', 'Listar solo los orígenes que deben llamar a la API.'],
+            [$minor, (string) ($config['build']['base_url'] ?? '') === '', 'build.base_url está vacío: los enlaces de los correos (recuperar contraseña) se arman con la cabecera Host de la petición.', 'Fijar la URL pública, p. ej. https://app.ejemplo.cl'],
             [$minor, (string) ($config['database']['password'] ?? '') === '', 'database.password está vacío.', null],
             [$minor, ($config['twig']['cache'] ?? false) !== true, 'twig.cache está desactivado: las plantillas se compilan en cada petición.', 'php versaCLI config:templateCache:true'],
             [$minor, ($config['rate_limiting']['enabled'] ?? false) !== true, 'rate_limiting está desactivado: el login queda sin límite de intentos por IP.', null],

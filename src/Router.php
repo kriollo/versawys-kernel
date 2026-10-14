@@ -543,8 +543,22 @@ class Router
                     'client_ip' => $request->getIp(),
                 ],
             );
-            $this->respondNotFound($request, $config);
+            $this->internalError();
         }
+    }
+
+    /**
+     * Un fallo interno responde 500 también en HTML: un 404 lo escondía de los monitores y del usuario.
+     */
+    private function internalError(): bool|string
+    {
+        global $request;
+
+        if ($request->isApiCall()) {
+            return Response::json(['success' => 0, 'message' => 'Error interno'], 500);
+        }
+
+        return Response::jsonError(['success' => 0, 'message' => 'Error interno del servidor'], 500);
     }
 
     /**
@@ -602,13 +616,7 @@ class Router
                     throw $e; // Re-lanzar la excepción para ErrorHandler detallado
                 }
 
-                // Un fallo interno en una llamada API es un 500, no una ruta inexistente
-                if ($request->isApiCall()) {
-                    return Response::json(['success' => 0, 'message' => 'Error interno'], 500);
-                }
-
-                // En modo producción, usar respuesta limpia
-                return $this->respondNotFound($request, $config, 'Error interno del middleware');
+                return $this->internalError();
             }
         }
 
@@ -677,13 +685,7 @@ class Router
                 throw $throwable; // Re-lanzar la excepción para que la capture ErrorHandler::handleException
             }
 
-            // Un fallo interno en una llamada API es un 500, no una ruta inexistente
-            if ($request->isApiCall()) {
-                return Response::json(['success' => 0, 'message' => 'Error interno'], 500);
-            }
-
-            // En modo producción, usar respuesta limpia
-            return $this->respondNotFound($request, $config, 'Error interno');
+            return $this->internalError();
         }
     }
 
