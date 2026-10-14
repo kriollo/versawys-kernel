@@ -15,7 +15,7 @@ De `index.php` a la respuesta. Sirve para saber dónde se decide cada cosa antes
    - conecta VersaORM si hay base de datos configurada;
    - crea `$request` (Request lee la petición una sola vez: método, URL, parámetros, archivos, cuerpo y *method override*).
 3. **`init_error_handling.php`**: `ErrorHandler::initialize()` registra los manejadores de errores, excepciones y cierre.
-4. **`init_headers.php`**: cabeceras de seguridad (HSTS fuera de localhost, CSP con nonce y sin eval según `csp.*`, `X-Frame-Options`, COOP, CORS según `cors.allowed_origins`). Se envían antes de resolver la ruta, así que valen también para las respuestas de error.
+4. **`init_headers.php`**: cabeceras de seguridad (HSTS fuera de localhost, CSP con nonce y sin eval según `csp.*`, `X-Frame-Options`, `X-XSS-Protection: 0`, `Permissions-Policy`, COOP, CORS según `cors.allowed_origins`, `X-Request-Id`). Se envían antes de resolver la ruta, así que valen también para las respuestas de error.
 
 ## 2. Resolución — `Router::resolve()`
 

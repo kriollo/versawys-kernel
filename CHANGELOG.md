@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.3.0] - 2026-10-14
+
+Cambios a partir del primer escaneo con versaSecurity sobre el esqueleto. De sus 12 hallazgos, 4 eran falsos positivos verificados (54 "directory traversal" que eran URLs de assets en la página 404, y el "bypass" de `/admin`, que responde 302 al login); 5 eran propios de correr en local sin HTTPS (HSTS y cookies `Secure` se activan en producción). Los cambios:
+
+### Añadido
+- **`Permissions-Policy`**, configurable con `permissions_policy`. Por defecto: cámara, micrófono y ubicación solo para el propio sitio; pagos, USB, puerto serie y Bluetooth para nadie. Vacío para no enviarla.
+- **`X-XSS-Protection: 0`**: apaga el filtro XSS antiguo de los navegadores, como recomienda OWASP.
+
+### Cambiado
+- **Con `csp.nonce`, `script-src` ya no incluye `'unsafe-inline'`.** Los navegadores con soporte de nonce ya lo ignoraban; ahora un script inline sin nonce no corre en ninguno. Verificado en Chrome con el panel del esqueleto: 0 bloqueos.
+- **`Cookie::set()` sin `$secure` usa `session.user_cookie.secure`** (true por defecto) en vez de `false`. La cookie `expiratePass` que crean los `UsersController` de los proyectos ahora tiene `Secure` en producción.
+
 ## [3.2.1] - 2026-10-14
 
 Ampliación de las pruebas de seguridad: de 65 a 98. Lo que encontraron:

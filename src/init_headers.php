@@ -21,6 +21,14 @@ header('X-Content-Type-Options: nosniff');
 // El mismo identificador que llevan las entradas de log de esta petición
 header('X-Request-Id: ' . versaWYS\kernel\Loggin::requestId());
 header('Referrer-Policy: strict-origin-when-cross-origin');
+// "0" apaga el filtro XSS antiguo de los navegadores, que tenía fallas propias (recomendación de OWASP);
+// la protección real es la CSP
+header('X-XSS-Protection: 0');
+// Qué APIs del navegador puede usar la página. Vacío en config para no enviarla
+$permissionsPolicy = (string) ($config['permissions_policy'] ?? '');
+if ($permissionsPolicy !== '') {
+    header('Permissions-Policy: ' . $permissionsPolicy);
+}
 // Aísla la ventana de otros orígenes; allow-popups mantiene los popups de OAuth (Google)
 header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
 
@@ -49,12 +57,14 @@ if (!($config['build']['debug'] ?? false) && ($config['csp']['enabled'] ?? true)
     $ws = parse_url((string) ($config['websocket_service']['ws_url'] ?? ''));
     $wsOrigin = isset($ws['scheme'], $ws['host']) ? $ws['scheme'] . '://' . $ws['host'] . (isset($ws['port']) ? ':' . $ws['port'] : '') . ' ' : '';
 
-    $nonce = ($csp['nonce'] ?? false) === true ? "'nonce-" . versaWYS\kernel\SecurityUtils::cspNonce() . "' " : '';
+    // Con nonce, 'unsafe-inline' se omite: los navegadores con nonce ya lo ignoraban, y sin él un script
+    // inyectado sin nonce no corre en ninguno
+    $nonce = ($csp['nonce'] ?? false) === true ? "'nonce-" . versaWYS\kernel\SecurityUtils::cspNonce() . "' " : "'unsafe-inline' ";
     $eval = ($csp['unsafe_eval'] ?? true) === true ? "'unsafe-eval' " : '';
 
     header(
         "Content-Security-Policy: default-src 'self'; "
-        . "script-src 'self' {$nonce}'unsafe-inline' {$eval}{$extra('script-src')}; "
+        . "script-src 'self' {$nonce}{$eval}{$extra('script-src')}; "
         . "style-src 'self' 'unsafe-inline' fonts.googleapis.com {$extra('style-src')}; "
         . "font-src 'self' fonts.gstatic.com {$extra('font-src')}; "
         . "img-src 'self' data: blob: https: {$extra('img-src')}; "

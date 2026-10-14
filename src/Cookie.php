@@ -11,7 +11,7 @@ class Cookie
         $value,
         int $time = 3600,
         string $domain = '',
-        bool $secure = false,
+        ?bool $secure = null,
         bool $httpOnly = true,
         string $sameSite = 'Strict', // Opciones: 'Lax', 'Strict', 'None'
         bool $strict_mode = true, // Habilitar modo estricto para prevenir ataques de fijación de sesión
@@ -19,6 +19,10 @@ class Cookie
         // Si $time es menor que time(), se considera un timestamp absoluto
         // Si no, se considera un tiempo relativo y se suma a time()
         $expires = $time > time() || $time === 0 ? $time : time() + $time;
+
+        // Sin indicarlo, lo mismo que la cookie de sesión (session.user_cookie.secure, true por defecto):
+        // una cookie creada sin pensar en el flag no viaja por HTTP en producción
+        $secure ??= self::defaultSecure();
 
         setcookie($key, $value, [
             'expires' => $expires,
@@ -28,6 +32,13 @@ class Cookie
             'httponly' => $httpOnly,
             'samesite' => $sameSite,
         ]);
+    }
+
+    public static function defaultSecure(): bool
+    {
+        global $config;
+
+        return ($config['session']['user_cookie']['secure'] ?? true) === true;
     }
 
     public function has($key): bool
