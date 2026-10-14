@@ -1,0 +1,463 @@
+variant = "loose"
+
+[[issues]]
+file = "bench/run.php"
+code = "file-name"
+message = "Class `BenchController` should be in a file named `BenchController.php`, found `run.php`."
+count = 1
+
+[[issues]]
+file = "bench/run.php"
+code = "no-error-control-operator"
+message = "Unsafe use of error control operator `@`."
+count = 1
+
+[[issues]]
+file = "src/App.php"
+code = "explicit-octal"
+message = "Use explicit octal numeral notation."
+count = 1
+
+[[issues]]
+file = "src/CacheUsers.php"
+code = "no-empty-catch-clause"
+message = "Do not use empty `catch` blocks."
+count = 1
+
+[[issues]]
+file = "src/CacheUsers.php"
+code = "no-shorthand-ternary"
+message = "Use of the shorthand ternary operator."
+count = 1
+
+[[issues]]
+file = "src/File.php"
+code = "no-error-control-operator"
+message = "Unsafe use of error control operator `@`."
+count = 5
+
+[[issues]]
+file = "src/GlobalControllers.php"
+code = "no-redundant-math"
+message = "Redundant addition of `0`: adding 0 does not alter the value."
+count = 1
+
+[[issues]]
+file = "src/GlobalMiddleware.php"
+code = "no-shorthand-ternary"
+message = "Use of the shorthand ternary operator."
+count = 3
+
+[[issues]]
+file = "src/Loggin.php"
+code = "no-empty"
+message = "Use of the `empty` construct."
+count = 2
+
+[[issues]]
+file = "src/Loggin.php"
+code = "no-error-control-operator"
+message = "Unsafe use of error control operator `@`."
+count = 8
+
+[[issues]]
+file = "src/Loggin.php"
+code = "no-nested-ternary"
+message = "Nested ternary expressions are confusing due to PHP's operator associativity rules."
+count = 1
+
+[[issues]]
+file = "src/Loggin.php"
+code = "no-sprintf-concat"
+message = "String concatenation with `sprintf` can be simplified."
+count = 2
+
+[[issues]]
+file = "src/MailSender.php"
+code = "single-class-per-file"
+message = "File contains multiple class-like definitions; found class `MailSender` but enum `ContentType` is already defined in this file."
+count = 1
+
+[[issues]]
+file = "src/Request.php"
+code = "no-empty-catch-clause"
+message = "Do not use empty `catch` blocks."
+count = 1
+
+[[issues]]
+file = "src/Request.php"
+code = "no-error-control-operator"
+message = "Unsafe use of error control operator `@`."
+count = 2
+
+[[issues]]
+file = "src/Request.php"
+code = "no-request-variable"
+message = "Unsafe use of `$_REQUEST` variable."
+count = 1
+
+[[issues]]
+file = "src/Response.php"
+code = "prefer-early-continue"
+message = "Consider using early continue pattern to reduce nesting."
+count = 1
+
+[[issues]]
+file = "src/Router.php"
+code = "no-debug-symbols"
+message = "Do not commit debug functions."
+count = 1
+
+[[issues]]
+file = "src/Router.php"
+code = "no-empty"
+message = "Use of the `empty` construct."
+count = 1
+
+[[issues]]
+file = "src/Router.php"
+code = "no-shorthand-ternary"
+message = "Use of the shorthand ternary operator."
+count = 1
+
+[[issues]]
+file = "src/Router.php"
+code = "too-many-properties"
+message = "Class has too many properties."
+count = 1
+
+[[issues]]
+file = "src/SecurityUtils.php"
+code = "no-error-control-operator"
+message = "Unsafe use of error control operator `@`."
+count = 4
+
+[[issues]]
+file = "src/SecurityUtils.php"
+code = "no-shorthand-ternary"
+message = "Use of the shorthand ternary operator."
+count = 1
+
+[[issues]]
+file = "src/Session.php"
+code = "no-empty"
+message = "Use of the `empty` construct."
+count = 3
+
+[[issues]]
+file = "src/Session.php"
+code = "no-error-control-operator"
+message = "Unsafe use of error control operator `@`."
+count = 4
+
+[[issues]]
+file = "src/Session.php"
+code = "no-insecure-comparison"
+message = "Insecure comparison of sensitive data."
+count = 1
+
+[[issues]]
+file = "src/Session.php"
+code = "prefer-early-continue"
+message = "Consider using early continue pattern to reduce nesting."
+count = 1
+
+[[issues]]
+file = "src/cli/CommandInterface.php"
+code = "tagged-todo"
+message = "TODO should be tagged with (@username) or (#issue)."
+count = 1
+
+[[issues]]
+file = "src/cli/CommandLineInterface.php"
+code = "explicit-octal"
+message = "Use explicit octal numeral notation."
+count = 1
+
+[[issues]]
+file = "src/cli/CommandLineInterface.php"
+code = "no-sprintf-concat"
+message = "String concatenation with `sprintf` can be simplified."
+count = 1
+
+[[issues]]
+file = "src/cli/CommandMakeCommand.php"
+code = "no-empty"
+message = "Use of the `empty` construct."
+count = 2
+
+[[issues]]
+file = "src/cli/CronManager.php"
+code = "no-empty"
+message = "Use of the `empty` construct."
+count = 1
+
+[[issues]]
+file = "src/cli/MigrationManager.php"
+code = "tagged-todo"
+message = "TODO should be tagged with (@username) or (#issue)."
+count = 1
+
+[[issues]]
+file = "src/cli/RouteManager.php"
+code = "no-insecure-comparison"
+message = "Insecure comparison of sensitive data."
+count = 9
+
+[[issues]]
+file = "src/cli/RouteManager.php"
+code = "prefer-early-continue"
+message = "Consider using early continue pattern to reduce nesting."
+count = 2
+
+[[issues]]
+file = "src/cli/RouteManager.php"
+code = "sensitive-parameter"
+message = "Parameters that may contain sensitive information should be marked with the `#[SensitiveParameter]` attribute."
+count = 2
+
+[[issues]]
+file = "src/cli/ServerManager.php"
+code = "no-error-control-operator"
+message = "Unsafe use of error control operator `@`."
+count = 9
+
+[[issues]]
+file = "src/cli/commands/CheckDeployCommand.php"
+code = "no-error-control-operator"
+message = "Unsafe use of error control operator `@`."
+count = 2
+
+[[issues]]
+file = "src/cli/commands/CheckDeployCommand.php"
+code = "no-nested-ternary"
+message = "Nested ternary expressions are confusing due to PHP's operator associativity rules."
+count = 1
+
+[[issues]]
+file = "src/cli/commands/CheckDeployCommand.php"
+code = "prefer-early-continue"
+message = "Consider using early continue pattern to reduce nesting."
+count = 11
+
+[[issues]]
+file = "src/cli/commands/CheckPsr4Command.php"
+code = "excessive-nesting"
+message = "Excessive block nesting."
+count = 8
+
+[[issues]]
+file = "src/cli/commands/CheckPsr4Command.php"
+code = "no-empty-catch-clause"
+message = "Do not use empty `catch` blocks."
+count = 1
+
+[[issues]]
+file = "src/cli/commands/CheckPsr4Command.php"
+code = "no-error-control-operator"
+message = "Unsafe use of error control operator `@`."
+count = 1
+
+[[issues]]
+file = "src/cli/commands/CheckPsr4Command.php"
+code = "no-insecure-comparison"
+message = "Insecure comparison of sensitive data."
+count = 1
+
+[[issues]]
+file = "src/cli/commands/CheckPsr4Command.php"
+code = "no-shorthand-ternary"
+message = "Use of the shorthand ternary operator."
+count = 1
+
+[[issues]]
+file = "src/cli/commands/CheckPsr4Command.php"
+code = "prefer-early-continue"
+message = "Consider using early continue pattern to reduce nesting."
+count = 1
+
+[[issues]]
+file = "src/cli/commands/DeployFinishCommand.php"
+code = "tagged-todo"
+message = "TODO should be tagged with (@username) or (#issue)."
+count = 1
+
+[[issues]]
+file = "src/cli/commands/MailSendCommand.php"
+code = "no-empty"
+message = "Use of the `empty` construct."
+count = 1
+
+[[issues]]
+file = "src/cli/commands/MailSendCommand.php"
+code = "no-shorthand-ternary"
+message = "Use of the shorthand ternary operator."
+count = 2
+
+[[issues]]
+file = "src/config/config.default.php"
+code = "no-literal-password"
+message = "Literal passwords or sensitive data should not be stored in code."
+count = 1
+
+[[issues]]
+file = "src/config/config.default.php"
+code = "readable-literal"
+message = "Numeric literal could use underscore separators for readability."
+count = 4
+
+[[issues]]
+file = "src/helpers/Functions.php"
+code = "no-debug-symbols"
+message = "Do not commit debug functions."
+count = 1
+
+[[issues]]
+file = "src/helpers/Functions.php"
+code = "no-empty"
+message = "Use of the `empty` construct."
+count = 4
+
+[[issues]]
+file = "src/helpers/Functions.php"
+code = "no-shorthand-ternary"
+message = "Use of the shorthand ternary operator."
+count = 1
+
+[[issues]]
+file = "src/helpers/Functions.php"
+code = "no-sprintf-concat"
+message = "String concatenation with `sprintf` can be simplified."
+count = 1
+
+[[issues]]
+file = "src/model/RedisModel.php"
+code = "no-assign-in-condition"
+message = "Avoid assignments in conditions."
+count = 1
+
+[[issues]]
+file = "src/model/RedisModel.php"
+code = "no-empty"
+message = "Use of the `empty` construct."
+count = 1
+
+[[issues]]
+file = "src/model/RedisModel.php"
+code = "no-error-control-operator"
+message = "Unsafe use of error control operator `@`."
+count = 1
+
+[[issues]]
+file = "src/model/VersaORMModel.php"
+code = "no-sprintf-concat"
+message = "String concatenation with `sprintf` can be simplified."
+count = 2
+
+[[issues]]
+file = "src/model/VersaORMModel.php"
+code = "tagged-todo"
+message = "TODO should be tagged with (@username) or (#issue)."
+count = 1
+
+[[issues]]
+file = "src/versaTwig.php"
+code = "no-assign-in-condition"
+message = "Avoid assignments in conditions."
+count = 2
+
+[[issues]]
+file = "src/versaTwig.php"
+code = "no-error-control-operator"
+message = "Unsafe use of error control operator `@`."
+count = 3
+
+[[issues]]
+file = "tests/ConfigSchemaTest.php"
+code = "prefer-early-continue"
+message = "Consider using early continue pattern to reduce nesting."
+count = 1
+
+[[issues]]
+file = "tests/CsrfTest.php"
+code = "prefer-first-class-callable"
+message = "Use first-class callable syntax `...` instead of a arrow function."
+count = 1
+
+[[issues]]
+file = "tests/FileTest.php"
+code = "no-shorthand-ternary"
+message = "Use of the shorthand ternary operator."
+count = 1
+
+[[issues]]
+file = "tests/JwtTest.php"
+code = "no-shorthand-ternary"
+message = "Use of the shorthand ternary operator."
+count = 1
+
+[[issues]]
+file = "tests/JwtTest.php"
+code = "readable-literal"
+message = "Numeric literal could use underscore separators for readability."
+count = 2
+
+[[issues]]
+file = "tests/JwtTest.php"
+code = "strict-behavior"
+message = "Call to `base64_decode` must enforce strict comparison."
+count = 1
+
+[[issues]]
+file = "tests/LogTest.php"
+code = "no-literal-password"
+message = "Literal passwords or sensitive data should not be stored in code."
+count = 3
+
+[[issues]]
+file = "tests/RateLimitTest.php"
+code = "no-error-control-operator"
+message = "Unsafe use of error control operator `@`."
+count = 1
+
+[[issues]]
+file = "tests/RateLimitTest.php"
+code = "no-request-variable"
+message = "Unsafe use of `$_REQUEST` variable."
+count = 1
+
+[[issues]]
+file = "tests/RateLimitTest.php"
+code = "no-shorthand-ternary"
+message = "Use of the shorthand ternary operator."
+count = 4
+
+[[issues]]
+file = "tests/RateLimitTest.php"
+code = "readable-literal"
+message = "Numeric literal could use underscore separators for readability."
+count = 2
+
+[[issues]]
+file = "tests/RequestProxyTest.php"
+code = "no-request-variable"
+message = "Unsafe use of `$_REQUEST` variable."
+count = 4
+
+[[issues]]
+file = "tests/RouterTest.php"
+code = "readable-literal"
+message = "Numeric literal could use underscore separators for readability."
+count = 1
+
+[[issues]]
+file = "tests/RouterTest.php"
+code = "single-class-per-file"
+message = "File contains multiple class-like definitions; found class `RouterTestController` but class `RouterTest` is already defined in this file."
+count = 1
+
+[[issues]]
+file = "tests/RouterTest.php"
+code = "single-class-per-file"
+message = "File contains multiple class-like definitions; found class `RouterTestMiddleware` but class `RouterTest` is already defined in this file."
+count = 1

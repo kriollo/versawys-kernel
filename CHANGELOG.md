@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar]
+
+### Desarrollo
+- **mago** (`carthage-software/mago` 1.57) en las herramientas del kernel: `mago lint` corre en `composer check` y en la CI, con `mago.toml` y una línea base de los 159 hallazgos heredados (`mago-baseline.toml`). Un hallazgo nuevo hace fallar la CI. Revisados los de seguridad: comparaciones de tokens del analizador de PHP, `xdebug_info()` de `/up` y `$_REQUEST` en `Request` son falsos positivos y quedan en la línea base. `mago analyze` queda como `composer mago:analyze` (ver DECISIONS.md).
+
 ## [3.3.0] - 2026-10-14
 
 Cambios a partir del primer escaneo con versaSecurity sobre el esqueleto. De sus 12 hallazgos, 4 eran falsos positivos verificados (54 "directory traversal" que eran URLs de assets en la página 404, y el "bypass" de `/admin`, que responde 302 al login); 5 eran propios de correr en local sin HTTPS (HSTS y cookies `Secure` se activan en producción). Los cambios:
