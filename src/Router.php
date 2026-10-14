@@ -104,6 +104,34 @@ class Router
     }
 
     /**
+     * `/up`: verificación de vida para el despliegue y los monitores. A cualquiera le responde solo
+     * `ok`; si la petición viene del propio servidor, agrega cómo corre PHP en el servidor web
+     * (FPM/Apache), que puede diferir del PHP de la terminal donde corre app:check:deploy.
+     *
+     * @return array<string, mixed>
+     */
+    public static function health(): array
+    {
+        $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        if ($remote === '' || ($remote !== ($_SERVER['SERVER_ADDR'] ?? '') && !in_array($remote, ['127.0.0.1', '::1'], true))) {
+            return ['status' => 'ok'];
+        }
+
+        $opcache = function_exists('opcache_get_status') ? opcache_get_status(false) : false;
+
+        return [
+            'status' => 'ok',
+            'kernel' => \Composer\InstalledVersions::isInstalled('versawys/kernel') ? \Composer\InstalledVersions::getPrettyVersion('versawys/kernel') : 'dev',
+            'php' => PHP_VERSION,
+            'sapi' => PHP_SAPI,
+            'opcache' => is_array($opcache) && ($opcache['opcache_enabled'] ?? false) === true,
+            'opcache_validate_timestamps' => (bool) ini_get('opcache.validate_timestamps'),
+            // Con xdebug.mode=off la extensión sigue cargada pero no hace nada; ini_get devuelve '' en ese caso
+            'xdebug' => function_exists('xdebug_info') ? xdebug_info('mode') !== [] : !in_array((string) ini_get('xdebug.mode'), ['', 'off'], true),
+        ];
+    }
+
+    /**
      * Normalizes a URL by removing leading and trailing slashes and extracting the path.
      * Ahora incluye sanitización de seguridad contra inyección SQL.
      *
@@ -350,6 +378,10 @@ class Router
             }
 
             $url = self::normalize_url($request->getUrl());
+
+            if ($url === '/up' && in_array($method, ['get', 'head'], true)) {
+                return Response::json(self::health(), 200);
+            }
 
             $customAdminUrl = $config['admin']['custom_url'] ?? 'admin';
             $hideDefault = $config['admin']['hide_default'] ?? false;

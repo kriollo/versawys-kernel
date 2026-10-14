@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [2.6.0] - 2026-10-14
+
+### Añadido
+- Ruta **`/up`** en el kernel, sin sesión, para el despliegue y los monitores. A cualquiera le responde `{"status":"ok"}`. A las peticiones del propio servidor les agrega la versión del kernel y de PHP, y el estado de OPcache y Xdebug **tal como corren en el servidor web**, que puede diferir del PHP de la terminal.
+- `app:check:deploy --url` (o `--production` con `build.base_url`) consulta `/up`. Con `--production`, OPcache desactivado o Xdebug activo en el servidor web son críticos.
+
+### Medición
+Con `vendor/bin/pest --group=bench` en el esqueleto (php -S con OPcache, sin Xdebug), el p50 fue: página Twig 1,4 ms, API con sesión 1,9 ms y 404 1,1 ms. Con Xdebug activo y la caché de Twig apagada, la misma página tarda 15 ms: la configuración del servidor pesa más que cualquier optimización del kernel.
+
 ## [2.5.0] - 2026-10-14
 
 ### Añadido
