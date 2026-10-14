@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [2.11.1] - 2026-10-14
+
+### Corregido
+- La CSP agrega a `connect-src` el origen de `websocket_service.ws_url` (esquema, host y puerto). Cuando el websocket corría en otro puerto o dominio, el navegador bloqueaba la conexión y había que repetir esa URL en `csp.connect-src` de cada servidor. Lo encontró la prueba del inbox de versaBOT.
+
 ## [2.11.0] - 2026-10-14
 
 ### Añadido
