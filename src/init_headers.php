@@ -41,6 +41,11 @@ if (!($config['build']['debug'] ?? false) && ($config['csp']['enabled'] ?? true)
     // csp.nonce: los <script> inline solo corren si llevan el nonce de la petición (csp_nonce() en Twig,
     // <meta name="csp-nonce"> para los que crea el JavaScript). Los navegadores con soporte de nonce
     // ignoran 'unsafe-inline'; se deja como respaldo para los antiguos
+    // El websocket del panel (websocket_service.ws_url) suele ir en otro puerto o dominio: su origen
+    // se agrega a connect-src para que la configuración de cada servidor no tenga que repetirlo
+    $ws = parse_url((string) ($config['websocket_service']['ws_url'] ?? ''));
+    $wsOrigin = isset($ws['scheme'], $ws['host']) ? $ws['scheme'] . '://' . $ws['host'] . (isset($ws['port']) ? ':' . $ws['port'] : '') . ' ' : '';
+
     $nonce = ($csp['nonce'] ?? false) === true ? "'nonce-" . versaWYS\kernel\SecurityUtils::cspNonce() . "' " : '';
 
     header(
@@ -50,7 +55,7 @@ if (!($config['build']['debug'] ?? false) && ($config['csp']['enabled'] ?? true)
         . "font-src 'self' fonts.gstatic.com {$extra('font-src')}; "
         . "img-src 'self' data: blob: https: {$extra('img-src')}; "
         . "media-src 'self' blob: data: {$extra('media-src')}; "
-        . "connect-src 'self' blob: {$extra('connect-src')}; "
+        . "connect-src 'self' blob: {$wsOrigin}{$extra('connect-src')}; "
         . "frame-src 'self' {$extra('frame-src')}; "
         . "frame-ancestors 'self'; "
         . "form-action 'self' {$extra('form-action')}; "
