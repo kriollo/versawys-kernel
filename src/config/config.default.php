@@ -84,6 +84,9 @@ return [
         'password' => '',
     ],
     'cors' => ['allowed_origins' => []],
+    // Permissions-Policy: cámara, micrófono y ubicación solo para el propio sitio; pagos, USB, puerto serie
+    // y Bluetooth, para nadie. Vacío para no enviar la cabecera
+    'permissions_policy' => 'camera=(self), microphone=(self), geolocation=(self), payment=(), usb=(), serial=(), bluetooth=()',
     // nonce: exige el nonce de la petición en los <script> inline (ver csp_nonce() en Twig)
     'csp' => ['enabled' => true, 'nonce' => false, 'unsafe_eval' => true],
     'websocket_service' => ['ws_url' => ''],

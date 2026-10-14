@@ -53,4 +53,4 @@ El kernel no puede garantizar esto; queda en cada proyecto:
 
 - **Un solo servidor.** Rate limiting y revocación de JWT se guardan en archivos locales. Con varios nodos, cada uno cuenta y revoca por separado; hace falta almacenamiento compartido (paso 5 del ROADMAP).
 - **Fallo abierto del rate limiting** si su carpeta no es escribible. Ver [SECURITY.md](SECURITY.md#comportamiento-ante-fallos).
-- **`'unsafe-inline'`** sigue en `script-src` como respaldo para navegadores sin soporte de nonce; los navegadores actuales lo ignoran cuando hay nonce.
+- **`'unsafe-inline'`** sigue en `style-src` (Tailwind y Vue) y en `script-src` solo si `csp.nonce` está apagado.
