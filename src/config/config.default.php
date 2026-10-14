@@ -2,11 +2,19 @@
 
 declare(strict_types=1);
 
+use Composer\InstalledVersions;
+
 // Valores por defecto de la configuración. `config.json` solo necesita declarar lo que cambia:
 // config.php los fusiona con array_replace_recursive y `versaCLI config:init` genera el
 // config.json inicial a partir de este mismo array.
 return [
-    'framework' => 'versaWYS-PHP ' . (Composer\InstalledVersions::isInstalled('versawys/kernel') ? Composer\InstalledVersions::getPrettyVersion('versawys/kernel') : 'dev'),
+    'framework' =>
+        'versaWYS-PHP '
+            . (
+                InstalledVersions::isInstalled('versawys/kernel')
+                    ? InstalledVersions::getPrettyVersion('versawys/kernel')
+                    : 'dev'
+            ),
     'database' => [
         'engine' => 'pdo',
         'driver' => 'mysql', // mysql | postgresql
@@ -58,13 +66,13 @@ return [
     ],
     'session' => [
         'key' => '', // config:init genera una clave aleatoria
-        'lifetime' => 36000,
+        'lifetime' => 36_000,
         'user_cookie' => [
             'domain' => '',
             'enable' => true,
             'key_encript' => '', // config:init genera una clave aleatoria
-            'lifetime' => 36000,
-            'lifetime_remember' => 2592000,
+            'lifetime' => 36_000,
+            'lifetime_remember' => 2_592_000,
             'secure' => true,
             'http_only' => true,
             'same_site' => 'Lax',
@@ -96,7 +104,7 @@ return [
         'default_module' => 'app',
         'use_console' => false,
         'format' => 'json',
-        'max_file_size' => 10485760,
+        'max_file_size' => 10_485_760,
         'retention_days' => 30,
         'include_stack_trace' => true,
         'timezone' => 'America/Santiago',
@@ -119,10 +127,30 @@ return [
         'cleanup_probability' => 100,
         'rules' => [
             'global' => ['requests' => 100, 'window' => 60, 'enabled' => true, 'description' => 'Límite global por IP'],
-            'api' => ['requests' => 30, 'window' => 60, 'enabled' => true, 'description' => 'Límite para endpoints API'],
-            'login' => ['requests' => 5, 'window' => 300, 'enabled' => true, 'description' => 'Límite para intentos de login'],
-            'upload' => ['requests' => 10, 'window' => 120, 'enabled' => true, 'description' => 'Límite para subida de archivos'],
-            'sensitive' => ['requests' => 3, 'window' => 600, 'enabled' => true, 'description' => 'Límite para endpoints sensibles'],
+            'api' => [
+                'requests' => 30,
+                'window' => 60,
+                'enabled' => true,
+                'description' => 'Límite para endpoints API',
+            ],
+            'login' => [
+                'requests' => 5,
+                'window' => 300,
+                'enabled' => true,
+                'description' => 'Límite para intentos de login',
+            ],
+            'upload' => [
+                'requests' => 10,
+                'window' => 120,
+                'enabled' => true,
+                'description' => 'Límite para subida de archivos',
+            ],
+            'sensitive' => [
+                'requests' => 3,
+                'window' => 600,
+                'enabled' => true,
+                'description' => 'Límite para endpoints sensibles',
+            ],
         ],
     ],
     'assets' => [

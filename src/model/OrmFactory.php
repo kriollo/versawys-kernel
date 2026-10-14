@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\model;
 
+use RuntimeException;
+use Throwable;
 use VersaORM\VersaORM;
 
 /**
@@ -36,21 +38,28 @@ class OrmFactory
             'logging' => $voConfig['logging'] ?? false,
             'log_path' => $dbConfig['log_path'] ?? $voConfig['log_path'] ?? './versaWYS/logs/orm/',
         ];
+
         try {
             $orm = new VersaORM($config);
             $orm->setTimezone($appConfig['build']['timezone']);
 
             // Alinear la zona horaria de la sesión de BD para que NOW() y similares coincidan con PHP.
             // MySQL recibe el offset (+HH:MM) porque los nombres de zona requieren tablas tz cargadas.
-            if (str_contains(strtolower((string) $config['driver']), 'pg') || str_contains(strtolower((string) $config['driver']), 'postgres')) {
+            if (
+                str_contains(strtolower((string) $config['driver']), 'pg')
+                || str_contains(strtolower((string) $config['driver']), 'postgres')
+            ) {
                 $orm->exec("SET TIME ZONE '{$appConfig['build']['timezone']}'");
-            } elseif (str_contains(strtolower((string) $config['driver']), 'mysql') || str_contains(strtolower((string) $config['driver']), 'maria')) {
+            } elseif (
+                str_contains(strtolower((string) $config['driver']), 'mysql')
+                || str_contains(strtolower((string) $config['driver']), 'maria')
+            ) {
                 $orm->exec("SET time_zone = '" . date('P') . "'");
             }
 
             return $orm;
-        } catch (\Throwable $e) {
-            $errorMsg = $e->getMessage();
+        } catch (Throwable $throwable) {
+            $errorMsg = $throwable->getMessage();
             $dbInfo = [
                 'driver' => $config['driver'] ?? 'unknown',
                 'host' => $config['host'] ?? 'unknown',
@@ -63,7 +72,7 @@ class OrmFactory
                 str_contains($errorMsg, 'no existe la base de datos')
                 || str_contains($errorMsg, 'database') && str_contains($errorMsg, 'does not exist')
             ) {
-                throw new \RuntimeException(
+                throw new RuntimeException(
                     sprintf(
                         "❌ ERROR DE BASE DE DATOS: La base de datos '%s' no existe.\n\n"
                         . "📊 Configuración:\n"
@@ -83,12 +92,12 @@ class OrmFactory
                         $dbInfo['database'],
                     ),
                     0,
-                    $e,
+                    $throwable,
                 );
             }
 
             if (str_contains($errorMsg, 'Connection refused') || str_contains($errorMsg, 'could not connect')) {
-                throw new \RuntimeException(
+                throw new RuntimeException(
                     sprintf(
                         "❌ ERROR DE CONEXIÓN: No se pudo conectar al servidor de base de datos.\n\n"
                         . "📊 Configuración:\n"
@@ -105,12 +114,12 @@ class OrmFactory
                         strtoupper($dbInfo['driver']),
                     ),
                     0,
-                    $e,
+                    $throwable,
                 );
             }
 
             if (str_contains($errorMsg, 'Access denied') || str_contains($errorMsg, 'authentication failed')) {
-                throw new \RuntimeException(
+                throw new RuntimeException(
                     sprintf(
                         "❌ ERROR DE AUTENTICACIÓN: Credenciales de base de datos incorrectas.\n\n"
                         . "📊 Configuración:\n"
@@ -123,12 +132,12 @@ class OrmFactory
                         $dbInfo['database'],
                     ),
                     0,
-                    $e,
+                    $throwable,
                 );
             }
 
             // Error genérico con información útil
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 sprintf(
                     "❌ ERROR DE BASE DE DATOS: %s\n\n"
                     . "📊 Configuración:\n"
@@ -144,7 +153,7 @@ class OrmFactory
                     $dbInfo['database'],
                 ),
                 0,
-                $e,
+                $throwable,
             );
         }
     }

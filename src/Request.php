@@ -33,7 +33,7 @@ class Request
     {
         try {
             $this->contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-            $this->method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+            $this->method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
             $this->url = $_SERVER['REQUEST_URI'] ?? '/';
             $this->params = $_REQUEST;
             $this->files = $_FILES;
@@ -78,7 +78,7 @@ class Request
             Loggin::error('Request initialization error in production: ' . $error_message, 'request');
 
             // Use our static method to determine if it's an API call
-            $isApi = Request::isApiRequest();
+            $isApi = self::isApiRequest();
 
             if ($isApi) {
                 Response::jsonError([
@@ -287,14 +287,14 @@ class Request
             return $configured;
         }
 
-        $https = in_array(strtolower((string) ($_SERVER['HTTPS'] ?? '')), ['on', '1'], true);
-        $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        $https = in_array(strtolower($_SERVER['HTTPS'] ?? ''), ['on', '1'], true);
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
         // Las cabeceras X-Forwarded-* solo valen si las puso un proxy propio: si no, cualquiera
         // podría apuntar el enlace de recuperación de contraseña a su dominio
-        if (self::isTrustedProxy((string) ($_SERVER['REMOTE_ADDR'] ?? ''))) {
-            $https = $https || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
-            $forwardedHost = trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_HOST'] ?? ''))[0]);
+        if (self::isTrustedProxy($_SERVER['REMOTE_ADDR'] ?? '')) {
+            $https = $https || strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+            $forwardedHost = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_HOST'] ?? '')[0]);
             $host = $forwardedHost !== '' ? $forwardedHost : $host;
         }
 
@@ -311,13 +311,13 @@ class Request
      */
     public static function clientIp(): string
     {
-        $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        $remote = $_SERVER['REMOTE_ADDR'] ?? '';
         if (!self::isTrustedProxy($remote)) {
             return $remote;
         }
 
         // De derecha a izquierda: la primera IP que no es un proxy propio es la del cliente
-        $chain = array_map(trim(...), explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '')));
+        $chain = array_map(trim(...), explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''));
         foreach (array_reverse($chain) as $ip) {
             if (filter_var($ip, FILTER_VALIDATE_IP) !== false && !self::isTrustedProxy($ip)) {
                 return $ip;
@@ -353,10 +353,10 @@ class Request
             }
 
             $bytes = intdiv($bits, 8);
-            $mask = (0xFF << (8 - $bits % 8)) & 0xFF;
+            $mask = (0xFF << (8 - ($bits % 8))) & 0xFF;
             if (
                 substr($ipBin, 0, $bytes) === substr($subnetBin, 0, $bytes)
-                && ($bits % 8 === 0 || (ord($ipBin[$bytes]) & $mask) === (ord($subnetBin[$bytes]) & $mask))
+                && (($bits % 8) === 0 || (ord($ipBin[$bytes]) & $mask) === (ord($subnetBin[$bytes]) & $mask))
             ) {
                 return true;
             }
@@ -386,17 +386,6 @@ class Request
         }
 
         return [$subnetBin, (int) $prefix];
-    }
-
-    private static function reportInvalidTrustedProxyRange(string $range): void
-    {
-        static $reported = [];
-        if (isset($reported[$range])) {
-            return;
-        }
-
-        $reported[$range] = true;
-        error_log(sprintf('trusted_proxies: se ignora la entrada inválida "%s" (se espera una IP o IP/prefijo).', $range));
     }
 
     /**
@@ -467,25 +456,32 @@ class Request
             return false;
         }
 
-        if (str_contains(strtolower((string) ($_SERVER['REQUEST_URI'] ?? '')), '/api/')
-            || str_contains(strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? '')), 'application/json')) {
+        if (
+            str_contains(strtolower($_SERVER['REQUEST_URI'] ?? ''), '/api/')
+            || str_contains(strtolower($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')
+        ) {
             return true;
         }
 
         // Cuerpos típicos de API (incluye formularios enviados por fetch)
-        $contentType = strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? ''));
-        foreach (['application/json', 'application/xml', 'multipart/form-data', 'application/x-www-form-urlencoded'] as $type) {
+        $contentType = strtolower($_SERVER['CONTENT_TYPE'] ?? '');
+        foreach ([
+            'application/json',
+            'application/xml',
+            'multipart/form-data',
+            'application/x-www-form-urlencoded',
+        ] as $type) {
             if ($contentType !== '' && str_starts_with($contentType, $type)) {
                 return true;
             }
         }
 
-        return strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+        return strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest';
     }
 
     protected function prepareParams(): void
     {
-        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
         if ($method === 'GET') {
             // Para GET, aplicar filtrado básico pero no agresivo
             $this->params = $_GET ?? [];
@@ -548,6 +544,20 @@ class Request
     protected function prepareFiles(): void
     {
         $this->files = filter_var_array($_FILES, FILTER_SANITIZE_SPECIAL_CHARS);
+    }
+
+    private static function reportInvalidTrustedProxyRange(string $range): void
+    {
+        static $reported = [];
+        if (isset($reported[$range])) {
+            return;
+        }
+
+        $reported[$range] = true;
+        error_log(sprintf(
+            'trusted_proxies: se ignora la entrada inválida "%s" (se espera una IP o IP/prefijo).',
+            $range,
+        ));
     }
 
     private function extractFilesFormData(string $part): array

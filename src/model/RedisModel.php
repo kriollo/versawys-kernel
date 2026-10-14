@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\model;
 
+use Exception;
 use Redis;
 use RedisException;
-use Exception;
 use versaWYS\kernel\Loggin;
 
 /**
@@ -50,16 +50,12 @@ class RedisModel
     /**
      * Constructor privado para prevenir instanciación directa.
      */
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 
     /**
      * Prevenir clonación de la instancia.
      */
-    private function __clone()
-    {
-    }
+    private function __clone() {}
 
     /**
      * Prevenir deserialización de la instancia.
@@ -146,7 +142,7 @@ class RedisModel
             }
 
             return $redis->setex($key, $expiration, $serializedValue);
-        } catch (\RedisException $redisException) {
+        } catch (RedisException $redisException) {
             self::log('Error en set(): ' . $redisException->getMessage());
 
             return false;
@@ -173,7 +169,7 @@ class RedisModel
             }
 
             return self::unserialize($value);
-        } catch (\RedisException $redisException) {
+        } catch (RedisException $redisException) {
             self::log('Error en get(): ' . $redisException->getMessage());
 
             return $default;
@@ -437,7 +433,7 @@ class RedisModel
      * Establecer múltiples campos en un hash de forma atómica (HSET múltiple).
      *
      * @param string $key
-     * @param array  $fields Array asociativo [campo => valor]
+     * @param array $fields Array asociativo [campo => valor]
      *
      * @return bool
      */

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use versaWYS\kernel\Request;
 
@@ -74,6 +75,7 @@ final class RequestProxyTest extends TestCase
         // Antes, "/not-a-prefix" valía como /0 y confiaba en todas las IPv4
         $log = tempnam(sys_get_temp_dir(), 'proxy');
         $previous = ini_set('error_log', $log);
+
         try {
             self::assertFalse(Request::isTrustedProxy('203.0.113.8'));
             self::assertFalse(Request::isTrustedProxy('192.0.2.1'));
@@ -150,7 +152,7 @@ final class RequestProxyTest extends TestCase
         yield 'con usuario' => ['app.ejemplo.cl@evil.test', 'http://localhost'];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('hosts')]
+    #[DataProvider('hosts')]
     public function testTheHostHeaderMustBeAHostName(string $host, string $expected): void
     {
         $_SERVER = ['REQUEST_METHOD' => 'GET', 'HTTP_HOST' => $host, 'REMOTE_ADDR' => '203.0.113.8'];

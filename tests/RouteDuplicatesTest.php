@@ -11,7 +11,7 @@ final class RouteDuplicatesTest extends TestCase
 {
     public function testTheSameMethodAndUrlInTwoFilesIsAnError(): void
     {
-        $route = static fn (string $method, string $url): array => ['method' => $method, 'url' => $url, 'issues' => []];
+        $route = static fn(string $method, string $url): array => ['method' => $method, 'url' => $url, 'issues' => []];
 
         $all = RouteManager::markDuplicates([
             'UsersRoutes.php' => [$route('GET', '/admin/usuarios'), $route('POST', '/admin/usuarios')],

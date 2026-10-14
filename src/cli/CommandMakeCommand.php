@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli;
 
+use Override;
+
 /**
  * Comando para generar nuevos comandos desde plantilla.
  *
@@ -11,19 +13,21 @@ namespace versaWYS\kernel\cli;
  */
 class CommandMakeCommand extends BaseCommand
 {
-    #[\Override]
+    #[Override]
     public function execute(array $params): int
     {
         // Manejar flag de ayuda
         if (in_array('--help', $params, strict: true) || in_array('-h', $params, strict: true)) {
             echo $this->getHelp() . "\n";
+
             return 0;
         }
 
-        if (empty($params)) {
+        if ($params === []) {
             $this->error('Falta el nombre del comando');
             echo "\n";
             echo $this->getHelp() . "\n";
+
             return 1;
         }
 
@@ -34,6 +38,7 @@ class CommandMakeCommand extends BaseCommand
             $this->error('Formato de nombre inválido');
             $this->info('Usa formato: modulo:accion o modulo:accion:subaccion');
             $this->info('Ejemplos: email:send, report:generate:monthly, user:create');
+
             return 1;
         }
 
@@ -50,6 +55,7 @@ class CommandMakeCommand extends BaseCommand
                 $this->warning('Sobrescribiendo archivo existente...');
             } else {
                 $this->info('Operación cancelada');
+
                 return 0;
             }
         }
@@ -70,8 +76,10 @@ class CommandMakeCommand extends BaseCommand
         // Escribir archivo
         if (file_put_contents($filePath, $content) === false) {
             $this->error("No se pudo crear el archivo: {$filePath}");
+
             return 1;
         }
+
         chmod($filePath, 0o775);
 
         $this->success("✓ Comando creado exitosamente: {$filePath}");
@@ -100,6 +108,58 @@ class CommandMakeCommand extends BaseCommand
         echo "\n";
 
         return 0;
+    }
+
+    #[Override]
+    public function getDescription(): string
+    {
+        return 'Genera un nuevo comando desde plantilla';
+    }
+
+    #[Override]
+    public function getHelp(): string
+    {
+        return <<<'HELP'
+            Comando: command:make
+
+            Descripción:
+              Genera un nuevo comando desde una plantilla predefinida con toda
+              la estructura necesaria para comenzar a desarrollar rápidamente.
+
+            Uso:
+              php versaCLI command:make:<nombre-comando>
+
+            Parámetros:
+              nombre-comando  Nombre del comando en formato modulo:accion
+                             Ejemplos: email:send, report:generate, user:create
+
+            Ejemplos:
+              php versaCLI command:make:notification:send
+              php versaCLI command:make:report:generate:monthly
+              php versaCLI command:make:data:import:csv
+
+            Conversión de nombres:
+              email:send              → EmailSendCommand.php
+              report:generate         → ReportGenerateCommand.php
+              user:create:admin       → UserCreateAdminCommand.php
+
+            Lo que hace:
+              1. Valida el nombre del comando
+              2. Convierte el nombre a formato de clase (CamelCase + Command)
+              3. Genera el archivo en app/commands/ con plantilla completa
+              4. Actualiza el cache de comandos automáticamente
+              5. Muestra instrucciones para usar el nuevo comando
+
+            Nota:
+              Para agregar una descripción personalizada, edita el archivo
+              generado y modifica el método getDescription().
+
+            Después de crear el comando:
+              - Edita app/commands/TuComandoCommand.php
+              - Implementa la lógica en el método execute()
+              - Ejecuta: php versaCLI app:tu:comando
+
+            HELP;
     }
 
     /**
@@ -229,57 +289,5 @@ class CommandMakeCommand extends BaseCommand
             }
 
             PHP;
-    }
-
-    #[\Override]
-    public function getDescription(): string
-    {
-        return 'Genera un nuevo comando desde plantilla';
-    }
-
-    #[\Override]
-    public function getHelp(): string
-    {
-        return <<<'HELP'
-            Comando: command:make
-
-            Descripción:
-              Genera un nuevo comando desde una plantilla predefinida con toda
-              la estructura necesaria para comenzar a desarrollar rápidamente.
-
-            Uso:
-              php versaCLI command:make:<nombre-comando>
-
-            Parámetros:
-              nombre-comando  Nombre del comando en formato modulo:accion
-                             Ejemplos: email:send, report:generate, user:create
-
-            Ejemplos:
-              php versaCLI command:make:notification:send
-              php versaCLI command:make:report:generate:monthly
-              php versaCLI command:make:data:import:csv
-
-            Conversión de nombres:
-              email:send              → EmailSendCommand.php
-              report:generate         → ReportGenerateCommand.php
-              user:create:admin       → UserCreateAdminCommand.php
-
-            Lo que hace:
-              1. Valida el nombre del comando
-              2. Convierte el nombre a formato de clase (CamelCase + Command)
-              3. Genera el archivo en app/commands/ con plantilla completa
-              4. Actualiza el cache de comandos automáticamente
-              5. Muestra instrucciones para usar el nuevo comando
-
-            Nota:
-              Para agregar una descripción personalizada, edita el archivo
-              generado y modifica el método getDescription().
-
-            Después de crear el comando:
-              - Edita app/commands/TuComandoCommand.php
-              - Implementa la lógica en el método execute()
-              - Ejecuta: php versaCLI app:tu:comando
-
-            HELP;
     }
 }

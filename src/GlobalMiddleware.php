@@ -7,6 +7,7 @@ namespace versaWYS\kernel;
 use app\models\Dashboard;
 use app\models\Users;
 use Exception;
+use SensitiveParameter;
 use versaWYS\kernel\helpers\Functions;
 
 class GlobalMiddleware
@@ -231,36 +232,6 @@ class GlobalMiddleware
         return true;
     }
 
-    /**
-     * Usuario de la petición: el que ya cargó checkSession o, si no se ejecutó antes, desde la BD.
-     *
-     * @return array<string, mixed>
-     */
-    private function currentUser(int $idUser): array
-    {
-        $loaded = self::$currentUserData['user'] ?? null;
-
-        return is_array($loaded) && (int) ($loaded['id'] ?? 0) === $idUser
-            ? $loaded
-            : (new Users())->findWithCompany($idUser);
-    }
-
-    /**
-     * Sin permiso: una navegación vuelve al panel; una petición que modifica datos recibe 403.
-     */
-    private function denyAccess(): never
-    {
-        global $request, $config;
-
-        if (strtoupper((string) $request->getMethod()) !== 'GET') {
-            Response::json(['success' => 0, 'message' => 'No tiene permisos para realizar esta acción'], 403);
-            exit();
-        }
-
-        Response::redirect('/' . $config['admin']['custom_url'] . '/dashboard');
-        exit();
-    }
-
     public function onlyAdmin(): ?bool
     {
         global $session, $debug, $config;
@@ -316,7 +287,7 @@ class GlobalMiddleware
         $url = $request->getUrl();
         $menuUser = (new Dashboard())->getMenuUser($iduser);
         foreach ($menuUser as $value) {
-            if (!($value['url_menu'] === $url || $value['url_submenu'] === $url)) {
+            if ($value['url_menu'] !== $url && $value['url_submenu'] !== $url) {
                 continue;
             }
 
@@ -326,7 +297,7 @@ class GlobalMiddleware
         Response::redirect('/e404');
     }
 
-    public function validatePolicyPassword(#[\SensitiveParameter] $password): bool
+    public function validatePolicyPassword(#[SensitiveParameter] $password): bool
     {
         global $config;
 
@@ -358,7 +329,7 @@ class GlobalMiddleware
             return false;
         }
 
-        return !($specialChars && !preg_match('/[^a-zA-Z\d]/', $password));
+        return !$specialChars || preg_match('/[^a-zA-Z\d]/', $password) === 1;
     }
 
     public function getMessagePolicyPassword(): string
@@ -426,6 +397,36 @@ class GlobalMiddleware
         $today = strtotime(date('Y-m-d H:i:s'));
 
         return $expiration < $today;
+    }
+
+    /**
+     * Usuario de la petición: el que ya cargó checkSession o, si no se ejecutó antes, desde la BD.
+     *
+     * @return array<string, mixed>
+     */
+    private function currentUser(int $idUser): array
+    {
+        $loaded = self::$currentUserData['user'] ?? null;
+
+        return is_array($loaded) && (int) ($loaded['id'] ?? 0) === $idUser
+            ? $loaded
+            : (new Users())->findWithCompany($idUser);
+    }
+
+    /**
+     * Sin permiso: una navegación vuelve al panel; una petición que modifica datos recibe 403.
+     */
+    private function denyAccess(): never
+    {
+        global $request, $config;
+
+        if (strtoupper((string) $request->getMethod()) !== 'GET') {
+            Response::json(['success' => 0, 'message' => 'No tiene permisos para realizar esta acción'], 403);
+            exit();
+        }
+
+        Response::redirect('/' . $config['admin']['custom_url'] . '/dashboard');
+        exit();
     }
 
     /**

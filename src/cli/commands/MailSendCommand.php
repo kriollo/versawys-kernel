@@ -6,8 +6,10 @@ namespace versaWYS\kernel\cli\commands;
 
 use app\services\MailService;
 use JsonException;
+use Override;
 use Throwable;
 use versaWYS\kernel\cli\BaseCommand;
+use versaWYS\kernel\ContentType;
 use versaWYS\kernel\Loggin;
 use versaWYS\kernel\versaTwig;
 
@@ -36,7 +38,7 @@ class MailSendCommand extends BaseCommand
 {
     private const LOG_MODULE = 'mail-send';
 
-    #[\Override]
+    #[Override]
     public function execute(array $params): int
     {
         Loggin::debug('Comando mail:send iniciado', self::LOG_MODULE, [
@@ -63,12 +65,12 @@ class MailSendCommand extends BaseCommand
             Loggin::debug('base64 decodificado', self::LOG_MODULE, ['json_len' => strlen($jsonRaw)]);
 
             $payload = json_decode($jsonRaw, true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException $e) {
+        } catch (JsonException $jsonException) {
             Loggin::error('JSON inválido tras decodificar base64', self::LOG_MODULE, [
-                'error' => $e->getMessage(),
+                'error' => $jsonException->getMessage(),
                 'raw_preview' => substr($jsonRaw ?? '', 0, 300),
             ]);
-            $this->error('JSON inválido: ' . $e->getMessage());
+            $this->error('JSON inválido: ' . $jsonException->getMessage());
 
             return 1;
         }
@@ -176,19 +178,17 @@ class MailSendCommand extends BaseCommand
             if ($type === 'twig') {
                 $enviado = $mailService->enviarTemplate($to, $subject, $template, $data, $imagenesEmbed);
             } else {
-                $contentType = $type === 'text'
-                    ? \versaWYS\kernel\ContentType::TEXT
-                    : \versaWYS\kernel\ContentType::HTML;
+                $contentType = $type === 'text' ? ContentType::TEXT : ContentType::HTML;
                 $enviado = $mailService->enviar($to, $subject, $body, $contentType, $imagenesEmbed);
             }
-        } catch (Throwable $e) {
+        } catch (Throwable $throwable) {
             Loggin::error('Excepción al enviar correo', self::LOG_MODULE, [
                 'to' => $to['email'],
                 'type' => $type,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'error' => $throwable->getMessage(),
+                'trace' => $throwable->getTraceAsString(),
             ]);
-            $this->error('Excepción al enviar: ' . $e->getMessage());
+            $this->error('Excepción al enviar: ' . $throwable->getMessage());
 
             return 1;
         }
@@ -216,13 +216,13 @@ class MailSendCommand extends BaseCommand
         return 1;
     }
 
-    #[\Override]
+    #[Override]
     public function getDescription(): string
     {
         return 'Comando universal de envío de correo: soporta Twig, HTML directo e imágenes embed CID';
     }
 
-    #[\Override]
+    #[Override]
     public function getHelp(): string
     {
         return <<<'HELP'

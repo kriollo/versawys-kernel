@@ -7,6 +7,7 @@ namespace versaWYS\kernel\cli;
 use Exception;
 use PDO;
 use PDOException;
+use Symfony\Polyfill\Ctype\Ctype;
 
 class StatusManager
 {
@@ -82,6 +83,7 @@ class StatusManager
                             if ($driver === 'postgresql') {
                                 $driver = 'pgsql';
                             }
+
                             $dsn = sprintf(
                                 '%s:host=%s;port=%s;dbname=%s',
                                 $driver,
@@ -163,6 +165,7 @@ class StatusManager
 
         if ($extensions === []) {
             echo "   ⚠ No se pudo leer composer.lock para validar extensiones\n\n";
+
             return;
         }
 
@@ -267,6 +270,7 @@ class StatusManager
 
     /**
      * @param array<string, mixed> $config
+     *
      * @return array<string, string> [extension_name => reason]
      */
     private static function getProjectRequiredExtensions(array $config): array
@@ -297,6 +301,7 @@ class StatusManager
 
     /**
      * @param array<int, string> $extensions Extensiones con prefijo ext-
+     *
      * @return array<int, string>
      */
     private static function mapExtensionsToLinuxPackages(array $extensions): array
@@ -364,9 +369,7 @@ class StatusManager
                     continue;
                 }
 
-                if (!isset($extensions[$dependency])) {
-                    $extensions[$dependency] = is_string($constraint) ? $constraint : '*';
-                }
+                $extensions[$dependency] ??= is_string($constraint) ? $constraint : '*';
             }
         }
 
@@ -381,7 +384,7 @@ class StatusManager
     private static function getAvailablePolyfills(): array
     {
         return [
-            'ext-ctype' => class_exists('Symfony\\Polyfill\\Ctype\\Ctype'),
+            'ext-ctype' => class_exists(Ctype::class),
             'ext-mbstring' => class_exists('Symfony\\Polyfill\\Mbstring\\Mbstring'),
             'ext-iconv' => class_exists('Symfony\\Polyfill\\Iconv\\Iconv'),
         ];

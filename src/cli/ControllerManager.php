@@ -20,8 +20,10 @@ class ControllerManager
         if (file_exists($controllersFile)) {
             if (!CLIHelper::confirm("El Controlador {$controllersFile} ya existe. Desea sobreescribirlo?")) {
                 CLIErrorHandler::info('Operación cancelada.');
+
                 return;
             }
+
             unlink($controllersFile);
         }
 
@@ -80,6 +82,7 @@ class ControllerManager
 
         if (!file_exists($controllersFile)) {
             CLIErrorHandler::warning("El Controlador {$controllersFile} no existe.");
+
             return;
         }
 

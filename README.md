@@ -53,14 +53,19 @@ La CI hace lo mismo en PHP 8.3, 8.4 y 8.5. Si el cambio también necesita modifi
 ## Pruebas
 
 ```bash
+composer fixer:all      # corrige y formatea todo, como en los proyectos (ver abajo)
+composer check          # formato (mago fmt) + mago lint + pruebas + phpstan: lo que corre la CI
 composer test           # PHPUnit: Router, Request, archivos, rate limiting, configuración, /up
 composer mago           # linter mago (con mago-baseline.toml)
-composer check          # formato (Pint) + mago + pruebas + phpstan
 composer bench          # línea base de rendimiento (ver BENCHMARK.md)
 composer mago:analyze   # analizador de mago, opcional (el del CI es phpstan)
 ```
 
-`mago lint` falla solo con hallazgos nuevos: los heredados están en `mago-baseline.toml`. Al corregir algunos, `composer mago:baseline` regenera la línea base para que no vuelvan. El formato lo da Pint: no usar `mago fmt`, que aplicaría otro estilo.
+**Formato.** Las mismas herramientas y configuración que vservDigitalizacion, versaSTORE y anima. `composer fixer:all` corre, en este orden: `mago analyze --fix`, `mago lint --fix`, rector (`rector.php`), php-cs-fixer (`.php-cs-fixer.dist.php`), Pint y `mago fmt`. El último paso define el formato, y es lo que revisa la CI (`mago fmt --dry-run`); por eso no se verifican php-cs-fixer ni Pint por separado. Correrlo dos veces no cambia nada.
+
+Para una biblioteca, rector no convierte métodos estáticos en métodos de instancia (`rector.php`): cambiaría cómo los usan las aplicaciones. `SensitiveParameterTest` vigila que el formato no deje un `#[SensitiveParameter]` sin su `use`, porque PHP lo ignoraría sin aviso.
+
+`mago lint` falla solo con hallazgos nuevos: los heredados están en `mago-baseline.toml`. Al corregir algunos, `composer mago:baseline` regenera la línea base para que no vuelvan.
 
 La CI también ejecuta `composer audit` y la suite del esqueleto contra este kernel, que cubre por HTTP lo que necesita un servidor: sesión y JWT, CSRF, CSP, `QUERY`, `app:check:deploy --url`. Las pruebas nuevas que no necesitan un servidor van en este repositorio.
 

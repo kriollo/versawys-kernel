@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /**
  * Router Script para el servidor de desarrollo PHP integrado (php -S)
- * Este script maneja las reescrituras de URL y bloquea acceso a carpetas sensibles
+ * Este script maneja las reescrituras de URL y bloquea acceso a carpetas sensibles.
  */
 
 // Obtener la URI solicitada
@@ -14,7 +14,16 @@ $uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 $projectRoot = $_SERVER['DOCUMENT_ROOT'] . '/';
 
 // Lista de carpetas sensibles que NO deben ser accesibles directamente
-$blockedDirectories = ['/app/', '/versaWYS/', '/vendor/', '/logs/', '/src/', '/configs/', '/scripts/', '/documentacion/'];
+$blockedDirectories = [
+    '/app/',
+    '/versaWYS/',
+    '/vendor/',
+    '/logs/',
+    '/src/',
+    '/configs/',
+    '/scripts/',
+    '/documentacion/',
+];
 
 // El frontend compilado importa Vue y otras librerías desde /node_modules/<paquete>/dist/.
 // De node_modules solo se sirven esos módulos JS y CSS; nada más (package.json, fuentes, binarios).
@@ -23,6 +32,7 @@ if (
     && preg_match('#^/node_modules/[\w@.\-/]+\.(js|mjs|css)$#i', $uri) !== 1
 ) {
     require_once $projectRoot . 'index.php';
+
     return true;
 }
 
@@ -33,6 +43,7 @@ foreach ($blockedDirectories as $blockedDir) {
     }
 
     require_once $projectRoot . 'index.php';
+
     return true;
 }
 
@@ -58,6 +69,7 @@ foreach ($blockedPatterns as $pattern) {
 
     http_response_code(404);
     echo '<!DOCTYPE html><html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1></body></html>';
+
     return true;
 }
 
@@ -99,4 +111,5 @@ if ($uri !== '/' && file_exists($projectRoot . $uri)) {
 
 // Para todo lo demás (rutas de la aplicación, 404, etc.), pasar por el router del framework
 require_once $projectRoot . 'index.php';
+
 return true;

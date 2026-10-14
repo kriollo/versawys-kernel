@@ -24,7 +24,9 @@ class ServerManager
 
         // ✅ VERIFICAR SI EL PUERTO 8000 ESTÁ EN USO
         if (!self::isPortAvailable($port)) {
-            CLIErrorHandler::error("❌ ERROR: El puerto {$port} ya está siendo utilizado. Use --port=N para elegir otro.");
+            CLIErrorHandler::error(
+                "❌ ERROR: El puerto {$port} ya está siendo utilizado. Use --port=N para elegir otro.",
+            );
             echo "\n";
 
             // Intentar obtener información del proceso que usa el puerto
@@ -35,6 +37,7 @@ class ServerManager
                 if (isset($processInfo['name']) && $processInfo['name'] !== null) {
                     echo '   Proceso: ' . CLIErrorHandler::colorize($processInfo['name'], 'cyan') . "\n";
                 }
+
                 echo "\n";
                 echo "💡 Para liberar el puerto, puedes:\n";
 
@@ -43,15 +46,13 @@ class ServerManager
                     echo
                         '   2. Ejecutar: '
                             . CLIErrorHandler::colorize("taskkill /PID {$processInfo['pid']} /F", 'yellow')
-                            . "\n"
-                    ;
+                            . "\n";
                 } else {
                     echo '   1. Ejecutar: ' . CLIErrorHandler::colorize("kill {$processInfo['pid']}", 'yellow') . "\n";
                     echo
                         '   2. O con fuerza: '
                             . CLIErrorHandler::colorize("kill -9 {$processInfo['pid']}", 'yellow')
-                            . "\n"
-                    ;
+                            . "\n";
                 }
 
                 echo "   3. Usar otro puerto modificando el comando en ServerManager.php\n";
@@ -61,8 +62,7 @@ class ServerManager
                     echo
                         '   Puedes verificar con: '
                             . CLIErrorHandler::colorize('netstat -ano | findstr :' . $port, 'yellow')
-                            . "\n"
-                    ;
+                            . "\n";
                 } else {
                     echo '   Puedes verificar con: ' . CLIErrorHandler::colorize('lsof -i :' . $port, 'yellow') . "\n";
                 }
@@ -95,7 +95,13 @@ class ServerManager
         }
 
         // Comando para iniciar el servidor con router script
-        $command = sprintf('php -S %s:%d -t %s %s', $host, $port, escapeshellarg($publicDir), escapeshellarg($routerScript));
+        $command = sprintf(
+            'php -S %s:%d -t %s %s',
+            $host,
+            $port,
+            escapeshellarg($publicDir),
+            escapeshellarg($routerScript),
+        );
 
         if ($verbose) {
             CLIErrorHandler::info('Ejecutando: ' . $command);
@@ -108,7 +114,7 @@ class ServerManager
     }
 
     /**
-     * Detecta qué ejecutable de PowerShell está disponible
+     * Detecta qué ejecutable de PowerShell está disponible.
      */
     private static function getPowerShellExecutable(): ?string
     {
@@ -128,13 +134,13 @@ class ServerManager
     }
 
     /**
-     * Verifica si un puerto está disponible
+     * Verifica si un puerto está disponible.
      */
     private static function isPortAvailable(int $port): bool
     {
         if (PHP_OS_FAMILY === 'Windows') {
             // Usar netstat con ruta completa para evitar dependencias de PATH o shell
-            $command = "C:\\Windows\\System32\\netstat.exe -ano";
+            $command = 'C:\\Windows\\System32\\netstat.exe -ano';
             $output = @shell_exec($command);
 
             if ($output === null || trim($output) === '') {
@@ -148,10 +154,8 @@ class ServerManager
                 // El patrón busca ":8000 " o similar para evitar matchear ":80001"
                 // Y verifica que la línea contenga LISTENING o ESCUCHANDO
                 if (
-                    !(
-                        (str_contains($line, ":{$port} ") || str_contains($line, ":{$port}\t"))
-                        && (stripos($line, 'LISTENING') !== false || stripos($line, 'ESCUCHANDO') !== false)
-                    )
+                    !str_contains($line, ":{$port} ") && !str_contains($line, ":{$port}\t")
+                    || stripos($line, 'LISTENING') === false && stripos($line, 'ESCUCHANDO') === false
                 ) {
                     continue;
                 }
@@ -174,7 +178,7 @@ class ServerManager
     }
 
     /**
-     * Método alternativo usando sockets (funciona en todos los sistemas)
+     * Método alternativo usando sockets (funciona en todos los sistemas).
      */
     private static function checkPortWithSocket(int $port): bool
     {
@@ -190,7 +194,7 @@ class ServerManager
     }
 
     /**
-     * Obtiene información del proceso usando un puerto
+     * Obtiene información del proceso usando un puerto.
      */
     private static function getProcessUsingPort(int $port): ?array
     {
@@ -216,7 +220,7 @@ class ServerManager
         }
 
         // En Windows - usar netstat primero (siempre disponible)
-        $command = "C:\\Windows\\System32\\netstat.exe -ano";
+        $command = 'C:\\Windows\\System32\\netstat.exe -ano';
         $output = @shell_exec($command);
 
         if ($output === null || trim($output) === '') {
@@ -227,10 +231,8 @@ class ServerManager
         $lines = explode("\n", $output);
         foreach ($lines as $line) {
             if (
-                !(
-                    (stripos($line, ":{$port}") !== false || stripos($line, ":{$port} ") !== false)
-                    && (stripos($line, 'LISTENING') !== false || stripos($line, 'ESCUCHANDO') !== false)
-                )
+                stripos($line, ":{$port}") === false && stripos($line, ":{$port} ") === false
+                || stripos($line, 'LISTENING') === false && stripos($line, 'ESCUCHANDO') === false
             ) {
                 continue;
             }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace versaWYS\kernel\Tests;
 
 use PHPUnit\Framework\TestCase;
+use versaWYS\kernel\RateLimitMiddleware;
+use versaWYS\kernel\Request;
 use versaWYS\kernel\SecurityUtils;
 
 final class RateLimitTest extends TestCase
@@ -30,21 +32,8 @@ final class RateLimitTest extends TestCase
         foreach (glob($this->dir . '*') ?: [] as $file) {
             unlink($file);
         }
-        @rmdir($this->dir);
-    }
 
-    /** @return array<string, mixed> */
-    private static function config(string $dir, int $requests = 3): array
-    {
-        return [
-            'rate_limiting' => [
-                'enabled' => true,
-                'cache_dir' => $dir,
-                'cleanup_probability' => 1000000,
-                'rules' => ['login' => ['requests' => $requests, 'window' => 60, 'enabled' => true]],
-            ],
-            'logging' => ['dir' => sys_get_temp_dir() . '/versawys-test-logs/'],
-        ];
+        @rmdir($this->dir);
     }
 
     public function testItBlocksWithA429AfterTheLimit(): void
@@ -83,10 +72,10 @@ final class RateLimitTest extends TestCase
         $attempt = static function (string $ip, string $email): array|true {
             $_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/admin/login', 'REMOTE_ADDR' => $ip];
             $_REQUEST = ['email' => $email];
-            $GLOBALS['request'] = new \versaWYS\kernel\Request();
+            $GLOBALS['request'] = new Request();
             $GLOBALS['request']->setParam('email', $email);
 
-            return \versaWYS\kernel\RateLimitMiddleware::checkLoginLimit();
+            return RateLimitMiddleware::checkLoginLimit();
         };
 
         self::assertTrue($attempt('198.51.100.1', 'ana@ejemplo.cl'));
@@ -106,18 +95,25 @@ final class RateLimitTest extends TestCase
         // flock: 8 procesos a la vez sobre el mismo contador no pierden incrementos
         $script = tempnam(sys_get_temp_dir(), 'rl') . '.php';
         file_put_contents($script, '<?php
-            require ' . var_export(dirname(__DIR__) . '/vendor/autoload.php', true) . ';
-            $GLOBALS["config"] = ' . var_export(self::config($this->dir, 100000), true) . ';
-            for ($i = 0; $i < 25; $i++) { versaWYS\kernel\SecurityUtils::checkRateLimit("203.0.113.9", "login"); }
-        ');
+            require ' . var_export(
+            __DIR__ . '/../vendor/autoload.php',
+            true,
+        ) . ';
+            $GLOBALS["config"] = ' . var_export(self::config($this->dir, 100_000), true) . (
+            ';
+            for ($i = 0; $i < 25; $i++) { ' . SecurityUtils::class . '::checkRateLimit("203.0.113.9", "login"); }
+        '
+        ));
 
         $processes = [];
         for ($p = 0; $p < 8; $p++) {
             $processes[] = proc_open([PHP_BINARY, $script], [], $pipes);
         }
+
         foreach ($processes as $process) {
             proc_close($process);
         }
+
         unlink($script);
 
         $files = glob($this->dir . '*.json') ?: [];
@@ -143,8 +139,24 @@ final class RateLimitTest extends TestCase
             unlink($blocker);
         }
 
-        $logs = (string) file_get_contents($log) . implode('', array_map(file_get_contents(...), glob(sys_get_temp_dir() . '/versawys-test-logs/*') ?: []));
+        $logs =
+            (string) file_get_contents($log)
+            . implode('', array_map(file_get_contents(...), glob(sys_get_temp_dir() . '/versawys-test-logs/*') ?: []));
         unlink($log);
         self::assertStringContainsString('Rate limiting sin almacenamiento escribible', $logs);
+    }
+
+    /** @return array<string, mixed> */
+    private static function config(string $dir, int $requests = 3): array
+    {
+        return [
+            'rate_limiting' => [
+                'enabled' => true,
+                'cache_dir' => $dir,
+                'cleanup_probability' => 1_000_000,
+                'rules' => ['login' => ['requests' => $requests, 'window' => 60, 'enabled' => true]],
+            ],
+            'logging' => ['dir' => sys_get_temp_dir() . '/versawys-test-logs/'],
+        ];
     }
 }

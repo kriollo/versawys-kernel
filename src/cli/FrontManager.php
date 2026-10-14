@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli;
 
+use Exception;
+
 class FrontManager
 {
     private static string $templateTwig = 'app/templates/dashboard/';
@@ -19,16 +21,19 @@ class FrontManager
 
         try {
             CLIHelper::ensureDirectory($path, 0o775);
-        } catch (\Exception $e) {
-            CLIErrorHandler::warning($e->getMessage());
+        } catch (Exception $exception) {
+            CLIErrorHandler::warning($exception->getMessage());
+
             return false;
         }
 
         if (file_exists($templateTWIG)) {
             if (!CLIHelper::confirm("El template {$templateTWIG} ya existe. Desea sobreescribirlo?")) {
                 CLIErrorHandler::info('Operación cancelada.');
+
                 return false;
             }
+
             unlink($templateTWIG);
         }
 
@@ -42,10 +47,12 @@ class FrontManager
         if (file_put_contents($templateTWIG, $template)) {
             chmod($templateTWIG, 0o775);
             CLIErrorHandler::success("Template {$templateTWIG} creado.");
+
             return true;
         }
 
         CLIErrorHandler::warning("No se pudo crear el archivo: {$templateTWIG}");
+
         return false;
     }
 
@@ -58,16 +65,19 @@ class FrontManager
 
         try {
             CLIHelper::ensureDirectory($path, 0o775);
-        } catch (\Exception $e) {
-            CLIErrorHandler::warning($e->getMessage());
+        } catch (Exception $exception) {
+            CLIErrorHandler::warning($exception->getMessage());
+
             return false;
         }
 
         if (file_exists($componentVue)) {
             if (!CLIHelper::confirm("El componente Vue {$componentVue} ya existe. Desea sobreescribirlo?")) {
                 CLIErrorHandler::info('Operación cancelada.');
+
                 return false;
             }
+
             unlink($componentVue);
         }
 
@@ -95,10 +105,12 @@ class FrontManager
         if (file_put_contents($componentVue, $component)) {
             chmod($componentVue, 0o775);
             CLIErrorHandler::success("Componente Vue {$componentVue} creado.");
+
             return true;
         }
 
         CLIErrorHandler::warning("No se pudo crear el archivo: {$componentVue}");
+
         return false;
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use versaWYS\kernel\helpers\Functions;
 
@@ -30,7 +31,7 @@ final class CsrfTest extends TestCase
         yield 'prefijo del token' => ['abcdef', 'abc'];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('invalidPairs')]
+    #[DataProvider('invalidPairs')]
     public function testMalformedTokensAreRejectedWithoutErrors(mixed $session, mixed $sent): void
     {
         self::assertFalse(Functions::validateCSRFToken($session, $sent));
@@ -38,7 +39,7 @@ final class CsrfTest extends TestCase
 
     public function testEveryTokenIsDifferent(): void
     {
-        $tokens = array_map(static fn (): string => Functions::generateCSRFToken(), range(1, 200));
+        $tokens = array_map(Functions::generateCSRFToken(...), range(1, 200));
 
         self::assertCount(200, array_unique($tokens));
     }

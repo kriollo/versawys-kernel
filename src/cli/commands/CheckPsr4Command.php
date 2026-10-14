@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli\commands;
 
+use Exception;
+use Override;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use versaWYS\kernel\cli\BaseCommand;
@@ -19,14 +21,17 @@ class CheckPsr4Command extends BaseCommand
 
     /** @var list<string> Prefijos PSR-4 del proyecto, en minúsculas (app\, versawys\kernel\) */
     private array $projectPrefixes = [];
+
     private array $classToFile = [];
+
     private array $classMethods = [];
+
     private array $classInheritance = [];
 
     /** @var array<string,array<mixed>> Cache de tokens por filepath para evitar re-tokenización */
     private array $tokenCache = [];
 
-    #[\Override]
+    #[Override]
     public function execute(array $params): int
     {
         $projectRoot = getcwd();
@@ -47,7 +52,9 @@ class CheckPsr4Command extends BaseCommand
         }
 
         if (in_array('--deadcode', $params, true)) {
-            CLIErrorHandler::info('--deadcode se eliminó en versawys/kernel 2.10: para métodos y variables sin uso, usar phpstan o mago.');
+            CLIErrorHandler::info(
+                '--deadcode se eliminó en versawys/kernel 2.10: para métodos y variables sin uso, usar phpstan o mago.',
+            );
         }
 
         CLIErrorHandler::printSeparator();
@@ -164,13 +171,13 @@ class CheckPsr4Command extends BaseCommand
     // DEAD CODE DETECTION
     // =========================================================
 
-    #[\Override]
+    #[Override]
     public function getDescription(): string
     {
         return 'Análisis completo PSR-4: estructura, namespaces, case-sensitivity y referencias';
     }
 
-    #[\Override]
+    #[Override]
     public function getHelp(): string
     {
         return <<<'HELP'
@@ -205,6 +212,58 @@ class CheckPsr4Command extends BaseCommand
             HELP;
     }
 
+    /**
+     * Busca una ruta sin distinguir mayúsculas y dice dónde difiere de lo que hay en disco.
+     *
+     * @return array{0: ?string, 1: ?array{used: string, expected: string}}
+     */
+    public static function locatePath(string $path): array
+    {
+        $segments = explode('/', str_replace('\\', '/', $path));
+        $current = preg_match('/^[A-Za-z]:$/', $segments[0]) === 1 ? array_shift($segments) : '';
+        $mismatch = null;
+
+        foreach ($segments as $segment) {
+            if ($segment === '' || $segment === '.') {
+                continue;
+            }
+
+            if ($segment === '..') {
+                $current = dirname($current === '' ? '/' : $current);
+                $current = $current === '/' ? '' : $current;
+                continue;
+            }
+
+            $entries = @scandir($current === '' ? '/' : $current);
+            if ($entries === false) {
+                return [null, null];
+            }
+
+            if (!in_array($segment, $entries, true)) {
+                $actual = null;
+                foreach ($entries as $entry) {
+                    if (strcasecmp($entry, $segment) !== 0) {
+                        continue;
+                    }
+
+                    $actual = $entry;
+                    break;
+                }
+
+                if ($actual === null) {
+                    return [null, null];
+                }
+
+                $mismatch ??= ['used' => $segment, 'expected' => $actual];
+                $segment = $actual;
+            }
+
+            $current .= '/' . $segment;
+        }
+
+        return [$current, $mismatch];
+    }
+
     private function buildClassIndex(string $dir, string $prefix): void
     {
         try {
@@ -222,7 +281,7 @@ class CheckPsr4Command extends BaseCommand
                 $declared = $this->parsePhpFileDetails($filePath);
                 $this->indexDeclaredTypes($filePath, (string) $declared['namespace']);
 
-                if ('' === $declared['class']) {
+                if ($declared['class'] === '') {
                     continue;
                 }
 
@@ -238,7 +297,7 @@ class CheckPsr4Command extends BaseCommand
                     'traits' => array_map('strtolower', $declared['traits']),
                 ];
             }
-        } catch (\Exception $e) {
+        } catch (Exception) {
         }
     }
 
@@ -263,7 +322,7 @@ class CheckPsr4Command extends BaseCommand
                 $expectedFQCN = rtrim($prefix, '\\') . ($relPathNs === '' ? '' : '\\' . $relPathNs);
 
                 $declared = $this->parsePhpFileDetails($filePath);
-                if ('' === $declared['class']) {
+                if ($declared['class'] === '') {
                     continue;
                 }
 
@@ -284,10 +343,10 @@ class CheckPsr4Command extends BaseCommand
                     $issues[] = $caseIssue;
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $exception) {
             $issues[] = [
                 'type' => 'scan_error',
-                'message' => "Error escaneando {$dir}: " . $e->getMessage(),
+                'message' => "Error escaneando {$dir}: " . $exception->getMessage(),
             ];
         }
 
@@ -349,10 +408,10 @@ class CheckPsr4Command extends BaseCommand
                     }
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $exception) {
             $issues[] = [
                 'type' => 'scan_error',
-                'message' => "Error analizando use statements en {$dir}: " . $e->getMessage(),
+                'message' => "Error analizando use statements en {$dir}: " . $exception->getMessage(),
             ];
         }
 
@@ -391,10 +450,12 @@ class CheckPsr4Command extends BaseCommand
                         ++$i;
                         continue;
                     }
+
                     if ($t[0] === T_WHITESPACE) {
                         ++$i;
                         continue;
                     }
+
                     if ($t[0] === T_AS) {
                         break;
                     }
@@ -403,6 +464,7 @@ class CheckPsr4Command extends BaseCommand
                         break;
                     }
                 }
+
                 ++$i;
             }
 
@@ -443,10 +505,10 @@ class CheckPsr4Command extends BaseCommand
                     }
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $exception) {
             $issues[] = [
                 'type' => 'scan_error',
-                'message' => "Error analizando rutas en {$dir}: " . $e->getMessage(),
+                'message' => "Error analizando rutas en {$dir}: " . $exception->getMessage(),
             ];
         }
 
@@ -471,7 +533,11 @@ class CheckPsr4Command extends BaseCommand
 
             // `new class` y `Foo::class` no son declaraciones
             $prev = $this->getPrevSignificantTokenIndex($tokens, $i);
-            if ($prev !== null && is_array($tokens[$prev]) && in_array($tokens[$prev][0], [T_NEW, T_DOUBLE_COLON], strict: true)) {
+            if (
+                $prev !== null
+                && is_array($tokens[$prev])
+                && in_array($tokens[$prev][0], [T_NEW, T_DOUBLE_COLON], strict: true)
+            ) {
                 continue;
             }
 
@@ -564,10 +630,10 @@ class CheckPsr4Command extends BaseCommand
                     ];
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $exception) {
             $issues[] = [
                 'type' => 'scan_error',
-                'message' => "Error analizando llamadas estáticas en {$dir}: " . $e->getMessage(),
+                'message' => "Error analizando llamadas estáticas en {$dir}: " . $exception->getMessage(),
             ];
         }
 
@@ -629,10 +695,10 @@ class CheckPsr4Command extends BaseCommand
                     ];
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $exception) {
             $issues[] = [
                 'type' => 'scan_error',
-                'message' => "Error analizando instanciaciones new en {$dir}: " . $e->getMessage(),
+                'message' => "Error analizando instanciaciones new en {$dir}: " . $exception->getMessage(),
             ];
         }
 
@@ -650,7 +716,7 @@ class CheckPsr4Command extends BaseCommand
         for ($i = 0; $i < $count; ++$i) {
             $token = $tokens[$i] ?? null;
 
-            if (!(is_array($token) && $token[0] === T_DOUBLE_COLON)) {
+            if (!is_array($token) || $token[0] !== T_DOUBLE_COLON) {
                 continue;
             }
 
@@ -674,6 +740,7 @@ class CheckPsr4Command extends BaseCommand
                         if ($line === 0) {
                             $line = $prev[2] ?? 0;
                         }
+
                         --$j;
                         continue;
                     }
@@ -700,11 +767,7 @@ class CheckPsr4Command extends BaseCommand
             }
 
             // Con su barra inicial, si la tiene: \Clase es un nombre global, no relativo al namespace
-            $resolved = $this->resolveClassNameFromContext(
-                $originalName,
-                $context['namespace'],
-                $context['uses'],
-            );
+            $resolved = $this->resolveClassNameFromContext($originalName, $context['namespace'], $context['uses']);
             if ($resolved === null) {
                 continue;
             }
@@ -730,7 +793,7 @@ class CheckPsr4Command extends BaseCommand
         for ($i = 0; $i < $count; ++$i) {
             $token = $tokens[$i] ?? null;
 
-            if (!(is_array($token) && $token[0] === T_NEW)) {
+            if (!is_array($token) || $token[0] !== T_NEW) {
                 continue;
             }
 
@@ -782,11 +845,7 @@ class CheckPsr4Command extends BaseCommand
             $normalizedOriginal = ltrim($originalName, '\\');
 
             // Con su barra inicial, si la tiene: \Clase es un nombre global, no relativo al namespace
-            $resolved = $this->resolveClassNameFromContext(
-                $originalName,
-                $context['namespace'],
-                $context['uses'],
-            );
+            $resolved = $this->resolveClassNameFromContext($originalName, $context['namespace'], $context['uses']);
             if ($resolved === null) {
                 continue;
             }
@@ -821,14 +880,17 @@ class CheckPsr4Command extends BaseCommand
                     if ($current === ';' || $current === '{') {
                         break;
                     }
+
                     if (
                         is_array($current)
                         && in_array($current[0], [T_STRING, T_NS_SEPARATOR, T_NAME_QUALIFIED], strict: true)
                     ) {
                         $ns .= $current[1];
                     }
+
                     ++$i;
                 }
+
                 $namespace = trim($ns, '\\');
                 continue;
             }
@@ -844,9 +906,11 @@ class CheckPsr4Command extends BaseCommand
                 if (is_array($back) && $back[0] === T_WHITESPACE) {
                     continue;
                 }
+
                 $prevSignificant = $back;
                 break;
             }
+
             if (is_array($prevSignificant) && $prevSignificant[0] === T_FUNCTION) {
                 continue;
             }
@@ -936,11 +1000,7 @@ class CheckPsr4Command extends BaseCommand
             return $namespace !== '' ? $namespace . '\\' . $name : $name;
         }
 
-        if (isset($aliases[strtolower($name)])) {
-            return $aliases[strtolower($name)];
-        }
-
-        return $namespace !== '' ? $namespace . '\\' . $name : $name;
+        return $aliases[strtolower($name)] ?? ($namespace !== '' ? $namespace . '\\' . $name : $name);
     }
 
     private function extractFilePaths(string $file): array
@@ -1033,6 +1093,7 @@ class CheckPsr4Command extends BaseCommand
             if ($dot === null || $tokens[$dot] !== '.') {
                 return null;
             }
+
             $fromDir = true;
             $i = $this->getNextSignificantTokenIndex($tokens, $dot);
         }
@@ -1078,9 +1139,11 @@ class CheckPsr4Command extends BaseCommand
             if ($found === null) {
                 continue;
             }
+
             if ($caseDiff === null) {
                 return null; // existe con la capitalización exacta
             }
+
             $mismatch ??= $caseDiff;
         }
 
@@ -1092,7 +1155,12 @@ class CheckPsr4Command extends BaseCommand
         ];
 
         if ($mismatch !== null) {
-            return $common + ['type' => 'path_case_mismatch', 'expected_case' => $mismatch['expected'], 'used_case' => $mismatch['used']];
+            return $common
+            + [
+                'type' => 'path_case_mismatch',
+                'expected_case' => $mismatch['expected'],
+                'used_case' => $mismatch['used'],
+            ];
         }
 
         // Que el archivo no exista solo es un error cuando se intenta cargar; file_exists, mkdir o
@@ -1100,54 +1168,6 @@ class CheckPsr4Command extends BaseCommand
         return in_array($ref['type'], ['require', 'require_once', 'include', 'include_once'], true)
             ? $common + ['type' => 'path_not_found']
             : null;
-    }
-
-    /**
-     * Busca una ruta sin distinguir mayúsculas y dice dónde difiere de lo que hay en disco.
-     *
-     * @return array{0: ?string, 1: ?array{used: string, expected: string}}
-     */
-    public static function locatePath(string $path): array
-    {
-        $segments = explode('/', str_replace('\\', '/', $path));
-        $current = preg_match('/^[A-Za-z]:$/', $segments[0]) === 1 ? array_shift($segments) : '';
-        $mismatch = null;
-
-        foreach ($segments as $segment) {
-            if ($segment === '' || $segment === '.') {
-                continue;
-            }
-
-            if ($segment === '..') {
-                $current = dirname($current === '' ? '/' : $current);
-                $current = $current === '/' ? '' : $current;
-                continue;
-            }
-
-            $entries = @scandir($current === '' ? '/' : $current);
-            if ($entries === false) {
-                return [null, null];
-            }
-
-            if (!in_array($segment, $entries, true)) {
-                $actual = null;
-                foreach ($entries as $entry) {
-                    if (strcasecmp($entry, $segment) === 0) {
-                        $actual = $entry;
-                        break;
-                    }
-                }
-                if ($actual === null) {
-                    return [null, null];
-                }
-                $mismatch ??= ['used' => $segment, 'expected' => $actual];
-                $segment = $actual;
-            }
-
-            $current .= '/' . $segment;
-        }
-
-        return [$current, $mismatch];
     }
 
     private function verifyCaseSensitivity(
@@ -1165,13 +1185,14 @@ class CheckPsr4Command extends BaseCommand
             $prefixSegs = explode('\\', $prefixTrim);
             $match = true;
             foreach ($prefixSegs as $k => $pseg) {
-                if (!(!isset($nsSegments[$k]) || strcasecmp($nsSegments[$k], $pseg) !== 0)) {
+                if (isset($nsSegments[$k]) && strcasecmp($nsSegments[$k], $pseg) === 0) {
                     continue;
                 }
 
                 $match = false;
                 break;
             }
+
             if ($match) {
                 $nsSegments = array_slice($nsSegments, count($prefixSegs));
             }
@@ -1204,6 +1225,7 @@ class CheckPsr4Command extends BaseCommand
                             'context' => 'Estructura de directorios no coincide con namespace',
                         ];
                     }
+
                     $matched = $entry;
                     break;
                 }
@@ -1224,9 +1246,8 @@ class CheckPsr4Command extends BaseCommand
         $grouped = [];
         foreach ($issues as $issue) {
             $type = $issue['type'] ?? 'unknown';
-            if (!isset($grouped[$type])) {
-                $grouped[$type] = [];
-            }
+            $grouped[$type] ??= [];
+
             $grouped[$type][] = $issue;
         }
 
@@ -1279,6 +1300,7 @@ class CheckPsr4Command extends BaseCommand
                 if (isset($issue['context'])) {
                     echo '    ' . CLIErrorHandler::colorize($issue['context'], 'yellow') . "\n";
                 }
+
                 break;
 
             case 'use_case_mismatch':
@@ -1318,8 +1340,7 @@ class CheckPsr4Command extends BaseCommand
                 echo
                     '     '
                         . CLIErrorHandler::colorize('El método no es estático pero se llama usando ::', 'red')
-                        . "\n\n"
-                ;
+                        . "\n\n";
                 break;
 
             case 'path_not_found':
@@ -1396,7 +1417,7 @@ class CheckPsr4Command extends BaseCommand
 
                     $result = $this->checkMethodExists($lowercaseClass, $method, $ref['static']);
 
-                    if ('not_found' === $result) {
+                    if ($result === 'not_found') {
                         $issues[] = [
                             'type' => 'method_not_found',
                             'file' => str_replace($projectRoot . DIRECTORY_SEPARATOR, '', $filePath),
@@ -1404,7 +1425,7 @@ class CheckPsr4Command extends BaseCommand
                             'class' => $class,
                             'method' => $method,
                         ];
-                    } elseif ('static_error' === $result) {
+                    } elseif ($result === 'static_error') {
                         $issues[] = [
                             'type' => 'static_call_on_non_static',
                             'file' => str_replace($projectRoot . DIRECTORY_SEPARATOR, '', $filePath),
@@ -1424,10 +1445,10 @@ class CheckPsr4Command extends BaseCommand
                     }
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $exception) {
             $issues[] = [
                 'type' => 'scan_error',
-                'message' => "Error analizando métodos en {$dir}: " . $e->getMessage(),
+                'message' => "Error analizando métodos en {$dir}: " . $exception->getMessage(),
             ];
         }
 
@@ -1464,8 +1485,9 @@ class CheckPsr4Command extends BaseCommand
                     // Si el padre no está indexado (ej: vendor), asumimos que el método podría existir allí
                     return true;
                 }
+
                 $res = $this->checkMethodExists($parent, $methodName, $mustBeStatic);
-                if ($res !== 'not_found' && false !== $res) {
+                if ($res !== 'not_found' && $res !== false) {
                     return $res;
                 }
             }
@@ -1475,8 +1497,9 @@ class CheckPsr4Command extends BaseCommand
                     // Si la interfaz o trait no está indexado, asumimos que el método podría estar allí
                     return true;
                 }
+
                 $res = $this->checkMethodExists($ref, $methodName, $mustBeStatic);
-                if ($res !== 'not_found' && false !== $res) {
+                if ($res !== 'not_found' && $res !== false) {
                     return $res;
                 }
             }
@@ -1495,13 +1518,13 @@ class CheckPsr4Command extends BaseCommand
         for ($i = 0; $i < $count; ++$i) {
             $token = $tokens[$i];
 
-            if (is_array($token) && T_VARIABLE === $token[0] && '$this' === $token[1]) {
+            if (is_array($token) && $token[0] === T_VARIABLE && $token[1] === '$this') {
                 $next = $this->getNextSignificantTokenIndex($tokens, $i);
-                if ($next !== null && is_array($tokens[$next]) && T_OBJECT_OPERATOR === $tokens[$next][0]) {
+                if ($next !== null && is_array($tokens[$next]) && $tokens[$next][0] === T_OBJECT_OPERATOR) {
                     $next2 = $this->getNextSignificantTokenIndex($tokens, $next);
-                    if ($next2 !== null && is_array($tokens[$next2]) && T_STRING === $tokens[$next2][0]) {
+                    if ($next2 !== null && is_array($tokens[$next2]) && $tokens[$next2][0] === T_STRING) {
                         $next3 = $this->getNextSignificantTokenIndex($tokens, $next2);
-                        if ($next3 !== null && '(' === $tokens[$next3]) {
+                        if ($next3 !== null && $tokens[$next3] === '(') {
                             if ($currentClass) {
                                 $refs[] = [
                                     'class' => $currentClass,
@@ -1515,7 +1538,7 @@ class CheckPsr4Command extends BaseCommand
                 }
             }
 
-            if (is_array($token) && T_DOUBLE_COLON === $token[0]) {
+            if (is_array($token) && $token[0] === T_DOUBLE_COLON) {
                 $prevIdx = $this->getPrevSignificantTokenIndex($tokens, $i);
                 if ($prevIdx !== null) {
                     $prev = $tokens[$prevIdx];
@@ -1542,9 +1565,9 @@ class CheckPsr4Command extends BaseCommand
 
                         if ($resolvedClass) {
                             $next = $this->getNextSignificantTokenIndex($tokens, $i);
-                            if ($next !== null && is_array($tokens[$next]) && T_STRING === $tokens[$next][0]) {
+                            if ($next !== null && is_array($tokens[$next]) && $tokens[$next][0] === T_STRING) {
                                 $next2 = $this->getNextSignificantTokenIndex($tokens, $next);
-                                if ($next2 !== null && '(' === $tokens[$next2]) {
+                                if ($next2 !== null && $tokens[$next2] === '(') {
                                     $refs[] = [
                                         'class' => $resolvedClass,
                                         'method' => $tokens[$next][1],
@@ -1558,7 +1581,7 @@ class CheckPsr4Command extends BaseCommand
                 }
             }
 
-            if ('[' === $token || is_array($token) && T_ARRAY === $token[0]) {
+            if ($token === '[' || is_array($token) && $token[0] === T_ARRAY) {
                 $idx = $this->getNextSignificantTokenIndex($tokens, $i);
                 if (
                     $idx !== null
@@ -1567,16 +1590,16 @@ class CheckPsr4Command extends BaseCommand
                 ) {
                     $className = $tokens[$idx][1];
                     $idx2 = $this->getNextSignificantTokenIndex($tokens, $idx);
-                    if ($idx2 !== null && is_array($tokens[$idx2]) && T_DOUBLE_COLON === $tokens[$idx2][0]) {
+                    if ($idx2 !== null && is_array($tokens[$idx2]) && $tokens[$idx2][0] === T_DOUBLE_COLON) {
                         $idx3 = $this->getNextSignificantTokenIndex($tokens, $idx2);
-                        if ($idx3 !== null && is_array($tokens[$idx3]) && T_CLASS === $tokens[$idx3][0]) {
+                        if ($idx3 !== null && is_array($tokens[$idx3]) && $tokens[$idx3][0] === T_CLASS) {
                             $idx4 = $this->getNextSignificantTokenIndex($tokens, $idx3);
-                            if ($idx4 !== null && ',' === $tokens[$idx4]) {
+                            if ($idx4 !== null && $tokens[$idx4] === ',') {
                                 $idx5 = $this->getNextSignificantTokenIndex($tokens, $idx4);
                                 if (
                                     $idx5 !== null
                                     && is_array($tokens[$idx5])
-                                    && T_CONSTANT_ENCAPSED_STRING === $tokens[$idx5][0]
+                                    && $tokens[$idx5][0] === T_CONSTANT_ENCAPSED_STRING
                                 ) {
                                     $method = trim($tokens[$idx5][1], "'\"");
                                     $resolvedClass = $this->resolveClassNameFromContext(
@@ -1610,9 +1633,7 @@ class CheckPsr4Command extends BaseCommand
      */
     private function getTokens(string $filePath): array
     {
-        if (!isset($this->tokenCache[$filePath])) {
-            $this->tokenCache[$filePath] = token_get_all(file_get_contents($filePath));
-        }
+        $this->tokenCache[$filePath] ??= token_get_all(file_get_contents($filePath));
 
         return $this->tokenCache[$filePath];
     }
@@ -1674,17 +1695,17 @@ class CheckPsr4Command extends BaseCommand
 
             if (is_array($token) && in_array($token[0], [T_CLASS, T_INTERFACE, T_TRAIT], strict: true)) {
                 $prevIdx = $this->getPrevSignificantTokenIndex($tokens, $i);
-                if ($prevIdx !== null && is_array($tokens[$prevIdx]) && T_NEW === $tokens[$prevIdx][0]) {
+                if ($prevIdx !== null && is_array($tokens[$prevIdx]) && $tokens[$prevIdx][0] === T_NEW) {
                     continue;
                 }
 
                 $i = $this->getNextSignificantTokenIndex($tokens, $i);
-                if (isset($tokens[$i]) && is_array($tokens[$i]) && T_STRING === $tokens[$i][0]) {
+                if (isset($tokens[$i]) && is_array($tokens[$i]) && $tokens[$i][0] === T_STRING) {
                     $class = $tokens[$i][1];
 
                     $i++;
-                    while ($i < $count && '{' !== $tokens[$i]) {
-                        if (is_array($tokens[$i]) && T_EXTENDS === $tokens[$i][0]) {
+                    while ($i < $count && $tokens[$i] !== '{') {
+                        if (is_array($tokens[$i]) && $tokens[$i][0] === T_EXTENDS) {
                             $i = $this->getNextSignificantTokenIndex($tokens, $i);
                             $ext = '';
                             while (
@@ -1695,15 +1716,16 @@ class CheckPsr4Command extends BaseCommand
                                 $ext .= $tokens[$i][1];
                                 ++$i;
                             }
+
                             $extends = $this->resolveClassNameFromContext($ext, $namespace, $context['uses']);
                             continue;
                         }
 
-                        if (is_array($tokens[$i]) && T_IMPLEMENTS === $tokens[$i][0]) {
+                        if (is_array($tokens[$i]) && $tokens[$i][0] === T_IMPLEMENTS) {
                             $i = $this->getNextSignificantTokenIndex($tokens, $i);
                             while (
                                 isset($tokens[$i])
-                                && '{' !== $tokens[$i]
+                                && $tokens[$i] !== '{'
                                 && (is_string($tokens[$i]) || $tokens[$i][0] !== T_EXTENDS)
                             ) {
                                 $impl = '';
@@ -1728,35 +1750,37 @@ class CheckPsr4Command extends BaseCommand
                                     );
                                 }
 
-                                if (isset($tokens[$i]) && ',' === $tokens[$i]) {
+                                if (isset($tokens[$i]) && $tokens[$i] === ',') {
                                     $i = $this->getNextSignificantTokenIndex($tokens, $i);
                                 } else {
                                     break;
                                 }
                             }
+
                             continue;
                         }
+
                         $i++;
                     }
 
-                    if (isset($tokens[$i]) && '{' === $tokens[$i]) {
+                    if (isset($tokens[$i]) && $tokens[$i] === '{') {
                         $depth = 1;
                         $i++;
                         while ($i < $count && $depth > 0) {
                             $t = $tokens[$i];
 
                             if (
-                                '{' === $t
+                                $t === '{'
                                 || is_array($t)
                                 && in_array($t[0], [T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES], strict: true)
                             ) {
                                 ++$depth;
-                            } elseif ('}' === $t) {
+                            } elseif ($t === '}') {
                                 --$depth;
-                            } elseif (1 === $depth && is_array($t)) {
-                                if (T_USE === $t[0]) {
+                            } elseif ($depth === 1 && is_array($t)) {
+                                if ($t[0] === T_USE) {
                                     $i = $this->getNextSignificantTokenIndex($tokens, $i);
-                                    while (isset($tokens[$i]) && ';' !== $tokens[$i] && '{' !== $tokens[$i]) {
+                                    while (isset($tokens[$i]) && $tokens[$i] !== ';' && $tokens[$i] !== '{') {
                                         if (
                                             is_array($tokens[$i])
                                             && in_array(
@@ -1772,9 +1796,10 @@ class CheckPsr4Command extends BaseCommand
                                                 $context['uses'],
                                             );
                                         }
+
                                         $i++;
                                     }
-                                } elseif (T_FUNCTION === $t[0]) {
+                                } elseif ($t[0] === T_FUNCTION) {
                                     $isStatic = false;
                                     $isAbstract = false;
                                     $isPrivate = false;
@@ -1786,12 +1811,15 @@ class CheckPsr4Command extends BaseCommand
                                         if ($mod === T_STATIC) {
                                             $isStatic = true;
                                         }
+
                                         if ($mod === T_ABSTRACT) {
                                             $isAbstract = true;
                                         }
+
                                         if ($mod === T_PRIVATE) {
                                             $isPrivate = true;
                                         }
+
                                         if (in_array(
                                             $mod,
                                             [
@@ -1812,7 +1840,7 @@ class CheckPsr4Command extends BaseCommand
                                     }
 
                                     $i = $this->getNextSignificantTokenIndex($tokens, $i);
-                                    if (isset($tokens[$i]) && is_array($tokens[$i]) && T_STRING === $tokens[$i][0]) {
+                                    if (isset($tokens[$i]) && is_array($tokens[$i]) && $tokens[$i][0] === T_STRING) {
                                         $methods[] = [
                                             'name' => $tokens[$i][1],
                                             'static' => $isStatic,
@@ -1823,9 +1851,11 @@ class CheckPsr4Command extends BaseCommand
                                     }
                                 }
                             }
+
                             $i++;
                         }
                     }
+
                     break;
                 }
             }

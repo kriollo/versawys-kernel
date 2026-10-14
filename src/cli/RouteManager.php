@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli;
 
+use InvalidArgumentException;
+use RuntimeException;
+use SensitiveParameter;
+
 class RouteManager
 {
     private static string $path = 'app/routes/';
@@ -100,8 +104,10 @@ class RouteManager
         if (!is_dir(self::$path)) {
             return [];
         }
+
         $routes = scandir(self::$path);
-        $routes = array_filter($routes, static fn ($route): bool => str_ends_with($route, '.php'));
+        $routes = array_filter($routes, static fn($route): bool => str_ends_with($route, '.php'));
+
         return array_values($routes);
     }
 
@@ -145,12 +151,12 @@ class RouteManager
     {
         // El nombre llega desde la URL de /doc: solo se aceptan archivos que existen en app/routes
         if (!in_array($routeFile, self::getRoutes(), strict: true)) {
-            throw new \InvalidArgumentException("El archivo de rutas '{$routeFile}' no existe.");
+            throw new InvalidArgumentException("El archivo de rutas '{$routeFile}' no existe.");
         }
 
         $routeContent = file_get_contents(self::$path . $routeFile);
         if ($routeContent === false) {
-            throw new \RuntimeException("No se pudo leer el archivo de rutas: {$routeFile}");
+            throw new RuntimeException("No se pudo leer el archivo de rutas: {$routeFile}");
         }
 
         return self::parseRouteSource($routeContent);
@@ -192,11 +198,18 @@ class RouteManager
             if (count($places) < 2) {
                 continue;
             }
+
             foreach ($places as [$file, $i]) {
-                $others = array_map(static fn (array $place): string => $place[0], array_filter($places, static fn (array $place): bool => $place !== [$file, $i]));
+                $others = array_map(
+                    static fn(array $place): string => $place[0],
+                    array_filter($places, static fn(array $place): bool => $place !== [$file, $i]),
+                );
                 $all[$file][$i]['issues'][] = [
                     'level' => 'error',
-                    'message' => 'Ruta duplicada (también en ' . implode(', ', array_unique($others)) . '): solo responde la que se carga al final.',
+                    'message' =>
+                        'Ruta duplicada (también en '
+                            . implode(', ', array_unique($others))
+                            . '): solo responde la que se carga al final.',
                 ];
             }
         }
@@ -231,9 +244,77 @@ class RouteManager
             $route['csrf'] = self::csrfMode($route);
             $route['issues'] = self::routeIssues($route, $imports);
         }
+
         unset($route);
 
         return $routes;
+    }
+
+    public static function listarRutasFromRoute(string $routeFile): void
+    {
+        self::printRouteTable(self::extractRouteData($routeFile));
+    }
+
+    /**
+     * Lista las rutas de todos los archivos, sin preguntar (`route:list --all`).
+     */
+    public static function listAllRoutes(): void
+    {
+        $total = 0;
+        foreach (self::extractAllRouteData() as $routeFile => $routes) {
+            echo PHP_EOL . CLIErrorHandler::colorize($routeFile, 'cyan') . PHP_EOL;
+            self::printRouteTable($routes);
+            $total += count($routes);
+        }
+
+        echo PHP_EOL;
+        CLIErrorHandler::info($total . ' rutas.');
+    }
+
+    /**
+     * Revisa todas las rutas (`route:check`). Los errores (controlador, método o middleware que no
+     * existe) marcan la ejecución como fallida; con `--strict` también la documentación faltante.
+     */
+    public static function checkRoutes(bool $strict = false): void
+    {
+        $errors = 0;
+        $warnings = 0;
+        $total = 0;
+
+        foreach (self::extractAllRouteData() as $routeFile => $routes) {
+            foreach ($routes as $route) {
+                $total++;
+                foreach ($route['issues'] as $issue) {
+                    $isError = $issue['level'] === 'error';
+                    $errors += $isError ? 1 : 0;
+                    $warnings += $isError ? 0 : 1;
+                    echo sprintf(
+                        '%s %s %s %s — %s%s',
+                        $isError ? CLIErrorHandler::colorize('✗', 'red') : CLIErrorHandler::colorize('⚠', 'yellow'),
+                        $routeFile,
+                        $route['method'],
+                        $route['route'],
+                        $issue['message'],
+                        PHP_EOL,
+                    );
+                }
+            }
+        }
+
+        $summary = sprintf(
+            '%d rutas revisadas: %d error(es), %d aviso(s) de documentación.',
+            $total,
+            $errors,
+            $warnings,
+        );
+        if ($errors > 0 || $strict && $warnings > 0) {
+            CLIErrorHandler::warning($summary);
+            CLIErrorHandler::$failed = true;
+
+            return;
+        }
+
+        CLIErrorHandler::success($summary);
     }
 
     /**
@@ -245,9 +326,7 @@ class RouteManager
             return $route;
         }
 
-        return $route === '/admin' || str_starts_with($route, '/admin/')
-            ? '/' . $adminUrl . substr($route, 6)
-            : $route;
+        return $route === '/admin' || str_starts_with($route, '/admin/') ? '/' . $adminUrl . substr($route, 6) : $route;
     }
 
     /**
@@ -330,15 +409,20 @@ class RouteManager
         };
 
         if ($route['class'] === null) {
-            $issues[] = ['level' => 'error', 'message' => 'No se pudo determinar el controlador: debe ser [Clase::class, \'metodo\'].'];
+            $issues[] = [
+                'level' => 'error',
+                'message' => "No se pudo determinar el controlador: debe ser [Clase::class, 'metodo'].",
+            ];
         } elseif (($problem = $missing($route['class'], (string) $route['class_method'])) !== null) {
             $issues[] = ['level' => 'error', 'message' => 'Controlador: ' . $problem . '.'];
         }
 
         foreach ($route['middleware'] as $middleware) {
-            if (($problem = $missing($middleware['class'], $middleware['class_method'])) !== null) {
-                $issues[] = ['level' => 'error', 'message' => 'Middleware: ' . $problem . '.'];
+            if (($problem = $missing($middleware['class'], $middleware['class_method'])) === null) {
+                continue;
             }
+
+            $issues[] = ['level' => 'error', 'message' => 'Middleware: ' . $problem . '.'];
         }
 
         if ($route['description'] === '') {
@@ -349,6 +433,7 @@ class RouteManager
         foreach (array_diff($route['routeParams'], $documented) as $param) {
             $issues[] = ['level' => 'warning', 'message' => "Falta `// path-param name:{$param} ...`."];
         }
+
         foreach (array_diff($documented, $route['routeParams']) as $param) {
             $issues[] = ['level' => 'warning', 'message' => "`path-param {$param}` no aparece en la URL de la ruta."];
         }
@@ -385,11 +470,7 @@ class RouteManager
             }
 
             $scopeIndex = self::nextSignificantTokenIndex($tokens, $index + 1, $end);
-            if (
-                $scopeIndex === null
-                || !is_array($tokens[$scopeIndex])
-                || $tokens[$scopeIndex][0] !== T_DOUBLE_COLON
-            ) {
+            if ($scopeIndex === null || !is_array($tokens[$scopeIndex]) || $tokens[$scopeIndex][0] !== T_DOUBLE_COLON) {
                 continue;
             }
 
@@ -448,16 +529,13 @@ class RouteManager
                 $groupMiddleware = isset($arguments[2])
                     ? self::parseMiddleware(self::tokenRangeToString($tokens, $arguments[2][0], $arguments[2][1]))
                     : [];
-                $routes = array_merge(
-                    $routes,
-                    self::extractRoutesFromTokens(
-                        $tokens,
-                        $bodyOpenIndex + 1,
-                        $bodyCloseIndex,
-                        $nestedGroups,
-                        array_merge($inheritedMiddleware, $groupMiddleware),
-                    ),
-                );
+                $routes = array_merge($routes, self::extractRoutesFromTokens(
+                    $tokens,
+                    $bodyOpenIndex + 1,
+                    $bodyCloseIndex,
+                    $nestedGroups,
+                    array_merge($inheritedMiddleware, $groupMiddleware),
+                ));
                 $documentation = self::emptyRouteDocumentation();
                 $index = $closeIndex;
                 continue;
@@ -500,8 +578,15 @@ class RouteManager
                 }
 
                 $nameIndex = self::nextSignificantTokenIndex($tokens, $operatorIndex + 1, $end);
-                $argsOpenIndex = $nameIndex === null ? null : self::nextSignificantTokenIndex($tokens, $nameIndex + 1, $end);
-                if ($nameIndex === null || !is_array($tokens[$nameIndex]) || $argsOpenIndex === null || $tokens[$argsOpenIndex] !== '(') {
+                $argsOpenIndex = $nameIndex === null
+                    ? null
+                    : self::nextSignificantTokenIndex($tokens, $nameIndex + 1, $end);
+                if (
+                    $nameIndex === null
+                    || !is_array($tokens[$nameIndex])
+                    || $argsOpenIndex === null
+                    || $tokens[$argsOpenIndex] !== '('
+                ) {
                     break;
                 }
 
@@ -517,7 +602,11 @@ class RouteManager
                     if (isset($chainArguments[0])) {
                         $routeMiddleware = array_merge(
                             $routeMiddleware,
-                            self::parseMiddleware(self::tokenRangeToString($tokens, $chainArguments[0][0], $chainArguments[0][1])),
+                            self::parseMiddleware(self::tokenRangeToString(
+                                $tokens,
+                                $chainArguments[0][0],
+                                $chainArguments[0][1],
+                            )),
                         );
                     }
                 }
@@ -559,18 +648,32 @@ class RouteManager
     {
         if (preg_match('/^\s*\/\/\s*description:\s*(.+)$/', $comment, $matches)) {
             $documentation['description'] = trim($matches[1]);
+
             return;
         }
 
-        foreach (['path-param' => 'pathParams', 'request-body' => 'requestBody', 'query-param' => 'queryParams'] as $tag => $key) {
-            if (preg_match('/^\s*\/\/\s*' . preg_quote($tag, '/') . '\s+name:(.+?)\s+type:(.+?)\s+description:(.+)$/', $comment, $matches)) {
-                $documentation[$key][] = [
-                    'name' => trim($matches[1]),
-                    'type' => trim($matches[2]),
-                    'description' => trim($matches[3]),
-                ];
-                return;
+        foreach ([
+            'path-param' => 'pathParams',
+            'request-body' => 'requestBody',
+            'query-param' => 'queryParams',
+        ] as $tag => $key) {
+            if (
+                preg_match(
+                    '/^\s*\/\/\s*' . preg_quote($tag, '/') . '\s+name:(.+?)\s+type:(.+?)\s+description:(.+)$/',
+                    $comment,
+                    $matches,
+                ) !== 1
+            ) {
+                continue;
             }
+
+            $documentation[$key][] = [
+                'name' => trim($matches[1]),
+                'type' => trim($matches[2]),
+                'description' => trim($matches[3]),
+            ];
+
+            return;
         }
     }
 
@@ -593,7 +696,10 @@ class RouteManager
     private static function nextSignificantTokenIndex(array $tokens, int $start, int $end): ?int
     {
         for ($index = $start; $index < $end; $index++) {
-            if (is_array($tokens[$index]) && in_array($tokens[$index][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+            if (
+                is_array($tokens[$index])
+                && in_array($tokens[$index][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)
+            ) {
                 continue;
             }
 
@@ -609,7 +715,9 @@ class RouteManager
     private static function findMatchingToken(
         array $tokens,
         int $openIndex,
+        #[SensitiveParameter]
         string $openToken,
+        #[SensitiveParameter]
         string $closeToken,
         int $end,
     ): ?int {
@@ -708,9 +816,8 @@ class RouteManager
 
         $literal = $tokens[$index][1];
         $value = substr($literal, 1, -1);
-        return $literal[0] === "'"
-            ? str_replace(["\\\\", "\\'"], ["\\", "'"], $value)
-            : stripcslashes($value);
+
+        return $literal[0] === "'" ? str_replace(['\\\\', "\\'"], ['\\', "'"], $value) : stripcslashes($value);
     }
 
     /**
@@ -724,72 +831,11 @@ class RouteManager
             if (is_array($tokens[$index]) && in_array($tokens[$index][0], [T_COMMENT, T_DOC_COMMENT], true)) {
                 continue;
             }
+
             $value .= is_array($tokens[$index]) ? $tokens[$index][1] : $tokens[$index];
         }
 
         return $value;
-    }
-
-    public static function listarRutasFromRoute(string $routeFile): void
-    {
-        self::printRouteTable(self::extractRouteData($routeFile));
-    }
-
-    /**
-     * Lista las rutas de todos los archivos, sin preguntar (`route:list --all`).
-     */
-    public static function listAllRoutes(): void
-    {
-        $total = 0;
-        foreach (self::extractAllRouteData() as $routeFile => $routes) {
-            echo PHP_EOL . CLIErrorHandler::colorize($routeFile, 'cyan') . PHP_EOL;
-            self::printRouteTable($routes);
-            $total += count($routes);
-        }
-
-        echo PHP_EOL;
-        CLIErrorHandler::info($total . ' rutas.');
-    }
-
-    /**
-     * Revisa todas las rutas (`route:check`). Los errores (controlador, método o middleware que no
-     * existe) marcan la ejecución como fallida; con `--strict` también la documentación faltante.
-     */
-    public static function checkRoutes(bool $strict = false): void
-    {
-        $errors = 0;
-        $warnings = 0;
-        $total = 0;
-
-        foreach (self::extractAllRouteData() as $routeFile => $routes) {
-            foreach ($routes as $route) {
-                $total++;
-                foreach ($route['issues'] as $issue) {
-                    $isError = $issue['level'] === 'error';
-                    $errors += $isError ? 1 : 0;
-                    $warnings += $isError ? 0 : 1;
-                    echo sprintf(
-                        '%s %s %s %s — %s%s',
-                        $isError ? CLIErrorHandler::colorize('✗', 'red') : CLIErrorHandler::colorize('⚠', 'yellow'),
-                        $routeFile,
-                        $route['method'],
-                        $route['route'],
-                        $issue['message'],
-                        PHP_EOL,
-                    );
-                }
-            }
-        }
-
-        $summary = sprintf('%d rutas revisadas: %d error(es), %d aviso(s) de documentación.', $total, $errors, $warnings);
-        if ($errors > 0 || ($strict && $warnings > 0)) {
-            CLIErrorHandler::warning($summary);
-            CLIErrorHandler::$failed = true;
-
-            return;
-        }
-
-        CLIErrorHandler::success($summary);
     }
 
     /**
@@ -805,11 +851,15 @@ class RouteManager
                 ? '(no reconocido)'
                 : str_replace('::class', '', (string) $route['class']) . '@' . $route['class_method'];
 
-            echo str_pad($route['method'], 8) . ' '
-                . str_pad($route['url'], 51) . ' '
-                . str_pad($controller, 43) . ' '
-                . ['none' => '-', 'protected' => 'sí', 'exempt' => 'EXENTA'][$route['csrf']]
-                . PHP_EOL;
+            echo
+                str_pad($route['method'], 8)
+                    . ' '
+                    . str_pad($route['url'], 51)
+                    . ' '
+                    . str_pad($controller, 43)
+                    . ' '
+                    . ['none' => '-', 'protected' => 'sí', 'exempt' => 'EXENTA'][$route['csrf']]
+                    . PHP_EOL;
         }
     }
 

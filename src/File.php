@@ -4,48 +4,16 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel;
 
+use ArrayAccess;
 use Exception;
+use finfo;
+use Override;
+use RuntimeException;
 use SplFileInfo;
 
-class File extends SplFileInfo implements \ArrayAccess
+class File extends SplFileInfo implements ArrayAccess
 {
     protected array $file;
-
-    /**
-     * @param string $offset
-     */
-    #[\Override]
-    public function offsetExists($offset): bool
-    {
-        return isset($this->file[$offset]);
-    }
-
-    /**
-     * @param string $offset
-     */
-    #[\Override]
-    public function offsetGet($offset): mixed
-    {
-        return $this->file[$offset] ?? null;
-    }
-
-    /**
-     * @param string $offset
-     */
-    #[\Override]
-    public function offsetSet($offset, $value): void
-    {
-        $this->file[$offset] = $value;
-    }
-
-    /**
-     * @param string $offset
-     */
-    #[\Override]
-    public function offsetUnset($offset): void
-    {
-        unset($this->file[$offset]);
-    }
 
     protected $splFile = null;
 
@@ -67,6 +35,42 @@ class File extends SplFileInfo implements \ArrayAccess
         }
 
         $this->file = $file;
+    }
+
+    /**
+     * @param string $offset
+     */
+    #[Override]
+    public function offsetExists($offset): bool
+    {
+        return isset($this->file[$offset]);
+    }
+
+    /**
+     * @param string $offset
+     */
+    #[Override]
+    public function offsetGet($offset): mixed
+    {
+        return $this->file[$offset] ?? null;
+    }
+
+    /**
+     * @param string $offset
+     */
+    #[Override]
+    public function offsetSet($offset, $value): void
+    {
+        $this->file[$offset] = $value;
+    }
+
+    /**
+     * @param string $offset
+     */
+    #[Override]
+    public function offsetUnset($offset): void
+    {
+        unset($this->file[$offset]);
     }
 
     /**
@@ -107,7 +111,7 @@ class File extends SplFileInfo implements \ArrayAccess
      *
      * @return string the extension of the file
      */
-    #[\Override]
+    #[Override]
     public function getExtension(): string
     {
         return pathinfo($this->file['name'], PATHINFO_EXTENSION);
@@ -118,7 +122,7 @@ class File extends SplFileInfo implements \ArrayAccess
      *
      * @return int the size of the file
      */
-    #[\Override]
+    #[Override]
     public function getSize(): int
     {
         return (int) $this->file['size'];
@@ -145,13 +149,13 @@ class File extends SplFileInfo implements \ArrayAccess
      *
      * @return string the file type
      */
-    #[\Override]
+    #[Override]
     public function getType(): string
     {
         // Tipo detectado desde el contenido: el que declara el cliente no es confiable
         $tmp = (string) ($this->file['tmp_name'] ?? '');
         if ($tmp !== '' && is_file($tmp)) {
-            $real = (new \finfo(FILEINFO_MIME_TYPE))->file($tmp);
+            $real = (new finfo(FILEINFO_MIME_TYPE))->file($tmp);
             if (is_string($real) && $real !== '') {
                 return $real;
             }
@@ -208,6 +212,7 @@ class File extends SplFileInfo implements \ArrayAccess
             if (!file_put_contents($destination, $filetmp)) {
                 $this->handleError('No se pudo mover el archivo a la ruta especificada.');
             }
+
             chmod($destination, 0o664);
         } elseif (!move_uploaded_file($this->getTmpName(), $destination)) {
             $this->handleError('No se pudo mover el archivo a la ruta especificada.');
@@ -246,6 +251,7 @@ class File extends SplFileInfo implements \ArrayAccess
                     $error['message'] ?? 'Permisos insuficientes',
                 ));
             }
+
             @chmod($directory, 0o775);
         }
 
@@ -289,6 +295,7 @@ class File extends SplFileInfo implements \ArrayAccess
             if ($success) {
                 chmod($finalPath, 0o664);
             }
+
             if (!$success) {
                 $error = error_get_last();
                 $this->handleError(sprintf(
@@ -382,7 +389,7 @@ class File extends SplFileInfo implements \ArrayAccess
         ) {
             Loggin::warning('Subida bloqueada por nombre de archivo no permitido: ' . $name, 'File');
 
-            throw new \RuntimeException('Tipo de archivo no permitido.');
+            throw new RuntimeException('Tipo de archivo no permitido.');
         }
     }
 
@@ -427,5 +434,4 @@ class File extends SplFileInfo implements \ArrayAccess
             throw new Exception('Error en operación de archivo');
         }
     }
-
 }

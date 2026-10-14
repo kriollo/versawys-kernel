@@ -73,7 +73,7 @@ class CacheUsers
             $prefix = sprintf('user_data_%d_', $userId);
             $allSessionKeys = array_keys($sessionToUse->getAll());
             foreach ($allSessionKeys as $key) {
-                if (!(is_string($key) && str_starts_with($key, $prefix))) {
+                if (!is_string($key) || !str_starts_with($key, $prefix)) {
                     continue;
                 }
 
@@ -96,7 +96,7 @@ class CacheUsers
             // Esto es mucho más eficiente, escalable y no depende de IDs hardcodeados.
             $allSessionKeys = array_keys($sessionToUse->getAll());
             foreach ($allSessionKeys as $key) {
-                if (!(is_string($key) && str_starts_with($key, 'user_data_'))) {
+                if (!is_string($key) || !str_starts_with($key, 'user_data_')) {
                     continue;
                 }
 

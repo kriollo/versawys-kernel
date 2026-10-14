@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace versaWYS\kernel\Tests;
 
 use Firebase\JWT\JWT;
+use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
+use RuntimeException;
 use versaWYS\kernel\Session;
 
 final class JwtTest extends TestCase
@@ -26,7 +30,7 @@ final class JwtTest extends TestCase
 
         $this->originalConfig = $config ?? null;
         $config = [
-            'session' => ['key' => self::KEY, 'user_cookie' => ['lifetime' => 3600, 'lifetime_remember' => 86400]],
+            'session' => ['key' => self::KEY, 'user_cookie' => ['lifetime' => 3600, 'lifetime_remember' => 86_400]],
             'logging' => ['dir' => sys_get_temp_dir() . '/versawys-test-logs/'],
         ];
 
@@ -37,7 +41,7 @@ final class JwtTest extends TestCase
         chdir($this->dir);
 
         // Sin el constructor: no hace falta una sesión PHP para firmar y validar tokens
-        $this->session = (new \ReflectionClass(Session::class))->newInstanceWithoutConstructor();
+        $this->session = (new ReflectionClass(Session::class))->newInstanceWithoutConstructor();
     }
 
     protected function tearDown(): void
@@ -63,12 +67,12 @@ final class JwtTest extends TestCase
     {
         $claims = $this->session->decodeJWT($this->session->generateJWT(['id' => 7, 'id_empresa' => 3], 'on'));
 
-        self::assertSame(86400, $claims['exp'] - $claims['iat']);
+        self::assertSame(86_400, $claims['exp'] - $claims['iat']);
     }
 
     public function testATokenWithoutUserOrCompanyIsNeverIssued(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
 
         $this->session->generateJWT(['email' => 'ana@ejemplo.cl', 'id_empresa' => 3], 'off');
     }
@@ -81,23 +85,48 @@ final class JwtTest extends TestCase
         // Cambiar el usuario sin volver a firmar
         yield 'payload cambiado' => [static function (string $jwt): string {
             [$header, $payload, $signature] = explode('.', $jwt);
-            $claims = json_decode((string) base64_decode(strtr($payload, '-_', '+/')), true);
+            $claims = json_decode(base64_decode(strtr($payload, '-_', '+/'), strict: true), true);
             $claims['id_user'] = 1;
 
-            return $header . '.' . rtrim(strtr(base64_encode((string) json_encode($claims)), '+/', '-_'), '=') . '.' . $signature;
+            return (
+                $header
+                . '.'
+                . rtrim(strtr(base64_encode((string) json_encode($claims)), '+/', '-_'), '=')
+                . '.'
+                . $signature
+            );
         }];
-        yield 'firmado con otra clave' => [static fn (string $jwt): string => JWT::encode(['id_user' => 1, 'empresa_id' => 1, 'exp' => time() + 60], 'otra-clave-de-al-menos-treinta-y-dos-bytes!!', 'HS256')];
-        yield 'sin firma (alg none)' => [static fn (string $jwt): string => rtrim(strtr(base64_encode('{"alg":"none","typ":"JWT"}'), '+/', '-_'), '=') . '.' . explode('.', $jwt)[1] . '.'];
-        yield 'vencido' => [static fn (string $jwt): string => JWT::encode(['id_user' => 7, 'empresa_id' => 3, 'exp' => time() - 10], self::KEY, 'HS256')];
-        yield 'texto cualquiera' => [static fn (string $jwt): string => 'no-es-un-token'];
+        yield 'firmado con otra clave' => [
+            static fn(string $jwt): string => JWT::encode(
+                ['id_user' => 1, 'empresa_id' => 1, 'exp' => time() + 60],
+                'otra-clave-de-al-menos-treinta-y-dos-bytes!!',
+                'HS256',
+            ),
+        ];
+        yield 'sin firma (alg none)' => [
+            static fn(string $jwt): string => (
+                rtrim(strtr(base64_encode('{"alg":"none","typ":"JWT"}'), '+/', '-_'), '=')
+                . '.'
+                . explode('.', $jwt)[1]
+                . '.'
+            ),
+        ];
+        yield 'vencido' => [
+            static fn(string $jwt): string => JWT::encode(
+                ['id_user' => 7, 'empresa_id' => 3, 'exp' => time() - 10],
+                self::KEY,
+                'HS256',
+            ),
+        ];
+        yield 'texto cualquiera' => [static fn(string $jwt): string => 'no-es-un-token'];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('forgedTokens')]
+    #[DataProvider('forgedTokens')]
     public function testForgedOrExpiredTokensAreRejected(callable $forge): void
     {
         $jwt = $forge($this->session->generateJWT(['id' => 7, 'id_empresa' => 3], 'off'));
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionCode(401);
         $this->session->decodeJWT($jwt);
     }
@@ -117,7 +146,11 @@ final class JwtTest extends TestCase
     public function testATokenIdCannotWriteOutsideTheRevocationFolder(): void
     {
         // Firmado con la clave correcta pero con un jti armado: solo se aceptan 32 hex
-        $jwt = JWT::encode(['id_user' => 7, 'empresa_id' => 3, 'jti' => '../../../escapado', 'exp' => time() + 60], self::KEY, 'HS256');
+        $jwt = JWT::encode(
+            ['id_user' => 7, 'empresa_id' => 3, 'jti' => '../../../escapado', 'exp' => time() + 60],
+            self::KEY,
+            'HS256',
+        );
 
         $this->session->revokeToken($jwt);
 

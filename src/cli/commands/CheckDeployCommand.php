@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli\commands;
 
+use FilesystemIterator;
+use Override;
+use ParseError;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use Throwable;
 use versaWYS\kernel\cli\BaseCommand;
 use versaWYS\kernel\cli\CLIErrorHandler;
 use versaWYS\kernel\cli\ConfigManager;
@@ -24,7 +30,50 @@ use versaWYS\kernel\Router;
  */
 class CheckDeployCommand extends BaseCommand
 {
+    // =====================================================================
+    // Revisiones de código
+    // =====================================================================
+
+    /**
+     * Métodos de app/ que el kernel llama. El panel base se copia en cada proyecto: si un kernel
+     * nuevo llama algo que esa copia no tiene, falla en producción. Ampliar esta lista es un
+     * cambio de versión mayor (UPGRADE.md).
+     */
+    public const array APP_CONTRACT = [
+        'app\\models\\Users' => ['findWithCompany'],
+        'app\\models\\Empresas' => ['all', 'getEmpresaById'],
+        'app\\models\\Dashboard' => ['getMenuAdmin', 'getMenuUser'],
+        'app\\services\\MailService' => ['enviarTemplate'],
+    ];
+
+    /** Claves que ningún código lee. Se aceptan hasta 4.0; aquí se avisa para que nadie confíe en ellas. */
+    public const array DEAD_KEYS = [
+        'session.user_cookie.key_encript' => 'nada la usa para cifrar',
+        'twig.default_template_404' => 'el 404 siempre usa versaWYS/404',
+        'api.auth' => 'la autenticación de cada ruta la deciden sus middlewares',
+        'rate_limiting.storage' => 'los contadores se guardan siempre en archivos locales; con varios servidores cada uno cuenta por separado',
+        'twig.auto_escape' => 'Twig escapa siempre el HTML; la opción nunca se aplicó',
+        'build.cacheRoute' => 'la caché de rutas se eliminó en 2.10',
+        'build.cacheRouteFile' => 'la caché de rutas se eliminó en 2.10',
+        'build.cacheRouteMinifyLevel' => 'la caché de rutas se eliminó en 2.10',
+    ];
+
     private const array CODE_DIRS = ['app', 'versaWYS/kernel'];
+
+    /**
+     * Secciones donde un error de tipeo desactiva una protección sin avisar (`secure` mal escrito
+     * deja la cookie con su valor por defecto). Las demás aceptan claves propias del proyecto.
+     */
+    private const array STRICT_SECTIONS = [
+        'build',
+        'session',
+        'session.user_cookie',
+        'auth',
+        'cors',
+        'admin',
+        'login_attempt',
+        'twig',
+    ];
 
     /** @var list<array{level: string, phase: string, message: string, file?: string, line?: int, hint?: string}> */
     private array $findings = [];
@@ -42,7 +91,7 @@ class CheckDeployCommand extends BaseCommand
     /** URL del sitio para las sondas HTTP (--url, o build.base_url con --production) */
     private string $url = '';
 
-    #[\Override]
+    #[Override]
     public function execute(array $args = []): int
     {
         $flags = array_merge($args, $_SERVER['argv'] ?? []);
@@ -50,10 +99,13 @@ class CheckDeployCommand extends BaseCommand
         $this->strict = in_array('--strict', $flags, true);
         $this->production = in_array('--production', $flags, true);
         foreach ($flags as $flag) {
-            if (is_string($flag) && str_starts_with($flag, '--url=')) {
-                $this->url = substr($flag, 6);
+            if (!is_string($flag) || !str_starts_with($flag, '--url=')) {
+                continue;
             }
+
+            $this->url = substr($flag, 6);
         }
+
         $this->root = (string) getcwd();
 
         $phases = [
@@ -73,7 +125,10 @@ class CheckDeployCommand extends BaseCommand
 
         CLIErrorHandler::printSeparator();
         echo CLIErrorHandler::colorize(
-            '═══ REVISIÓN PREVIA AL DESPLIEGUE' . ($this->production ? ' · modo servidor' : '') . ($this->strict ? ' · estricto' : '') . " ═══\n",
+            '═══ REVISIÓN PREVIA AL DESPLIEGUE'
+            . ($this->production ? ' · modo servidor' : '')
+            . ($this->strict ? ' · estricto' : '')
+            . " ═══\n",
             'blue',
         );
         CLIErrorHandler::printSeparator();
@@ -92,21 +147,134 @@ class CheckDeployCommand extends BaseCommand
         return $this->blockingCount() > 0 ? 1 : 0;
     }
 
-    // =====================================================================
-    // Revisiones de código
-    // =====================================================================
-
     /**
-     * Métodos de app/ que el kernel llama. El panel base se copia en cada proyecto: si un kernel
-     * nuevo llama algo que esa copia no tiene, falla en producción. Ampliar esta lista es un
-     * cambio de versión mayor (UPGRADE.md).
+     * Compara config.json con config.default.php: tipos distintos a los del valor por defecto,
+     * claves desconocidas en las secciones estrictas y opciones que no tienen efecto.
+     *
+     * @param array<string, mixed> $config config.json tal como está, sin fusionar
+     * @param array<string, mixed> $defaults
+     *
+     * @return list<array{0: 'minor'|'serious', 1: string, 2: ?string}>
      */
-    public const array APP_CONTRACT = [
-        'app\\models\\Users' => ['findWithCompany'],
-        'app\\models\\Empresas' => ['all', 'getEmpresaById'],
-        'app\\models\\Dashboard' => ['getMenuAdmin', 'getMenuUser'],
-        'app\\services\\MailService' => ['enviarTemplate'],
-    ];
+    public static function schemaFindings(array $config, array $defaults, string $path = ''): array
+    {
+        $findings = [];
+        foreach ($config as $key => $value) {
+            $name = ltrim($path . '.' . $key, '.');
+            if (!array_key_exists($key, $defaults)) {
+                if (in_array($path, self::STRICT_SECTIONS, true) && !array_key_exists($name, self::DEAD_KEYS)) {
+                    $findings[] = [
+                        'minor',
+                        "Clave desconocida en config.json: {$name}. El kernel no la lee.",
+                        '¿Un error de tipeo? Las claves válidas están en config.default.php.',
+                    ];
+                }
+
+                continue;
+            }
+
+            $default = $defaults[$key];
+            if (is_bool($default) && !is_bool($value)) {
+                // "false" en texto, o 0 en vez de false, se lee como otra cosa
+                $findings[] = ['serious', "{$name} debe ser true o false, no " . json_encode($value) . '.', null];
+            } elseif (is_int($default) && !is_int($value)) {
+                $findings[] = ['minor', "{$name} debe ser un número entero, no " . json_encode($value) . '.', null];
+            } elseif (is_array($default) && !is_array($value)) {
+                $findings[] = [
+                    'serious',
+                    "{$name} debe ser una lista u objeto JSON, no " . json_encode($value) . '.',
+                    null,
+                ];
+            } elseif (is_array($default) && is_array($value) && $default !== [] && !array_is_list($default)) {
+                $findings = [...$findings, ...self::schemaFindings($value, $default, $name)];
+            }
+        }
+
+        if ($path === '') {
+            // Los config.json antiguos traen todas: un solo aviso con las que haya
+            $present = [];
+            foreach (self::DEAD_KEYS as $dead => $reason) {
+                $node = $config;
+                foreach (explode('.', $dead) as $part) {
+                    $node = is_array($node) && array_key_exists($part, $node) ? $node[$part] : null;
+                }
+
+                if ($node !== null) {
+                    $present[] = "{$dead} ({$reason})";
+                }
+            }
+
+            if ($present !== []) {
+                $findings[] = [
+                    'minor',
+                    'Claves de config.json sin efecto: ' . implode('; ', $present) . '.',
+                    'Quitarlas de config.json: no cambian nada y se dejan de aceptar en 4.0.',
+                ];
+            }
+        }
+
+        return $findings;
+    }
+
+    #[Override]
+    public function getDescription(): string
+    {
+        return 'Revisión previa al despliegue: código, rutas, plantillas, secretos, configuración y servidor';
+    }
+
+    #[Override]
+    public function getHelp(): string
+    {
+        return <<<'HELP'
+            Uso: php versaCLI app:check:deploy [opciones]
+
+            Revisa que el proyecto esté en condiciones de desplegarse. Termina con código 1
+            si encuentra algo que impida el despliegue, así que puede usarse en CI.
+
+            OPCIONES:
+              --strict        Los avisos también impiden desplegar
+              --production    Revisa además la configuración y el entorno reales. Para ejecutar
+                              EN EL SERVIDOR (por ejemplo como último paso del despliegue)
+              --verbose       Muestra todos los hallazgos y el detalle de PSR-4
+              --url=URL       Pide al sitio los archivos que no deben servirse (.env, config.json,
+                              vendor, logs...). Con --production usa build.base_url si no se indica
+
+            EXCEPCIONES:
+              Un hallazgo intencional se silencia con un comentario en el código:
+                // deploy-check:ignore                      (misma línea o la anterior)
+                // deploy-check:ignore-start ... -end       (un bloque)
+
+            REVISIONES:
+               1. Sintaxis PHP                 Archivos que no se pueden cargar
+               2. PSR-4, clases y archivos     Namespaces, clases inexistentes, require con mayúsculas distintas
+               3. Rutas de la aplicación       Controladores, métodos o middlewares que no existen
+               4. Contrato kernel ↔ app        Métodos de app/models y app/services que el kernel necesita, y
+                                               archivos base del kernel (index.php, versaCLI, .htaccess) al día
+               5. Plantillas Twig              render / extends / include a plantillas inexistentes o con otra capitalización
+               6. Windows → Linux              Rutas C:\, comandos de Windows, finales de línea CRLF
+               7. Restos de depuración         var_dump, dd, dump, print_r, phpinfo
+               8. Credenciales en el código    Claves privadas, tokens de proveedores, contraseñas asignadas
+               9. Repositorio                  config.json, .env o install.token versionados
+              10. Configuración                debug, claves de sesión, cookies seguras, CORS, caché
+              11. Entorno del servidor         (--production) PHP, extensiones, permisos, dependencias,
+                                               frontend compilado, conexión y migraciones pendientes
+              12. Archivos expuestos           (--url) .env, config.json, vendor, logs, rutas: nada debe responder 200;
+                                               y por /up, OPcache y Xdebug tal como los usa el servidor web
+
+            NIVELES:
+              🔴 Crítico      Impide desplegar
+              ⚠️  Aviso        Revisar; con --strict también impide desplegar
+              ℹ️  Información  Recordatorio
+
+            La configuración local no es la del servidor: sin --production sus problemas son
+            avisos; con --production, los graves son críticos.
+
+            EJEMPLOS:
+              php versaCLI app:check:deploy                 Antes de subir cambios
+              php versaCLI app:check:deploy --strict        En CI
+              php versaCLI app:check:deploy --production    En el servidor, tras desplegar
+            HELP;
+    }
 
     private function checkAppContract(): void
     {
@@ -114,15 +282,25 @@ class CheckDeployCommand extends BaseCommand
             if (!is_file($this->root . '/' . $target)) {
                 $this->add('warning', "Falta {$target}, que trae el kernel.", hint: 'php versaCLI app:kernel:publish');
             } elseif (file_get_contents($this->root . '/' . $target) !== file_get_contents($source)) {
-                $this->add('info', "{$target} difiere de la versión del kernel.", hint: 'php versaCLI app:kernel:publish muestra el diff');
+                $this->add(
+                    'info',
+                    "{$target} difiere de la versión del kernel.",
+                    hint: 'php versaCLI app:kernel:publish muestra el diff',
+                );
             }
         }
 
         foreach (self::APP_CONTRACT as $class => $methods) {
             foreach ($methods as $method) {
-                if (!method_exists($class, $method)) {
-                    $this->add('critical', "El kernel llama a {$class}::{$method}() y el proyecto no lo tiene.", hint: 'Actualizar esa clase del panel base o fijar una versión anterior del kernel.');
+                if (method_exists($class, $method)) {
+                    continue;
                 }
+
+                $this->add(
+                    'critical',
+                    "El kernel llama a {$class}::{$method}() y el proyecto no lo tiene.",
+                    hint: 'Actualizar esa clase del panel base o fijar una versión anterior del kernel.',
+                );
             }
         }
     }
@@ -135,7 +313,7 @@ class CheckDeployCommand extends BaseCommand
         foreach ($this->phpFiles([...self::CODE_DIRS, 'index.php', 'versaCLI']) as $file) {
             try {
                 token_get_all((string) file_get_contents($file), TOKEN_PARSE);
-            } catch (\ParseError $error) {
+            } catch (ParseError $error) {
                 $this->add('critical', 'Error de sintaxis: ' . $error->getMessage(), $file, $error->getLine());
             }
         }
@@ -169,8 +347,8 @@ class CheckDeployCommand extends BaseCommand
     {
         try {
             $all = RouteManager::extractAllRouteData();
-        } catch (\Throwable $exception) {
-            $this->add('critical', 'No se pudieron analizar los archivos de rutas: ' . $exception->getMessage());
+        } catch (Throwable $throwable) {
+            $this->add('critical', 'No se pudieron analizar los archivos de rutas: ' . $throwable->getMessage());
 
             return;
         }
@@ -194,7 +372,10 @@ class CheckDeployCommand extends BaseCommand
      */
     private function checkTemplates(): void
     {
-        $templatesDir = $this->root . '/' . trim((string) ($this->projectConfig()['twig']['templates_dir'] ?? './app/templates'), './');
+        $templatesDir =
+            $this->root
+            . '/'
+            . trim((string) ($this->projectConfig()['twig']['templates_dir'] ?? './app/templates'), './');
         if (!is_dir($templatesDir)) {
             $this->add('critical', 'No existe el directorio de plantillas: ' . $this->relative($templatesDir));
 
@@ -205,8 +386,13 @@ class CheckDeployCommand extends BaseCommand
         foreach ($this->phpFiles(self::CODE_DIRS) as $file) {
             $this->collectMatches($file, '/->\s*render(?:Direct)?\(\s*([\'"])([^\'"$]+)\1/', $references);
         }
+
         foreach ($this->files($templatesDir, 'twig') as $file) {
-            $this->collectMatches($file, '/\{%-?\s*(?:extends|include|embed|import|from|use)\s+([\'"])([^\'"]+)\1/', $references);
+            $this->collectMatches(
+                $file,
+                '/\{%-?\s*(?:extends|include|embed|import|from|use)\s+([\'"])([^\'"]+)\1/',
+                $references,
+            );
         }
 
         foreach ($references as [$file, $line, $name]) {
@@ -228,7 +414,15 @@ class CheckDeployCommand extends BaseCommand
 
     private function checkWindowsLeftovers(): void
     {
-        $windowsCommands = ['dir' => 'ls', 'copy' => 'cp', 'move' => 'mv', 'del' => 'rm', 'cls' => 'clear', 'tasklist' => 'ps', 'taskkill' => 'kill'];
+        $windowsCommands = [
+            'dir' => 'ls',
+            'copy' => 'cp',
+            'move' => 'mv',
+            'del' => 'rm',
+            'cls' => 'clear',
+            'tasklist' => 'ps',
+            'taskkill' => 'kill',
+        ];
 
         foreach ($this->phpFiles(self::CODE_DIRS) as $file) {
             // Los propios comandos de revisión y el servidor de desarrollo tratan con rutas y comandos de Windows a propósito
@@ -237,21 +431,30 @@ class CheckDeployCommand extends BaseCommand
             }
 
             foreach ($this->stringLiterals($file) as [$line, $value]) {
-                if (preg_match('/^[A-Za-z]:[\\\\\/][^\s]/', $value) === 1) {
-                    $this->add(
-                        'warning',
-                        'Ruta absoluta de Windows: ' . $this->excerpt($value),
-                        $file,
-                        $line,
-                        'No existe en Linux. Usar rutas relativas al proyecto, o marcar con // deploy-check:ignore si solo se usa en Windows.',
-                    );
+                if (preg_match('/^[A-Za-z]:[\\\\\/][^\s]/', $value) !== 1) {
+                    continue;
                 }
+
+                $this->add(
+                    'warning',
+                    'Ruta absoluta de Windows: ' . $this->excerpt($value),
+                    $file,
+                    $line,
+                    'No existe en Linux. Usar rutas relativas al proyecto, o marcar con // deploy-check:ignore si solo se usa en Windows.',
+                );
             }
 
             foreach ($this->lines($file) as $index => $text) {
-                if (preg_match('/\b(?:shell_exec|exec|system|passthru|popen|proc_open)\s*\(\s*[\'"]\s*(\w+)\b/', $text, $match) !== 1) {
+                if (
+                    preg_match(
+                        '/\b(?:shell_exec|exec|system|passthru|popen|proc_open)\s*\(\s*[\'"]\s*(\w+)\b/',
+                        $text,
+                        $match,
+                    ) !== 1
+                ) {
                     continue;
                 }
+
                 $command = strtolower($match[1]);
                 if (isset($windowsCommands[$command])) {
                     $this->add(
@@ -269,7 +472,12 @@ class CheckDeployCommand extends BaseCommand
         foreach (['versaCLI', ...array_map($this->relative(...), $this->glob('scripts/*.sh'))] as $script) {
             $path = $this->root . '/' . $script;
             if (is_file($path) && str_contains((string) file_get_contents($path), "\r\n")) {
-                $this->add('critical', 'El archivo usa finales de línea CRLF.', $path, hint: 'Convertir a LF (dos2unix).');
+                $this->add(
+                    'critical',
+                    'El archivo usa finales de línea CRLF.',
+                    $path,
+                    hint: 'Convertir a LF (dos2unix).',
+                );
             }
         }
 
@@ -300,14 +508,25 @@ class CheckDeployCommand extends BaseCommand
 
                 $prev = $this->significant($tokens, $i, -1);
                 $next = $this->significant($tokens, $i, 1);
-                $isCall = $next === '('
-                    && !(is_array($prev) && in_array($prev[0], [T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_DOUBLE_COLON, T_FUNCTION, T_NEW], true));
+                $isCall =
+                    $next === '('
+                    && (
+                        !is_array($prev)
+                        || !in_array(
+                            $prev[0],
+                            [T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_DOUBLE_COLON, T_FUNCTION, T_NEW],
+                            true,
+                        )
+                    );
                 if (!$isCall) {
                     continue;
                 }
 
                 // print_r($x, true) devuelve el texto en vez de imprimirlo: es un uso legítimo
-                if (strtolower($token[1]) === 'print_r' && preg_match('/print_r\s*\(.*,\s*true\s*\)/i', $this->lineOf($file, $token[2])) === 1) {
+                if (
+                    strtolower($token[1]) === 'print_r'
+                    && preg_match('/print_r\s*\(.*,\s*true\s*\)/i', $this->lineOf($file, $token[2])) === 1
+                ) {
                     continue;
                 }
 
@@ -345,15 +564,25 @@ class CheckDeployCommand extends BaseCommand
 
                 if ($token[0] === T_CONSTANT_ENCAPSED_STRING) {
                     foreach ($knownFormats as $pattern => $kind) {
-                        if (preg_match($pattern, $token[1]) === 1) {
-                            $this->add('critical', "Secreto con formato conocido ({$kind}) escrito en el código.", $file, $token[2], 'Moverla a config.json o a una variable de entorno, y rotarla.');
+                        if (preg_match($pattern, $token[1]) !== 1) {
+                            continue;
                         }
+
+                        $this->add(
+                            'critical',
+                            "Secreto con formato conocido ({$kind}) escrito en el código.",
+                            $file,
+                            $token[2],
+                            'Moverla a config.json o a una variable de entorno, y rotarla.',
+                        );
                     }
                 }
 
                 // $password = 'literal';   o   'api_key' => 'literal'
                 $isVariable = $token[0] === T_VARIABLE && preg_match($sensitiveName, $token[1]) === 1;
-                $isArrayKey = $token[0] === T_CONSTANT_ENCAPSED_STRING && preg_match($sensitiveName, trim($token[1], '\'"')) === 1;
+                $isArrayKey =
+                    $token[0] === T_CONSTANT_ENCAPSED_STRING
+                    && preg_match($sensitiveName, trim($token[1], '\'"')) === 1;
                 if (!$isVariable && !$isArrayKey) {
                     continue;
                 }
@@ -361,8 +590,10 @@ class CheckDeployCommand extends BaseCommand
                 $operatorIndex = null;
                 $valueIndex = null;
                 $operator = $this->significant($tokens, $i, 1, $operatorIndex);
-                $assigns = $isVariable ? $operator === '=' : (is_array($operator) && $operator[0] === T_DOUBLE_ARROW);
-                $value = $assigns && $operatorIndex !== null ? $this->significant($tokens, $operatorIndex, 1, $valueIndex) : null;
+                $assigns = $isVariable ? $operator === '=' : is_array($operator) && $operator[0] === T_DOUBLE_ARROW;
+                $value = $assigns && $operatorIndex !== null
+                    ? $this->significant($tokens, $operatorIndex, 1, $valueIndex)
+                    : null;
                 if (!is_array($value) || $value[0] !== T_CONSTANT_ENCAPSED_STRING || $valueIndex === null) {
                     continue;
                 }
@@ -373,7 +604,11 @@ class CheckDeployCommand extends BaseCommand
                 if (in_array($after, [';', ',', ']', ')'], true) && $this->looksLikeSecret($literal)) {
                     $this->add(
                         'warning',
-                        'Posible credencial escrita en el código: ' . trim($token[1], '\'"') . ' = ' . substr($literal, 0, 3) . '…',
+                        'Posible credencial escrita en el código: '
+                        . trim($token[1], '\'"')
+                        . ' = '
+                        . substr($literal, 0, 3)
+                        . '…',
                         $file,
                         $token[2],
                         'Leerla desde config.json o una variable de entorno.',
@@ -393,7 +628,10 @@ class CheckDeployCommand extends BaseCommand
             return false;
         }
 
-        $classes = (int) preg_match('/[a-z]/', $value) + (int) preg_match('/[A-Z]/', $value) + (int) preg_match('/\d/', $value);
+        $classes =
+            (int) preg_match('/[a-z]/', $value)
+            + (int) preg_match('/[A-Z]/', $value)
+            + (int) preg_match('/\d/', $value);
 
         return $classes >= 2 || strlen($value) >= 20;
     }
@@ -407,11 +645,19 @@ class CheckDeployCommand extends BaseCommand
      */
     private function checkRepository(): void
     {
-        $gitignore = is_file($this->root . '/.gitignore') ? (string) file_get_contents($this->root . '/.gitignore') : '';
+        $gitignore = is_file($this->root . '/.gitignore')
+            ? (string) file_get_contents($this->root . '/.gitignore')
+            : '';
         foreach (['.env' => '.env', 'config.json' => ConfigManager::dir() . '/config.json'] as $needle => $path) {
-            if (!str_contains($gitignore, $needle)) {
-                $this->add('critical', "{$path} no está en .gitignore.", hint: 'Contiene credenciales: agregarlo a .gitignore.');
+            if (str_contains($gitignore, $needle)) {
+                continue;
             }
+
+            $this->add(
+                'critical',
+                "{$path} no está en .gitignore.",
+                hint: 'Contiene credenciales: agregarlo a .gitignore.',
+            );
         }
 
         if (!is_dir($this->root . '/.git')) {
@@ -419,7 +665,14 @@ class CheckDeployCommand extends BaseCommand
         }
 
         $secretFiles = [ConfigManager::dir() . '/config.json', ConfigManager::dir() . '/install.token', '.env'];
-        exec('git -C ' . escapeshellarg($this->root) . ' ls-files -- ' . implode(' ', array_map(escapeshellarg(...), $secretFiles)) . ' 2>/dev/null', $tracked);
+        exec(
+            'git -C '
+            . escapeshellarg($this->root)
+            . ' ls-files -- '
+            . implode(' ', array_map(escapeshellarg(...), $secretFiles))
+            . ' 2>/dev/null',
+            $tracked,
+        );
         foreach ($tracked as $file) {
             $this->add(
                 'critical',
@@ -437,7 +690,11 @@ class CheckDeployCommand extends BaseCommand
     {
         $configFile = $this->root . '/' . ConfigManager::dir() . '/config.json';
         if (!is_file($configFile)) {
-            $this->add($this->production ? 'critical' : 'info', 'No existe config.json.', hint: 'Crearlo con: php versaCLI config:init');
+            $this->add(
+                $this->production ? 'critical' : 'info',
+                'No existe config.json.',
+                hint: 'Crearlo con: php versaCLI config:init',
+            );
 
             return;
         }
@@ -449,108 +706,103 @@ class CheckDeployCommand extends BaseCommand
         // La petición ignora las entradas inválidas; aquí se detectan antes de desplegar
         $badProxies = array_filter(
             (array) ($config['trusted_proxies'] ?? []),
-            static fn (mixed $range): bool => !is_string($range) || Request::parseProxyRange($range) === null,
+            static fn(mixed $range): bool => !is_string($range) || Request::parseProxyRange($range) === null,
         );
 
         $rules = [
-            [$serious, $badProxies !== [], 'trusted_proxies tiene entradas inválidas que se ignoran: ' . implode(', ', array_map(json_encode(...), $badProxies)) . '.', 'Usar IPs o rangos CIDR, p. ej. "10.0.0.0/8" o "2001:db8::/32".'],
-            [$serious, ($config['build']['debug'] ?? false) === true, 'build.debug está activo: expone rutas, trazas y SQL en los errores.', 'php versaCLI config:debug:false'],
-            [$serious, strlen((string) ($config['session']['key'] ?? '')) < 32, 'session.key está vacía o es corta: con ella se firman los JWT.', 'Generar una clave aleatoria de 64 caracteres.'],
-            [$serious, ($config['session']['user_cookie']['secure'] ?? false) !== true, 'session.user_cookie.secure está desactivado: la sesión viajaría por HTTP.', 'Activarlo; el sitio debe servirse por HTTPS.'],
-            [$serious, ($config['session']['user_cookie']['http_only'] ?? false) !== true, 'session.user_cookie.http_only está desactivado: JavaScript podría leer la sesión.', null],
-            [$serious, (string) ($config['database']['database'] ?? '') === '', 'database.database está vacío: no hay base de datos configurada.', null],
-            [$serious, in_array('*', (array) ($config['cors']['allowed_origins'] ?? []), true), 'cors.allowed_origins contiene "*".', 'Listar solo los orígenes que deben llamar a la API.'],
-            [$minor, (string) ($config['build']['base_url'] ?? '') === '', 'build.base_url está vacío: los enlaces de los correos (recuperar contraseña) se arman con la cabecera Host de la petición.', 'Fijar la URL pública, p. ej. https://app.ejemplo.cl'],
+            [
+                $serious,
+                $badProxies !== [],
+                'trusted_proxies tiene entradas inválidas que se ignoran: '
+                    . implode(', ', array_map(json_encode(...), $badProxies))
+                    . '.',
+                'Usar IPs o rangos CIDR, p. ej. "10.0.0.0/8" o "2001:db8::/32".',
+            ],
+            [
+                $serious,
+                ($config['build']['debug'] ?? false) === true,
+                'build.debug está activo: expone rutas, trazas y SQL en los errores.',
+                'php versaCLI config:debug:false',
+            ],
+            [
+                $serious,
+                strlen((string) ($config['session']['key'] ?? '')) < 32,
+                'session.key está vacía o es corta: con ella se firman los JWT.',
+                'Generar una clave aleatoria de 64 caracteres.',
+            ],
+            [
+                $serious,
+                ($config['session']['user_cookie']['secure'] ?? false) !== true,
+                'session.user_cookie.secure está desactivado: la sesión viajaría por HTTP.',
+                'Activarlo; el sitio debe servirse por HTTPS.',
+            ],
+            [
+                $serious,
+                ($config['session']['user_cookie']['http_only'] ?? false) !== true,
+                'session.user_cookie.http_only está desactivado: JavaScript podría leer la sesión.',
+                null,
+            ],
+            [
+                $serious,
+                (string) ($config['database']['database'] ?? '') === '',
+                'database.database está vacío: no hay base de datos configurada.',
+                null,
+            ],
+            [
+                $serious,
+                in_array('*', (array) ($config['cors']['allowed_origins'] ?? []), true),
+                'cors.allowed_origins contiene "*".',
+                'Listar solo los orígenes que deben llamar a la API.',
+            ],
+            [
+                $minor,
+                (string) ($config['build']['base_url'] ?? '') === '',
+                'build.base_url está vacío: los enlaces de los correos (recuperar contraseña) se arman con la cabecera Host de la petición.',
+                'Fijar la URL pública, p. ej. https://app.ejemplo.cl',
+            ],
             [$minor, (string) ($config['database']['password'] ?? '') === '', 'database.password está vacío.', null],
-            [$minor, ($config['twig']['cache'] ?? false) !== true, 'twig.cache está desactivado: las plantillas se compilan en cada petición.', 'php versaCLI config:templateCache:true'],
-            [$minor, ($config['rate_limiting']['enabled'] ?? false) !== true, 'rate_limiting está desactivado: el login queda sin límite de intentos por IP.', null],
+            [
+                $minor,
+                ($config['twig']['cache'] ?? false) !== true,
+                'twig.cache está desactivado: las plantillas se compilan en cada petición.',
+                'php versaCLI config:templateCache:true',
+            ],
+            [
+                $minor,
+                ($config['rate_limiting']['enabled'] ?? false) !== true,
+                'rate_limiting está desactivado: el login queda sin límite de intentos por IP.',
+                null,
+            ],
             [$minor, ($config['csp']['enabled'] ?? true) !== true, 'csp.enabled está desactivado.', null],
-            ['info', isset($config['security']['sanitize_input']), 'security.sanitize_input ya no existe (kernel 3.0): getAllParams() entrega la entrada tal como llega.', 'Quitar la clave de config.json. Ver UPGRADE.md: revisar los |raw y v-html que muestran datos de usuarios.'],
-            ['info', (string) ($config['mail']['host'] ?? '') === '', 'mail.host está vacío: no se enviarán correos (recuperación de contraseña).', null],
+            [
+                'info',
+                isset($config['security']['sanitize_input']),
+                'security.sanitize_input ya no existe (kernel 3.0): getAllParams() entrega la entrada tal como llega.',
+                'Quitar la clave de config.json. Ver UPGRADE.md: revisar los |raw y v-html que muestran datos de usuarios.',
+            ],
+            [
+                'info',
+                (string) ($config['mail']['host'] ?? '') === '',
+                'mail.host está vacío: no se enviarán correos (recuperación de contraseña).',
+                null,
+            ],
         ];
 
         foreach ($rules as [$level, $failed, $message, $hint]) {
-            if ($failed) {
-                $this->add($level, $message, $file, hint: $hint);
-            }
-        }
-
-        foreach (self::schemaFindings(ConfigManager::getConfig(), ConfigManager::defaults()) as [$severity, $message, $hint]) {
-            $this->add(['serious' => $serious, 'minor' => $minor][$severity], $message, $file, hint: $hint);
-        }
-    }
-
-    /**
-     * Secciones donde un error de tipeo desactiva una protección sin avisar (`secure` mal escrito
-     * deja la cookie con su valor por defecto). Las demás aceptan claves propias del proyecto.
-     */
-    private const array STRICT_SECTIONS = ['build', 'session', 'session.user_cookie', 'auth', 'cors', 'admin', 'login_attempt', 'twig'];
-
-    /** Claves que ningún código lee. Se aceptan hasta 4.0; aquí se avisa para que nadie confíe en ellas. */
-    public const array DEAD_KEYS = [
-        'session.user_cookie.key_encript' => 'nada la usa para cifrar',
-        'twig.default_template_404' => 'el 404 siempre usa versaWYS/404',
-        'api.auth' => 'la autenticación de cada ruta la deciden sus middlewares',
-        'rate_limiting.storage' => 'los contadores se guardan siempre en archivos locales; con varios servidores cada uno cuenta por separado',
-        'twig.auto_escape' => 'Twig escapa siempre el HTML; la opción nunca se aplicó',
-        'build.cacheRoute' => 'la caché de rutas se eliminó en 2.10',
-        'build.cacheRouteFile' => 'la caché de rutas se eliminó en 2.10',
-        'build.cacheRouteMinifyLevel' => 'la caché de rutas se eliminó en 2.10',
-    ];
-
-    /**
-     * Compara config.json con config.default.php: tipos distintos a los del valor por defecto,
-     * claves desconocidas en las secciones estrictas y opciones que no tienen efecto.
-     *
-     * @param array<string, mixed> $config config.json tal como está, sin fusionar
-     * @param array<string, mixed> $defaults
-     *
-     * @return list<array{0: 'serious'|'minor', 1: string, 2: ?string}>
-     */
-    public static function schemaFindings(array $config, array $defaults, string $path = ''): array
-    {
-        $findings = [];
-        foreach ($config as $key => $value) {
-            $name = ltrim($path . '.' . $key, '.');
-            if (!array_key_exists($key, $defaults)) {
-                if (in_array($path, self::STRICT_SECTIONS, true) && !array_key_exists($name, self::DEAD_KEYS)) {
-                    $findings[] = ['minor', "Clave desconocida en config.json: {$name}. El kernel no la lee.", '¿Un error de tipeo? Las claves válidas están en config.default.php.'];
-                }
-
+            if (!$failed) {
                 continue;
             }
 
-            $default = $defaults[$key];
-            if (is_bool($default) && !is_bool($value)) {
-                // "false" en texto, o 0 en vez de false, se lee como otra cosa
-                $findings[] = ['serious', "{$name} debe ser true o false, no " . json_encode($value) . '.', null];
-            } elseif (is_int($default) && !is_int($value)) {
-                $findings[] = ['minor', "{$name} debe ser un número entero, no " . json_encode($value) . '.', null];
-            } elseif (is_array($default) && !is_array($value)) {
-                $findings[] = ['serious', "{$name} debe ser una lista u objeto JSON, no " . json_encode($value) . '.', null];
-            } elseif (is_array($default) && is_array($value) && $default !== [] && !array_is_list($default)) {
-                $findings = [...$findings, ...self::schemaFindings($value, $default, $name)];
-            }
+            $this->add($level, $message, $file, hint: $hint);
         }
 
-        if ($path === '') {
-            // Los config.json antiguos traen todas: un solo aviso con las que haya
-            $present = [];
-            foreach (self::DEAD_KEYS as $dead => $reason) {
-                $node = $config;
-                foreach (explode('.', $dead) as $part) {
-                    $node = is_array($node) && array_key_exists($part, $node) ? $node[$part] : null;
-                }
-                if ($node !== null) {
-                    $present[] = "{$dead} ({$reason})";
-                }
-            }
-            if ($present !== []) {
-                $findings[] = ['minor', 'Claves de config.json sin efecto: ' . implode('; ', $present) . '.', 'Quitarlas de config.json: no cambian nada y se dejan de aceptar en 4.0.'];
-            }
+        foreach (self::schemaFindings(ConfigManager::getConfig(), ConfigManager::defaults()) as [
+            $severity,
+            $message,
+            $hint,
+        ]) {
+            $this->add(['serious' => $serious, 'minor' => $minor][$severity], $message, $file, hint: $hint);
         }
-
-        return $findings;
     }
 
     /**
@@ -562,11 +814,17 @@ class CheckDeployCommand extends BaseCommand
      */
     private function checkExposure(): void
     {
-        $base = $this->url !== '' ? $this->url : ($this->production ? (string) ($this->projectConfig()['build']['base_url'] ?? '') : '');
+        $base = $this->url !== ''
+            ? $this->url
+            : ($this->production ? (string) ($this->projectConfig()['build']['base_url'] ?? '') : '');
         $base = rtrim($base, '/');
         if ($base === '') {
             if ($this->production) {
-                $this->add('info', 'No se probó qué archivos entrega el servidor web: falta la URL del sitio.', hint: 'Fijar build.base_url o usar --url=https://app.ejemplo.cl');
+                $this->add(
+                    'info',
+                    'No se probó qué archivos entrega el servidor web: falta la URL del sitio.',
+                    hint: 'Fijar build.base_url o usar --url=https://app.ejemplo.cl',
+                );
             }
 
             return;
@@ -595,19 +853,32 @@ class CheckDeployCommand extends BaseCommand
         $this->checkWebServerRuntime($base);
 
         // Sin seguir redirecciones: un 302 al login no expone nada
-        $context = stream_context_create(['http' => ['method' => 'GET', 'ignore_errors' => true, 'follow_location' => 0, 'timeout' => 5]]);
+        $context = stream_context_create(['http' => [
+            'method' => 'GET',
+            'ignore_errors' => true,
+            'follow_location' => 0,
+            'timeout' => 5,
+        ]]);
         foreach ($paths as $path) {
             // Basta un byte: un 200 vacío (algunos kernels antiguos lo daban para archivos inexistentes) no expone nada
             $body = @file_get_contents($base . $path, false, $context, 0, 1);
             $status = $http_response_header[0] ?? '';
             if ($status === '') {
-                $this->add('warning', "No se pudo conectar a {$base} para probar los archivos expuestos.", hint: 'Revisar la URL, o que el servidor pueda llegar a su propio dominio.');
+                $this->add(
+                    'warning',
+                    "No se pudo conectar a {$base} para probar los archivos expuestos.",
+                    hint: 'Revisar la URL, o que el servidor pueda llegar a su propio dominio.',
+                );
 
                 return;
             }
 
             if ($body !== false && $body !== '' && preg_match('#^HTTP/\S+\s+200\b#', $status) === 1) {
-                $this->add('critical', "{$base}{$path} responde 200: el servidor web lo entrega a cualquiera.", hint: 'Revisar .htaccess o la configuración de nginx (plantillas en configs/).');
+                $this->add(
+                    'critical',
+                    "{$base}{$path} responde 200: el servidor web lo entrega a cualquiera.",
+                    hint: 'Revisar .htaccess o la configuración de nginx (plantillas en configs/).',
+                );
             }
         }
     }
@@ -627,42 +898,68 @@ class CheckDeployCommand extends BaseCommand
         ]]);
         $health = json_decode((string) @file_get_contents($base . '/up', false, $context), true);
         if (!is_array($health) || !array_key_exists('opcache', $health)) {
-            $this->add('info', 'No se pudo leer la configuración de PHP del servidor web en /up: responde con detalle solo si la terminal y el servidor web usan el mismo config.json (session.key).');
+            $this->add(
+                'info',
+                'No se pudo leer la configuración de PHP del servidor web en /up: responde con detalle solo si la terminal y el servidor web usan el mismo config.json (session.key).',
+            );
 
             return;
         }
 
         if ($health['opcache'] !== true) {
-            $this->add($this->production ? 'critical' : 'warning', 'OPcache está desactivado en el servidor web: cada petición vuelve a compilar el código (~10 veces más lento).', hint: 'opcache.enable=1 en el php.ini de FPM/Apache y recargar el servicio.');
+            $this->add(
+                $this->production ? 'critical' : 'warning',
+                'OPcache está desactivado en el servidor web: cada petición vuelve a compilar el código (~10 veces más lento).',
+                hint: 'opcache.enable=1 en el php.ini de FPM/Apache y recargar el servicio.',
+            );
         }
+
         if ($health['xdebug'] === true) {
-            $this->add($this->production ? 'critical' : 'warning', 'Xdebug está activo en el servidor web: hace cada petición varias veces más lenta.', hint: 'Desinstalarlo en producción o fijar xdebug.mode=off.');
+            $this->add(
+                $this->production ? 'critical' : 'warning',
+                'Xdebug está activo en el servidor web: hace cada petición varias veces más lenta.',
+                hint: 'Desinstalarlo en producción o fijar xdebug.mode=off.',
+            );
         }
+
         if ($this->production && $health['opcache_validate_timestamps'] === true) {
-            $this->add('info', 'opcache.validate_timestamps está activo: PHP revisa si cada archivo cambió.', hint: 'Con versaDeploy (recarga php-fpm tras desplegar) puede desactivarse.');
+            $this->add(
+                'info',
+                'opcache.validate_timestamps está activo: PHP revisa si cada archivo cambió.',
+                hint: 'Con versaDeploy (recarga php-fpm tras desplegar) puede desactivarse.',
+            );
         }
     }
 
     private function checkServer(): void
     {
         if (!$this->production) {
-            $this->add('info', 'Las revisiones del servidor (permisos, extensiones, base de datos, frontend compilado) se ejecutan con --production.', hint: 'En el servidor: php versaCLI app:check:deploy --production');
+            $this->add(
+                'info',
+                'Las revisiones del servidor (permisos, extensiones, base de datos, frontend compilado) se ejecutan con --production.',
+                hint: 'En el servidor: php versaCLI app:check:deploy --production',
+            );
 
             return;
         }
 
         $config = $this->projectConfig();
 
-        if (version_compare(PHP_VERSION, '8.3.0', '<')) {
+        if (PHP_VERSION_ID < 80_300) {
             $this->add('critical', 'PHP ' . PHP_VERSION . ': se requiere 8.3 o superior.');
         }
 
-        $driver = str_contains(strtolower((string) ($config['database']['driver'] ?? '')), 'mysql') ? 'pdo_mysql' : 'pdo_pgsql';
+        $driver = str_contains(strtolower((string) ($config['database']['driver'] ?? '')), 'mysql')
+            ? 'pdo_mysql'
+            : 'pdo_pgsql';
         foreach (['intl', 'pdo', $driver, 'mbstring', 'fileinfo', 'curl', 'zip', 'json'] as $extension) {
-            if (!extension_loaded($extension)) {
-                $this->add('critical', "Falta la extensión de PHP '{$extension}'.");
+            if (extension_loaded($extension)) {
+                continue;
             }
+
+            $this->add('critical', "Falta la extensión de PHP '{$extension}'.");
         }
+
         if (!extension_loaded('Zend OPcache') || !(bool) ini_get('opcache.enable')) {
             $this->add('info', 'OPcache no está activo: PHP recompila cada archivo en cada petición.');
         }
@@ -683,7 +980,11 @@ class CheckDeployCommand extends BaseCommand
             // Un directorio que aún no existe se crea solo si su padre es escribible
             $target = is_dir($path) ? $path : dirname($path);
             if (!is_dir($target) || !is_writable($target)) {
-                $this->add('critical', 'Sin permiso de escritura: ' . $this->relative($path), hint: 'El usuario del servidor web debe poder escribir ahí.');
+                $this->add(
+                    'critical',
+                    'Sin permiso de escritura: ' . $this->relative($path),
+                    hint: 'El usuario del servidor web debe poder escribir ahí.',
+                );
             }
         }
 
@@ -696,17 +997,28 @@ class CheckDeployCommand extends BaseCommand
             'node_modules/sweetalert2/dist/sweetalert2.esm.all.js' => 'Falta SweetAlert2 en node_modules (pnpm install --production).',
         ];
         foreach ($required as $path => $message) {
-            if (!is_file($this->root . '/' . $path)) {
-                $this->add('critical', $message, $path);
+            if (is_file($this->root . '/' . $path)) {
+                continue;
             }
+
+            $this->add('critical', $message, $path);
         }
+
         if (is_dir($this->root . '/versaWYS/vendor/pestphp') || is_dir($this->root . '/versaWYS/vendor/phpstan')) {
-            $this->add('warning', 'Están instaladas las dependencias de desarrollo de PHP.', hint: 'composer install --no-dev --optimize-autoloader');
+            $this->add(
+                'warning',
+                'Están instaladas las dependencias de desarrollo de PHP.',
+                hint: 'composer install --no-dev --optimize-autoloader',
+            );
         }
 
         // Instalación y base de datos
         if (is_file($this->root . '/' . ConfigManager::dir() . '/install.token')) {
-            $this->add('warning', 'Existe install.token: el instalador web (/install) sigue disponible para quien tenga el token.', hint: 'Completar la instalación o borrar el archivo.');
+            $this->add(
+                'warning',
+                'Existe install.token: el instalador web (/install) sigue disponible para quien tenga el token.',
+                hint: 'Completar la instalación o borrar el archivo.',
+            );
         }
 
         $this->checkDatabase($config);
@@ -726,16 +1038,26 @@ class CheckDeployCommand extends BaseCommand
             $executed = in_array('versa_migrations', $orm->schema('tables'), true)
                 ? array_column($orm->exec('SELECT name FROM versa_migrations'), 'name')
                 : [];
-        } catch (\Throwable $exception) {
-            $this->add('critical', 'No se pudo conectar a la base de datos: ' . strtok($exception->getMessage(), "\n"));
+        } catch (Throwable $throwable) {
+            $this->add('critical', 'No se pudo conectar a la base de datos: ' . strtok($throwable->getMessage(), "\n"));
 
             return;
         }
 
-        $files = array_map(static fn (string $file): string => basename($file, '.php'), $this->glob('app/migrations/*.php'));
+        $files = array_map(static fn(string $file): string => basename(
+            $file,
+            '.php',
+        ), $this->glob('app/migrations/*.php'));
         $pending = array_diff($files, $executed);
         if ($pending !== []) {
-            $this->add('critical', count($pending) . ' migración(es) sin ejecutar: ' . implode(', ', array_slice($pending, 0, 3)) . (count($pending) > 3 ? '…' : ''), hint: 'php versaCLI migrate:up');
+            $this->add(
+                'critical',
+                count($pending)
+                . ' migración(es) sin ejecutar: '
+                . implode(', ', array_slice($pending, 0, 3))
+                . (count($pending) > 3 ? '…' : ''),
+                hint: 'php versaCLI migrate:up',
+            );
         }
     }
 
@@ -743,8 +1065,13 @@ class CheckDeployCommand extends BaseCommand
     // Utilidades
     // =====================================================================
 
-    private function add(string $level, string $message, ?string $file = null, ?int $line = null, ?string $hint = null): void
-    {
+    private function add(
+        string $level,
+        string $message,
+        ?string $file = null,
+        ?int $line = null,
+        ?string $hint = null,
+    ): void {
         if ($file !== null && $line !== null && $this->isIgnored($file, $line)) {
             return;
         }
@@ -753,12 +1080,15 @@ class CheckDeployCommand extends BaseCommand
         if ($file !== null) {
             $finding['file'] = $this->relative($file);
         }
+
         if ($line !== null) {
             $finding['line'] = $line;
         }
+
         if ($hint !== null) {
             $finding['hint'] = $hint;
         }
+
         $this->findings[] = $finding;
     }
 
@@ -783,6 +1113,7 @@ class CheckDeployCommand extends BaseCommand
                     $ignoredLines[$file][$index + 1] = true;
                     $ignoredLines[$file][$index + 2] = true;
                 }
+
                 if ($inBlock) {
                     $ignoredLines[$file][$index + 1] = true;
                 }
@@ -797,7 +1128,11 @@ class CheckDeployCommand extends BaseCommand
     {
         $blocking = $this->strict ? ['critical', 'warning'] : ['critical'];
 
-        return count(array_filter($this->findings, static fn (array $finding): bool => in_array($finding['level'], $blocking, true)));
+        return count(array_filter($this->findings, static fn(array $finding): bool => in_array(
+            $finding['level'],
+            $blocking,
+            true,
+        )));
     }
 
     /**
@@ -834,12 +1169,18 @@ class CheckDeployCommand extends BaseCommand
     private function files(string $directory, string $extension): array
     {
         $files = [];
-        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS));
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(
+            $directory,
+            FilesystemIterator::SKIP_DOTS,
+        ));
         foreach ($iterator as $file) {
-            if ($file->isFile() && strtolower($file->getExtension()) === $extension) {
-                $files[] = $file->getPathname();
+            if (!$file->isFile() || strtolower($file->getExtension()) !== $extension) {
+                continue;
             }
+
+            $files[] = $file->getPathname();
         }
+
         sort($files);
 
         return $files;
@@ -853,10 +1194,12 @@ class CheckDeployCommand extends BaseCommand
     private function collectMatches(string $file, string $pattern, array &$references): void
     {
         foreach ($this->lines($file) as $index => $text) {
-            if (preg_match_all($pattern, $text, $matches) > 0) {
-                foreach ($matches[2] as $name) {
-                    $references[] = [$file, $index + 1, $name];
-                }
+            if (preg_match_all($pattern, $text, $matches) <= 0) {
+                continue;
+            }
+
+            foreach ($matches[2] as $name) {
+                $references[] = [$file, $index + 1, $name];
             }
         }
     }
@@ -870,9 +1213,11 @@ class CheckDeployCommand extends BaseCommand
     {
         $literals = [];
         foreach (token_get_all((string) file_get_contents($file)) as $token) {
-            if (is_array($token) && $token[0] === T_CONSTANT_ENCAPSED_STRING) {
-                $literals[] = [$token[2], stripslashes(substr($token[1], 1, -1))];
+            if (!is_array($token) || $token[0] !== T_CONSTANT_ENCAPSED_STRING) {
+                continue;
             }
+
+            $literals[] = [$token[2], stripslashes(substr($token[1], 1, -1))];
         }
 
         return $literals;
@@ -889,6 +1234,7 @@ class CheckDeployCommand extends BaseCommand
             if (is_array($tokens[$i]) && in_array($tokens[$i][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
                 continue;
             }
+
             $foundIndex = $i;
 
             return $tokens[$i];
@@ -955,24 +1301,34 @@ class CheckDeployCommand extends BaseCommand
         if ($critical > 0) {
             $detail[] = $critical . ($critical === 1 ? ' crítico' : ' críticos');
         }
+
         if ($warning > 0) {
             $detail[] = $warning . ($warning === 1 ? ' aviso' : ' avisos');
         }
 
-        echo CLIErrorHandler::colorize(sprintf('  %s %2d/%d  %s', $icon, $number, $total, $title), $color)
-            . ($detail === [] ? '' : '  (' . implode(', ', $detail) . ')') . "\n";
+        echo
+            CLIErrorHandler::colorize(sprintf('  %s %2d/%d  %s', $icon, $number, $total, $title), $color)
+                . ($detail === [] ? '' : '  (' . implode(', ', $detail) . ')')
+                . "\n";
     }
 
     private function printSummary(): void
     {
         $levels = [
             'critical' => ['🔴 CRÍTICOS — impiden desplegar', 'red'],
-            'warning' => ['⚠️  AVISOS' . ($this->strict ? ' — en modo estricto impiden desplegar' : ' — revisar antes de desplegar'), 'yellow'],
+            'warning' => [
+                '⚠️  AVISOS'
+                    . ($this->strict ? ' — en modo estricto impiden desplegar' : ' — revisar antes de desplegar'),
+                'yellow',
+            ],
             'info' => ['ℹ️  INFORMACIÓN', 'blue'],
         ];
 
         foreach ($levels as $level => [$title, $color]) {
-            $items = array_values(array_filter($this->findings, static fn (array $finding): bool => $finding['level'] === $level));
+            $items = array_values(array_filter(
+                $this->findings,
+                static fn(array $finding): bool => $finding['level'] === $level,
+            ));
             if ($items === []) {
                 continue;
             }
@@ -990,11 +1346,14 @@ class CheckDeployCommand extends BaseCommand
                     continue;
                 }
 
-                $location = isset($item['file']) ? '  ' . $item['file'] . (isset($item['line']) ? ':' . $item['line'] : '') : '';
+                $location = isset($item['file'])
+                    ? '  ' . $item['file'] . (isset($item['line']) ? ':' . $item['line'] : '')
+                    : '';
                 echo "  [{$item['phase']}] {$item['message']}\n";
                 if ($location !== '') {
                     echo '      ' . CLIErrorHandler::colorize(trim($location), 'cyan') . "\n";
                 }
+
                 if (isset($item['hint'])) {
                     echo "      💡 {$item['hint']}\n";
                 }
@@ -1012,69 +1371,11 @@ class CheckDeployCommand extends BaseCommand
         } else {
             echo CLIErrorHandler::colorize("❌ NO DESPLEGAR: {$blocking} problema(s) por resolver\n", 'red');
         }
+
         if (!$this->production) {
             echo "   Esta ejecución revisó el código. En el servidor, repetir con --production.\n";
         }
+
         CLIErrorHandler::printSeparator();
-    }
-
-    #[\Override]
-    public function getDescription(): string
-    {
-        return 'Revisión previa al despliegue: código, rutas, plantillas, secretos, configuración y servidor';
-    }
-
-    #[\Override]
-    public function getHelp(): string
-    {
-        return <<<'HELP'
-            Uso: php versaCLI app:check:deploy [opciones]
-
-            Revisa que el proyecto esté en condiciones de desplegarse. Termina con código 1
-            si encuentra algo que impida el despliegue, así que puede usarse en CI.
-
-            OPCIONES:
-              --strict        Los avisos también impiden desplegar
-              --production    Revisa además la configuración y el entorno reales. Para ejecutar
-                              EN EL SERVIDOR (por ejemplo como último paso del despliegue)
-              --verbose       Muestra todos los hallazgos y el detalle de PSR-4
-              --url=URL       Pide al sitio los archivos que no deben servirse (.env, config.json,
-                              vendor, logs...). Con --production usa build.base_url si no se indica
-
-            EXCEPCIONES:
-              Un hallazgo intencional se silencia con un comentario en el código:
-                // deploy-check:ignore                      (misma línea o la anterior)
-                // deploy-check:ignore-start ... -end       (un bloque)
-
-            REVISIONES:
-               1. Sintaxis PHP                 Archivos que no se pueden cargar
-               2. PSR-4, clases y archivos     Namespaces, clases inexistentes, require con mayúsculas distintas
-               3. Rutas de la aplicación       Controladores, métodos o middlewares que no existen
-               4. Contrato kernel ↔ app        Métodos de app/models y app/services que el kernel necesita, y
-                                               archivos base del kernel (index.php, versaCLI, .htaccess) al día
-               5. Plantillas Twig              render / extends / include a plantillas inexistentes o con otra capitalización
-               6. Windows → Linux              Rutas C:\, comandos de Windows, finales de línea CRLF
-               7. Restos de depuración         var_dump, dd, dump, print_r, phpinfo
-               8. Credenciales en el código    Claves privadas, tokens de proveedores, contraseñas asignadas
-               9. Repositorio                  config.json, .env o install.token versionados
-              10. Configuración                debug, claves de sesión, cookies seguras, CORS, caché
-              11. Entorno del servidor         (--production) PHP, extensiones, permisos, dependencias,
-                                               frontend compilado, conexión y migraciones pendientes
-              12. Archivos expuestos           (--url) .env, config.json, vendor, logs, rutas: nada debe responder 200;
-                                               y por /up, OPcache y Xdebug tal como los usa el servidor web
-
-            NIVELES:
-              🔴 Crítico      Impide desplegar
-              ⚠️  Aviso        Revisar; con --strict también impide desplegar
-              ℹ️  Información  Recordatorio
-
-            La configuración local no es la del servidor: sin --production sus problemas son
-            avisos; con --production, los graves son críticos.
-
-            EJEMPLOS:
-              php versaCLI app:check:deploy                 Antes de subir cambios
-              php versaCLI app:check:deploy --strict        En CI
-              php versaCLI app:check:deploy --production    En el servidor, tras desplegar
-            HELP;
     }
 }

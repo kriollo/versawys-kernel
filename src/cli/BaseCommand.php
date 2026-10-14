@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace versaWYS\kernel\cli;
 
 use Exception;
+use Override;
+use ReflectionClass;
+use Throwable;
 use VersaORM\VersaModel;
 use versaWYS\kernel\Loggin;
 use versaWYS\kernel\model\OrmFactory;
@@ -43,7 +46,7 @@ abstract class BaseCommand implements CommandInterface
                     ],
                 );
                 VersaModel::setORM($versaOrm);
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 $versaOrm = null;
             }
         }
@@ -52,14 +55,25 @@ abstract class BaseCommand implements CommandInterface
     }
 
     /**
+     * Implementación por defecto de getHelp.
+     * Los comandos pueden sobreescribir para proporcionar ayuda detallada.
+     */
+    #[Override]
+    public function getHelp(): string
+    {
+        return $this->getDescription();
+    }
+
+    /**
      * Valida que un parámetro requerido exista.
      *
      * @param array $params Lista de parámetros
      * @param int $index Índice del parámetro requerido
      * @param string $name Nombre descriptivo del parámetro (para mensajes de error)
-     * @return string El parámetro validado
      *
      * @throws Exception Si el parámetro no existe o está vacío
+     *
+     * @return string El parámetro validado
      */
     protected function requireParam(array $params, int $index, string $name = 'parámetro'): string
     {
@@ -76,6 +90,7 @@ abstract class BaseCommand implements CommandInterface
      * @param array $params Lista de parámetros
      * @param int $index Índice del parámetro
      * @param string $default Valor por defecto si no existe
+     *
      * @return string El parámetro o el valor por defecto
      */
     protected function getParam(array $params, int $index, string $default = ''): string
@@ -164,7 +179,7 @@ abstract class BaseCommand implements CommandInterface
      */
     protected function getLogModule(): string
     {
-        $className = (new \ReflectionClass($this))->getShortName();
+        $className = (new ReflectionClass($this))->getShortName();
 
         return 'cli:' . strtolower(preg_replace('/Command$/', '', $className));
     }
@@ -175,15 +190,5 @@ abstract class BaseCommand implements CommandInterface
     protected function ensureDirectory(string $path, int $permissions = 0o775): void
     {
         CLIHelper::ensureDirectory($path, $permissions);
-    }
-
-    /**
-     * Implementación por defecto de getHelp.
-     * Los comandos pueden sobreescribir para proporcionar ayuda detallada.
-     */
-    #[\Override]
-    public function getHelp(): string
-    {
-        return $this->getDescription();
     }
 }

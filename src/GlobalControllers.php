@@ -88,7 +88,7 @@ class GlobalControllers
      *
      * @param list<string> $filedsToFilters columnas sobre las que busca el texto libre (`filter`)
      * @param array<int|string, string> $allowedFilters columnas que el cliente puede filtrar con `externalFilters`
-     *                              (`col=valor AND col2>valor2`). Acepta `'col'` o `'nombreCliente' => 'tabla.col'`.
+     *                                                  (`col=valor AND col2>valor2`). Acepta `'col'` o `'nombreCliente' => 'tabla.col'`.
      *
      * @return array<string, mixed>
      */
@@ -121,6 +121,7 @@ class GlobalControllers
                 $likes[] = 'LOWER(CONCAT(' . $field . ", '')) LIKE ?";
                 $bindings[] = '%' . mb_strtolower($fitro) . '%';
             }
+
             $conditions[] = '(' . implode(' OR ', $likes) . ')';
         }
 

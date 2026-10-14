@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\Tests;
 
+use Exception;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use versaWYS\kernel\File;
 
 final class FileTest extends TestCase
@@ -33,20 +36,13 @@ final class FileTest extends TestCase
         foreach (glob($this->dir . '/*') ?: [] as $file) {
             unlink($file);
         }
+
         rmdir($this->dir);
-    }
-
-    private function upload(string $name, string $declaredType, string $content, int $error = UPLOAD_ERR_OK): array
-    {
-        $tmp = $this->dir . '/tmp-' . bin2hex(random_bytes(4));
-        file_put_contents($tmp, $content);
-
-        return ['name' => $name, 'type' => $declaredType, 'tmp_name' => $tmp, 'error' => $error, 'size' => strlen($content)];
     }
 
     public function testAFailedUploadIsRejected(): void
     {
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
 
         new File($this->upload('foto.png', 'image/png', '', UPLOAD_ERR_PARTIAL));
     }
@@ -79,12 +75,26 @@ final class FileTest extends TestCase
         yield 'sube desde el inicio' => ['../foto.png'];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('unsafeDestinations')]
+    #[DataProvider('unsafeDestinations')]
     public function testUnsafeDestinationsAreRejectedBeforeMoving(string $destination): void
     {
         $file = new File($this->upload('foto.png', 'image/png', 'x'));
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $file->moveToNewName($this->dir . '/' . $destination);
+    }
+
+    private function upload(string $name, string $declaredType, string $content, int $error = UPLOAD_ERR_OK): array
+    {
+        $tmp = $this->dir . '/tmp-' . bin2hex(random_bytes(4));
+        file_put_contents($tmp, $content);
+
+        return [
+            'name' => $name,
+            'type' => $declaredType,
+            'tmp_name' => $tmp,
+            'error' => $error,
+            'size' => strlen($content),
+        ];
     }
 }

@@ -87,19 +87,36 @@ class ApplicationCommandManager
                 CLIErrorHandler::warning("Comando terminó con código de salida: {$exitCode}");
                 exit($exitCode);
             }
-        } catch (Exception $e) {
+        } catch (Exception $exception) {
             Loggin::error(
-                "Error ejecutando comando app:{$commandName}: " . $e->getMessage(),
+                "Error ejecutando comando app:{$commandName}: " . $exception->getMessage(),
                 'ApplicationCommandManager',
                 [
                     'command' => $commandName,
                     'params' => $params,
-                    'trace' => $e->getTraceAsString(),
+                    'trace' => $exception->getTraceAsString(),
                 ],
             );
 
-            CLIErrorHandler::handleGeneralError($e, "Comando: app:{$commandName}");
+            CLIErrorHandler::handleGeneralError($exception, "Comando: app:{$commandName}");
             exit(1);
+        }
+    }
+
+    /**
+     * Refresca el cache de comandos.
+     */
+    public static function refreshCache(): void
+    {
+        CLIErrorHandler::info('Refrescando cache de comandos...');
+
+        $commands = CommandRegistry::getCachedCommands(forceRefresh: true);
+
+        CLIErrorHandler::success('Cache actualizado. Comandos encontrados: ' . count($commands));
+
+        if (count($commands) > 0) {
+            echo "\n";
+            self::showAvailableCommands($commands);
         }
     }
 
@@ -202,22 +219,5 @@ class ApplicationCommandManager
         }
 
         echo "\n";
-    }
-
-    /**
-     * Refresca el cache de comandos.
-     */
-    public static function refreshCache(): void
-    {
-        CLIErrorHandler::info('Refrescando cache de comandos...');
-
-        $commands = CommandRegistry::getCachedCommands(forceRefresh: true);
-
-        CLIErrorHandler::success('Cache actualizado. Comandos encontrados: ' . count($commands));
-
-        if (count($commands) > 0) {
-            echo "\n";
-            self::showAvailableCommands($commands);
-        }
     }
 }

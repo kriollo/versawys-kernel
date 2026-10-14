@@ -17,6 +17,7 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use InvalidArgumentException;
 use RuntimeException;
+use SensitiveParameter;
 use versaWYS\kernel\helpers\Functions;
 
 /**
@@ -29,43 +30,10 @@ use versaWYS\kernel\helpers\Functions;
  */
 class Session
 {
-    private static bool $validatedThisRequest = false;
-
     // ponytail: revocación en archivos, válida para un solo servidor; pasar a Redis si hay varios nodos
     private const string REVOKED_DIR = 'versaWYS/cache/jwt_revoked/';
 
-    /**
-     * Invalida un JWT antes de su expiración (logout). Guarda su `jti` hasta que expire por sí solo.
-     */
-    public function revokeToken(#[\SensitiveParameter] ?string $jwt): void
-    {
-        try {
-            $decoded = $this->decodeJWT((string) $jwt);
-        } catch (RuntimeException) {
-            return; // Un token inválido o ya expirado no necesita revocarse
-        }
-
-        if (!isset($decoded['jti'], $decoded['exp']) || preg_match('/^[a-f0-9]{32}$/', (string) $decoded['jti']) !== 1) {
-            return;
-        }
-
-        if (!is_dir(self::REVOKED_DIR)) {
-            @mkdir(self::REVOKED_DIR, 0o2775, true);
-        }
-        if (@file_put_contents(self::REVOKED_DIR . $decoded['jti'], (string) $decoded['exp']) === false) {
-            // El logout borra la cookie, pero el token seguiría valiendo hasta que expire si alguien lo copió
-            Loggin::error('No se pudo revocar el JWT: ' . self::REVOKED_DIR . ' no es escribible.', 'security');
-        }
-
-        // Las revocaciones de tokens que ya expiraron dejan de ser necesarias
-        $revoked = glob(self::REVOKED_DIR . '*');
-
-        foreach ($revoked === false ? [] : $revoked as $file) {
-            if ((int) @file_get_contents($file) < time()) {
-                @unlink($file);
-            }
-        }
-    }
+    private static bool $validatedThisRequest = false;
 
     /**
      * Session constructor.
@@ -122,6 +90,45 @@ class Session
             if (empty($_SESSION['csrf_token'])) {
                 $this->setCSRFToken();
             }
+        }
+    }
+
+    /**
+     * Invalida un JWT antes de su expiración (logout). Guarda su `jti` hasta que expire por sí solo.
+     */
+    public function revokeToken(#[SensitiveParameter] ?string $jwt): void
+    {
+        try {
+            $decoded = $this->decodeJWT((string) $jwt);
+        } catch (RuntimeException) {
+            return; // Un token inválido o ya expirado no necesita revocarse
+        }
+
+        if (
+            !isset($decoded['jti'], $decoded['exp'])
+            || preg_match('/^[a-f0-9]{32}$/', (string) $decoded['jti']) !== 1
+        ) {
+            return;
+        }
+
+        if (!is_dir(self::REVOKED_DIR)) {
+            @mkdir(self::REVOKED_DIR, 0o2775, true);
+        }
+
+        if (@file_put_contents(self::REVOKED_DIR . $decoded['jti'], (string) $decoded['exp']) === false) {
+            // El logout borra la cookie, pero el token seguiría valiendo hasta que expire si alguien lo copió
+            Loggin::error('No se pudo revocar el JWT: ' . self::REVOKED_DIR . ' no es escribible.', 'security');
+        }
+
+        // Las revocaciones de tokens que ya expiraron dejan de ser necesarias
+        $revoked = glob(self::REVOKED_DIR . '*');
+
+        foreach ($revoked === false ? [] : $revoked as $file) {
+            if ((int) @file_get_contents($file) >= time()) {
+                continue;
+            }
+
+            @unlink($file);
         }
     }
 
@@ -335,9 +342,7 @@ class Session
     {
         global $config;
         if ($attempts[$email]['attempts'] >= $config['login_attempt']['max']) {
-            if ($attempts[$email]['time'] === null) {
-                $attempts[$email]['time'] = time() + $config['login_attempt']['time'];
-            }
+            $attempts[$email]['time'] ??= time() + $config['login_attempt']['time'];
 
             $this->set('login_user_attempts', $attempts);
 
@@ -398,6 +403,7 @@ class Session
                 'id_empresa',
             ]));
             Loggin::error('Usuario sin empresa_id válido para JWT. Datos parciales', 'Session', $excerpt);
+
             throw new InvalidArgumentException('No se puede generar JWT: empresa_id ausente o inválido');
         }
 
@@ -489,6 +495,7 @@ class Session
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_regenerate_id(true);
         }
+
         $this->setCSRFToken();
     }
 

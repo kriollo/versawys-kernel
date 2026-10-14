@@ -2,9 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
-## [Sin publicar]
+## [3.3.1] - 2026-10-14
+
+Sin cambios de comportamiento: herramientas y formato.
 
 ### Desarrollo
+- **Las mismas herramientas de calidad que los proyectos** (vservDigitalizacion, versaSTORE, anima): php-cs-fixer y rector con su misma configuración, Pint y mago. `composer fixer:all` las corre en el mismo orden que en vserv; `mago fmt` es el último paso y la CI verifica `mago fmt --dry-run` en lugar de Pint. Todo el código quedó formateado así.
+- Rector no convierte métodos estáticos en métodos de instancia: en una biblioteca cambiaría cómo los usan las aplicaciones.
+- Nueva prueba: cada `#[SensitiveParameter]` resuelve al atributo de PHP. Al importar nombres, rector lo dejó como `#[SensitiveParameter]` con su `use`; sin el `use`, PHP lo ignoraría y las contraseñas aparecerían en las trazas de error.
+- Comprobado contra el esqueleto y los cuatro proyectos: mismas pruebas y `app:check:deploy` en verde.
 - **mago** (`carthage-software/mago` 1.57) en las herramientas del kernel: `mago lint` corre en `composer check` y en la CI, con `mago.toml` y una línea base de los 159 hallazgos heredados (`mago-baseline.toml`). Un hallazgo nuevo hace fallar la CI. Revisados los de seguridad: comparaciones de tokens del analizador de PHP, `xdebug_info()` de `/up` y `$_REQUEST` en `Request` son falsos positivos y quedan en la línea base. `mago analyze` queda como `composer mago:analyze` (ver DECISIONS.md).
 
 ## [3.3.0] - 2026-10-14

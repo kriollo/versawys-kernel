@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli;
 
-use versaWYS\kernel\helpers as helpers;
+use RuntimeException;
+use Throwable;
+use versaWYS\kernel\helpers\FilesFunction;
 
 class ConfigManager
 {
@@ -44,6 +46,7 @@ class ConfigManager
         if (!file_exists(self::path())) {
             return [];
         }
+
         $config = file_get_contents(self::path());
 
         return json_decode($config, true) ?? [];
@@ -146,7 +149,7 @@ class ConfigManager
             $pathCahe = substr($pathCahe, 2);
         }
 
-        helpers\FilesFunction::destroyAllDir($pathCahe);
+        FilesFunction::destroyAllDir($pathCahe);
 
         CLIHelper::ensureDirectory($pathCahe, 0o775);
 
@@ -190,10 +193,12 @@ class ConfigManager
                 chmod($configDir . '/install.token', 0o660);
                 CLIErrorHandler::info('Token para el instalador web (/install): ' . $token);
             } else {
-                throw new \RuntimeException('No se pudo escribir el archivo');
+                throw new RuntimeException('No se pudo escribir el archivo');
             }
-        } catch (\Throwable $e) {
-            CLIErrorHandler::warning('Error: No se pudo crear el archivo de configuración: ' . $e->getMessage());
+        } catch (Throwable $throwable) {
+            CLIErrorHandler::warning(
+                'Error: No se pudo crear el archivo de configuración: ' . $throwable->getMessage(),
+            );
         }
     }
 }
