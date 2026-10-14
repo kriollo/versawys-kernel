@@ -2,6 +2,8 @@
     "name": "versawys/kernel",
     "description": "Núcleo del framework versaWYS-PHP: enrutamiento, middlewares, sesión/JWT, Twig, CLI y VersaORM.",
     "type": "library",
+    "keywords": ["framework", "php", "mvc", "twig", "versaorm"],
+    "homepage": "https://github.com/kriollo/versaWYS",
     "license": "MIT",
     "authors": [
         {
@@ -9,20 +11,41 @@
             "email": "jjara@wys.cl"
         }
     ],
+    "support": {
+        "issues": "https://github.com/kriollo/versawys-kernel/issues",
+        "source": "https://github.com/kriollo/versawys-kernel"
+    },
     "require": {
         "php": ">=8.3",
         "ext-intl": "*",
-        "twig/twig": "^3.28",
+        "ext-mbstring": "*",
+        "ext-pdo": "*",
+        "composer-runtime-api": "^2.2",
         "firebase/php-jwt": "^7.1",
         "symfony/mailer": "^8.1",
         "twig/cssinliner-extra": "^3.26",
         "twig/extra-bundle": "^3.24",
+        "twig/twig": "^3.28",
         "versaorm/versaorm-php": "^1.9 || ^2.0"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.30",
+        "phpstan/phpstan": "^2.2",
+        "phpstan/phpstan-strict-rules": "^2.0"
     },
     "autoload": {
         "psr-4": {
-            "versaWYS\\kernel\\": ""
+            "versaWYS\\kernel\\": "src/"
         }
     },
-    "minimum-stability": "stable"
+    "minimum-stability": "stable",
+    "scripts": {
+        "pint": "pint",
+        "pint:check": "pint --test",
+        "stan": "phpstan analyse --ansi --memory-limit=1G",
+        "check": [
+            "@pint:check",
+            "@stan"
+        ]
+    }
 }

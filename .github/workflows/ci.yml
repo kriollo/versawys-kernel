@@ -1,0 +1,43 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+
+jobs:
+    kernel:
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                php: ['8.3', '8.4', '8.5']
+        steps:
+            # Kernel y esqueleto lado a lado, igual que en local: phpstan lee app/ del esqueleto
+            # y las pruebas del esqueleto corren contra este kernel
+            - uses: actions/checkout@v4
+              with:
+                  path: versawys-kernel
+            - uses: actions/checkout@v4
+              with:
+                  repository: kriollo/versaWYS
+                  path: versaWYS
+            - uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ matrix.php }}
+                  extensions: intl, mbstring, pdo_mysql, pdo_pgsql, pdo_sqlite, curl, fileinfo, zip
+                  coverage: none
+
+            - name: Kernel (formato, análisis estático, auditoría)
+              working-directory: versawys-kernel
+              run: |
+                  composer install --no-interaction --no-progress
+                  composer check
+                  composer audit
+
+            - name: Pruebas del esqueleto contra este kernel
+              working-directory: versaWYS/versaWYS
+              run: |
+                  composer config repositories.kernel '{"type": "path", "url": "../../versawys-kernel", "options": {"symlink": true}}'
+                  composer require --no-interaction --no-progress -W "versawys/kernel:*@dev"
+                  composer test

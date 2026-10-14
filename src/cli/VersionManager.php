@@ -31,7 +31,7 @@ class VersionManager
         }
 
         // Información del framework
-        echo CLIErrorHandler::colorize('Framework versaWYS', 'green') . "\n";
+        echo CLIErrorHandler::colorize('Framework versaWYS', 'green') . ' ' . \Composer\InstalledVersions::getPrettyVersion('versawys/kernel') . "\n";
         echo "- Arquitectura: MVC + SPA\n";
         echo '- Backend: PHP ' . PHP_VERSION . "\n";
         echo "- Frontend: TypeScript + Vue.js + TailwindCSS\n";

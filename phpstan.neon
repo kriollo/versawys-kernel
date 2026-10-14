@@ -1,0 +1,19 @@
+parameters:
+    level: 8
+    paths:
+        - src
+    # El kernel llama a clases del panel base (app\models, app\services): se leen del esqueleto
+    # clonado al lado (../versaWYS), igual en local que en CI
+    scanDirectories:
+        - ../versaWYS/app
+
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+    checkTooWideReturnTypesInProtectedAndPublicMethods: false
+    checkUninitializedProperties: false
+
+    ignoreErrors:
+         - '#Construct empty\(\) is not allowed\. Use more strict comparison\.#'
+includes:
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - phpstan-baseline.neon

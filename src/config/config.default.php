@@ -6,7 +6,7 @@ declare(strict_types=1);
 // config.php los fusiona con array_replace_recursive y `versaCLI config:init` genera el
 // config.json inicial a partir de este mismo array.
 return [
-    'framework' => 'versaWYS-PHP 2.0.0',
+    'framework' => 'versaWYS-PHP ' . (Composer\InstalledVersions::isInstalled('versawys/kernel') ? Composer\InstalledVersions::getPrettyVersion('versawys/kernel') : 'dev'),
     'database' => [
         'engine' => 'pdo',
         'driver' => 'mysql', // mysql | postgresql

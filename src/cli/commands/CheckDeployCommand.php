@@ -50,6 +50,7 @@ class CheckDeployCommand extends BaseCommand
             'Sintaxis PHP' => $this->checkSyntax(...),
             'PSR-4, clases y rutas de archivos' => $this->checkPsr4(...),
             'Rutas de la aplicación' => $this->checkRoutes(...),
+            'Contrato kernel ↔ app' => $this->checkAppContract(...),
             'Plantillas Twig' => $this->checkTemplates(...),
             'Compatibilidad Windows → Linux' => $this->checkWindowsLeftovers(...),
             'Restos de depuración' => $this->checkDebugLeftovers(...),
@@ -83,6 +84,29 @@ class CheckDeployCommand extends BaseCommand
     // =====================================================================
     // Revisiones de código
     // =====================================================================
+
+    /**
+     * Métodos de app/ que el kernel llama. El panel base se copia en cada proyecto: si un kernel
+     * nuevo llama algo que esa copia no tiene, falla en producción. Ampliar esta lista es un
+     * cambio de versión mayor (UPGRADE.md).
+     */
+    public const array APP_CONTRACT = [
+        'app\\models\\Users' => ['findWithCompany'],
+        'app\\models\\Empresas' => ['all', 'getEmpresaById'],
+        'app\\models\\Dashboard' => ['getMenuAdmin', 'getMenuUser'],
+        'app\\services\\MailService' => ['enviarTemplate'],
+    ];
+
+    private function checkAppContract(): void
+    {
+        foreach (self::APP_CONTRACT as $class => $methods) {
+            foreach ($methods as $method) {
+                if (!method_exists($class, $method)) {
+                    $this->add('critical', "El kernel llama a {$class}::{$method}() y el proyecto no lo tiene.", hint: 'Actualizar esa clase del panel base o fijar una versión anterior del kernel.');
+                }
+            }
+        }
+    }
 
     /**
      * Un archivo con error de sintaxis es un error fatal en cuanto se carga.
@@ -835,13 +859,14 @@ class CheckDeployCommand extends BaseCommand
                1. Sintaxis PHP                 Archivos que no se pueden cargar
                2. PSR-4, clases y archivos     Namespaces, clases inexistentes, require con mayúsculas distintas
                3. Rutas de la aplicación       Controladores, métodos o middlewares que no existen
-               4. Plantillas Twig              render / extends / include a plantillas inexistentes o con otra capitalización
-               5. Windows → Linux              Rutas C:\, comandos de Windows, finales de línea CRLF
-               6. Restos de depuración         var_dump, dd, dump, print_r, phpinfo
-               7. Credenciales en el código    Claves privadas, tokens de proveedores, contraseñas asignadas
-               8. Repositorio                  config.json, .env o install.token versionados
-               9. Configuración                debug, claves de sesión, cookies seguras, CORS, caché
-              10. Entorno del servidor         (--production) PHP, extensiones, permisos, dependencias,
+               4. Contrato kernel ↔ app        Métodos de app/models y app/services que el kernel necesita
+               5. Plantillas Twig              render / extends / include a plantillas inexistentes o con otra capitalización
+               6. Windows → Linux              Rutas C:\, comandos de Windows, finales de línea CRLF
+               7. Restos de depuración         var_dump, dd, dump, print_r, phpinfo
+               8. Credenciales en el código    Claves privadas, tokens de proveedores, contraseñas asignadas
+               9. Repositorio                  config.json, .env o install.token versionados
+              10. Configuración                debug, claves de sesión, cookies seguras, CORS, caché
+              11. Entorno del servidor         (--production) PHP, extensiones, permisos, dependencias,
                                                frontend compilado, conexión y migraciones pendientes
 
             NIVELES:
