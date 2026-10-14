@@ -52,7 +52,10 @@ class Session
         if (!is_dir(self::REVOKED_DIR)) {
             @mkdir(self::REVOKED_DIR, 0o2775, true);
         }
-        file_put_contents(self::REVOKED_DIR . $decoded['jti'], (string) $decoded['exp']);
+        if (@file_put_contents(self::REVOKED_DIR . $decoded['jti'], (string) $decoded['exp']) === false) {
+            // El logout borra la cookie, pero el token seguiría valiendo hasta que expire si alguien lo copió
+            Loggin::error('No se pudo revocar el JWT: ' . self::REVOKED_DIR . ' no es escribible.', 'security');
+        }
 
         // Las revocaciones de tokens que ya expiraron dejan de ser necesarias
         $revoked = glob(self::REVOKED_DIR . '*');

@@ -9,6 +9,8 @@ use versaWYS\kernel\cli\CLIErrorHandler;
 use versaWYS\kernel\cli\ConfigManager;
 use versaWYS\kernel\cli\RouteManager;
 use versaWYS\kernel\model\OrmFactory;
+use versaWYS\kernel\Request;
+use versaWYS\kernel\Router;
 
 /**
  * Revisión previa al despliegue.
@@ -444,8 +446,14 @@ class CheckDeployCommand extends BaseCommand
         $serious = $this->production ? 'critical' : 'warning';
         $minor = $this->production ? 'warning' : 'info';
         $file = ConfigManager::dir() . '/config.json';
+        // La petición ignora las entradas inválidas; aquí se detectan antes de desplegar
+        $badProxies = array_filter(
+            (array) ($config['trusted_proxies'] ?? []),
+            static fn (mixed $range): bool => !is_string($range) || Request::parseProxyRange($range) === null,
+        );
 
         $rules = [
+            [$serious, $badProxies !== [], 'trusted_proxies tiene entradas inválidas que se ignoran: ' . implode(', ', array_map(json_encode(...), $badProxies)) . '.', 'Usar IPs o rangos CIDR, p. ej. "10.0.0.0/8" o "2001:db8::/32".'],
             [$serious, ($config['build']['debug'] ?? false) === true, 'build.debug está activo: expone rutas, trazas y SQL en los errores.', 'php versaCLI config:debug:false'],
             [$serious, strlen((string) ($config['session']['key'] ?? '')) < 32, 'session.key está vacía o es corta: con ella se firman los JWT.', 'Generar una clave aleatoria de 64 caracteres.'],
             [$serious, ($config['session']['user_cookie']['secure'] ?? false) !== true, 'session.user_cookie.secure está desactivado: la sesión viajaría por HTTP.', 'Activarlo; el sitio debe servirse por HTTPS.'],
@@ -533,10 +541,16 @@ class CheckDeployCommand extends BaseCommand
      */
     private function checkWebServerRuntime(string $base): void
     {
-        $context = stream_context_create(['http' => ['method' => 'GET', 'ignore_errors' => true, 'timeout' => 5]]);
+        $context = stream_context_create(['http' => [
+            'method' => 'GET',
+            'ignore_errors' => true,
+            'timeout' => 5,
+            // /up solo da el detalle con esta firma, que se calcula con session.key de config.json
+            'header' => 'X-Versawys-Health: ' . Router::healthToken(),
+        ]]);
         $health = json_decode((string) @file_get_contents($base . '/up', false, $context), true);
         if (!is_array($health) || !array_key_exists('opcache', $health)) {
-            $this->add('info', 'No se pudo leer la configuración de PHP del servidor web en /up (solo responde con detalle a peticiones del propio servidor).');
+            $this->add('info', 'No se pudo leer la configuración de PHP del servidor web en /up: responde con detalle solo si la terminal y el servidor web usan el mismo config.json (session.key).');
 
             return;
         }
@@ -582,6 +596,7 @@ class CheckDeployCommand extends BaseCommand
             'versaWYS/cache',
             $config['twig']['compiled_dir'] ?? './versaWYS/cache/twig/.cache',
             $config['rate_limiting']['cache_dir'] ?? './versaWYS/cache/rate_limits/',
+            'versaWYS/cache/jwt_revoked',
             $config['assets']['dashboard']['avatars']['dist'] ?? 'public/dashboard/img/avatars',
             $config['assets']['dashboard']['store']['dist'] ?? 'public/dashboard/store',
             ConfigManager::dir(),

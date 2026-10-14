@@ -33,7 +33,7 @@ class Request
     {
         try {
             $this->contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-            $this->method = strtoupper($_SERVER['REQUEST_METHOD']) ?? 'GET';
+            $this->method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
             $this->url = $_SERVER['REQUEST_URI'] ?? '/';
             $this->params = $_REQUEST;
             $this->files = $_FILES;
@@ -335,13 +335,18 @@ class Request
         }
 
         foreach ((array) ($config['trusted_proxies'] ?? []) as $range) {
-            $parts = explode('/', (string) $range, 2);
-            $subnetBin = @inet_pton($parts[0]);
-            if ($subnetBin === false || strlen($subnetBin) !== strlen($ipBin)) {
+            $parsed = self::parseProxyRange((string) $range);
+            if ($parsed === null) {
+                self::reportInvalidTrustedProxyRange((string) $range);
+
                 continue;
             }
 
-            $bits = isset($parts[1]) ? (int) $parts[1] : strlen($ipBin) * 8;
+            [$subnetBin, $bits] = $parsed;
+            if (strlen($subnetBin) !== strlen($ipBin)) {
+                continue;
+            }
+
             $bytes = intdiv($bits, 8);
             $mask = (0xFF << (8 - $bits % 8)) & 0xFF;
             if (
@@ -353,6 +358,40 @@ class Request
         }
 
         return false;
+    }
+
+    /**
+     * Un rango de `trusted_proxies` como [red en binario, bits del prefijo], o null si es inválido.
+     * Sin prefijo es una IP suelta. app:check:deploy usa la misma validación.
+     *
+     * @return array{0: string, 1: int}|null
+     */
+    public static function parseProxyRange(string $range): ?array
+    {
+        $parts = explode('/', trim($range), 2);
+        $subnetBin = @inet_pton($parts[0]);
+        if ($subnetBin === false) {
+            return null;
+        }
+
+        $maxBits = strlen($subnetBin) * 8;
+        $prefix = $parts[1] ?? (string) $maxBits;
+        if (!ctype_digit($prefix) || (int) $prefix > $maxBits) {
+            return null;
+        }
+
+        return [$subnetBin, (int) $prefix];
+    }
+
+    private static function reportInvalidTrustedProxyRange(string $range): void
+    {
+        static $reported = [];
+        if (isset($reported[$range])) {
+            return;
+        }
+
+        $reported[$range] = true;
+        error_log(sprintf('trusted_proxies: se ignora la entrada inválida "%s" (se espera una IP o IP/prefijo).', $range));
     }
 
     /**
@@ -441,10 +480,11 @@ class Request
 
     protected function prepareParams(): void
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        if ($method === 'GET') {
             // Para GET, aplicar filtrado básico pero no agresivo
             $this->params = $_GET ?? [];
-        } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        } elseif ($method === 'POST') {
             if ($this->contentType !== '' && str_starts_with(strtolower($this->contentType), 'application/json')) {
                 $this->params = json_decode(file_get_contents('php://input'), true) ?? [];
             } else {

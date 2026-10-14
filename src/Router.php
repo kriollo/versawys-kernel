@@ -97,16 +97,31 @@ class Router
     }
 
     /**
+     * Firma que habilita el detalle de /up. Solo la puede calcular quien tiene config.json
+     * (app:check:deploy en el servidor); vacía si no hay session.key.
+     */
+    public static function healthToken(): string
+    {
+        global $config;
+
+        $key = (string) ($config['session']['key'] ?? '');
+
+        return $key === '' ? '' : hash_hmac('sha256', 'versawys:/up', $key);
+    }
+
+    /**
      * `/up`: verificación de vida para el despliegue y los monitores. A cualquiera le responde solo
-     * `ok`; si la petición viene del propio servidor, agrega cómo corre PHP en el servidor web
-     * (FPM/Apache), que puede diferir del PHP de la terminal donde corre app:check:deploy.
+     * `ok`. Con la cabecera X-Versawys-Health firmada (healthToken) agrega cómo corre PHP en el
+     * servidor web (FPM/Apache), que puede diferir del PHP de la terminal donde corre app:check:deploy.
+     * No se decide por IP: detrás de un proxy en el mismo servidor todas las visitas llegan desde
+     * 127.0.0.1.
      *
      * @return array<string, mixed>
      */
     public static function health(): array
     {
-        $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
-        if ($remote === '' || ($remote !== ($_SERVER['SERVER_ADDR'] ?? '') && !in_array($remote, ['127.0.0.1', '::1'], true))) {
+        $token = self::healthToken();
+        if ($token === '' || !hash_equals($token, (string) ($_SERVER['HTTP_X_VERSAWYS_HEALTH'] ?? ''))) {
             return ['status' => 'ok'];
         }
 

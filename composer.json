@@ -36,7 +36,8 @@
     "require-dev": {
         "laravel/pint": "^1.30",
         "phpstan/phpstan": "^2.2",
-        "phpstan/phpstan-strict-rules": "^2.0"
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpunit/phpunit": "^11.5"
     },
     "autoload": {
         "psr-4": {
@@ -47,9 +48,11 @@
     "scripts": {
         "pint": "pint",
         "pint:check": "pint --test",
+        "test": "phpunit",
         "stan": "phpstan analyse --ansi --memory-limit=1G",
         "check": [
             "@pint:check",
+            "@test",
             "@stan"
         ]
     }

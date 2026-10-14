@@ -2,6 +2,21 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.1.2] - 2026-10-14
+
+### Seguridad
+- **`trusted_proxies`:** un prefijo no numérico (`10.0.0.1/abc`) se leía como `/0` y el kernel confiaba en **todas** las direcciones de esa familia: cualquiera podía falsificar su IP con `X-Forwarded-For` y esquivar el rate limiting. Ahora las entradas inválidas se ignoran, se registran con `error_log` indicando cuál es, y `app:check:deploy` las marca (crítico con `--production`). `Request::parseProxyRange()` es la validación común.
+- **`/up`** entregaba versiones de PHP y del kernel, OPcache y Xdebug a cualquier petición que llegara desde `127.0.0.1`, lo que incluye todas las visitas cuando hay un proxy en el mismo servidor. Ahora el detalle solo se entrega con la cabecera `X-Versawys-Health`, firmada con `session.key`, que envía `app:check:deploy`.
+- Si no se puede escribir en `versaWYS/cache/jwt_revoked/`, el logout no revocaba el JWT y no quedaba rastro. Ahora se registra en el log `security`, y `app:check:deploy` revisa los permisos de esa carpeta.
+
+### Añadido
+- Suite de pruebas PHPUnit del kernel (`composer test`), incluida en `composer check`. Cubre proxies confiables, `/up` y el Router: el `code` de la respuesta como estado HTTP, middlewares que cortan la petición y parámetros de ruta.
+- `THREAT_MODEL.md`: activos, límites de confianza, amenazas con su mitigación y su prueba, y lo que queda fuera del alcance del kernel.
+- `SECURITY.md`: comportamiento ante fallos (qué pasa cuando una protección no puede funcionar) y superficie sin sesión.
+
+### Corregido
+- `Request` usa GET como método por defecto cuando `REQUEST_METHOD` no está definido.
+
 ## [3.1.1] - 2026-10-14
 
 ### Cambiado
