@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [2.4.0] - 2026-10-14
+
+### Añadido
+- `app:check:deploy --url=https://...`: pide al sitio real `.env`, `.git/config`, `config.json`, `composer.*`, `vendor/`, `logs/`, `versaCLI`, `node_modules/` y un archivo de `app/routes`. Si alguno responde 200, es un crítico. Con `--production` usa `build.base_url` si no se indica la URL, así que corre sola como último hook del despliegue.
+- Dependabot para las dependencias y las GitHub Actions del kernel.
+
 ## [2.3.0] - 2026-10-14
 
 ### Seguridad
