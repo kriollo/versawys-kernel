@@ -19,6 +19,8 @@ if ($origin !== '' && in_array($origin, $config['cors']['allowed_origins'] ?? []
 header('X-Frame-Options: SAMEORIGIN');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
+// Aísla la ventana de otros orígenes; allow-popups mantiene los popups de OAuth (Google)
+header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
 
 $host = explode(':', $_SERVER['HTTP_HOST'] ?? 'localhost')[0];
 $isLocalhost = in_array($host, ['localhost', '127.0.0.1'], strict: true);

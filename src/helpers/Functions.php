@@ -267,7 +267,18 @@ class Functions
      */
     public static function hash(#[\SensitiveParameter] string $password): string
     {
-        return password_hash($password, PASSWORD_BCRYPT);
+        // PASSWORD_DEFAULT: bcrypt con el costo que fije PHP (12 desde PHP 8.4). Argon2id no está en
+        // todas las compilaciones de PHP: una base copiada a otra máquina dejaría a todos sin poder ingresar
+        return password_hash($password, PASSWORD_DEFAULT);
+    }
+
+    /**
+     * El hash usa un algoritmo o costo anterior: conviene regenerarlo al iniciar sesión, que es el
+     * único momento en que se tiene la contraseña.
+     */
+    public static function needsRehash(string $hash): bool
+    {
+        return password_needs_rehash($hash, PASSWORD_DEFAULT);
     }
 
     /**

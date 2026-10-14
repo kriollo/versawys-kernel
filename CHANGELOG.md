@@ -2,6 +2,22 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [2.3.0] - 2026-10-14
+
+### Seguridad
+- `Request::getBaseUrl()` ya no acepta `X-Forwarded-Host` / `-Proto` de cualquier cliente. Antes bastaba enviarlas para que el enlace del correo de recuperación de contraseña apuntara a otro dominio. Ahora solo valen si la petición viene de `trusted_proxies`.
+- `Request::getIp()` lee `X-Forwarded-For` solo desde `trusted_proxies` (IPs o rangos CIDR, IPv4 e IPv6). Así, detrás de un proxy el rate limit cuenta la IP del cliente y no la del proxy.
+- Un fallo interno en una página HTML responde **500** en vez de 404, sin detalles en producción.
+- Cabecera `Cross-Origin-Opener-Policy: same-origin-allow-popups`.
+- `Functions::hash()` usa `PASSWORD_DEFAULT` (bcrypt con costo 12 desde PHP 8.4) y `Functions::needsRehash()` permite renovar hashes antiguos al iniciar sesión. Argon2id se descartó: no viene en todas las compilaciones de PHP.
+
+### Añadido
+- `build.base_url`: URL pública fija para los enlaces generados. `app:check:deploy` avisa si está vacía.
+- `trusted_proxies` en la configuración.
+
+### Cambios a revisar al actualizar
+- Si el sitio está detrás de un proxy o balanceador que termina TLS, configurar `trusted_proxies` o `build.base_url`. Si no, los enlaces generados saldrán con `http://`.
+
 ## [2.2.0] - 2026-10-14
 
 ### Añadido
