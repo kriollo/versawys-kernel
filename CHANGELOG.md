@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.1.1] - 2026-10-14
+
+### Cambiado
+- `route:make` (y `RCMD`, `versaMODULE`) incluye un ejemplo comentado de ruta `QUERY` para búsquedas con filtros en el cuerpo, con la forma de enviarla en desarrollo (`X-HTTP-Method-Override`).
+
 ## [3.1.0] - 2026-10-14
 
 ### Añadido

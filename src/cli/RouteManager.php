@@ -49,6 +49,16 @@ class RouteManager
                 // [$middlewareName::class, 'middlewareMethod'],
             ]);
 
+            // Búsqueda con filtros en el cuerpo: QUERY es seguro e idempotente como GET (no exige CSRF),
+            // pero los filtros viajan en el cuerpo. En desarrollo (php -S) se envía como POST con
+            // la cabecera X-HTTP-Method-Override: QUERY
+            // Router::query('/admin/$routeNameModule/api/buscar',
+            //     [$controllerName::class,'buscar']
+            // )->middleware([
+            //     [AuthMiddleware::class, 'checkSession'],
+            //     [AuthMiddleware::class, 'onlyUserWithAccess'],
+            // ]);
+
             EOT;
 
         $template = str_replace('$routeNameModule', $routeNameModule, $template);
