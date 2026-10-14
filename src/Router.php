@@ -716,7 +716,7 @@ class Router
                     . htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8')
                     . '</pre>'
                     . '<div class="flex justify-center mt-8">'
-                    . '<a onclick="history.go(-1)" data-spa class="px-8 py-3 bg-gray-600 text-white rounded-xl font-bold hover:bg-gray-700 transition-all cursor-pointer">'
+                    . '<a href="#" data-history-back class="px-8 py-3 bg-gray-600 text-white rounded-xl font-bold hover:bg-gray-700 transition-all cursor-pointer">'
                     . 'Volver</a>'
                     . '</div></div></div>';
 

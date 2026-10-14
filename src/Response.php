@@ -234,7 +234,7 @@ class Response
 
             $errorHtml .=
                 '<div class="flex justify-center mt-8">'
-                . '<a onclick="history.go(-1)" data-spa class="px-8 py-3 bg-gray-600 text-white rounded-xl font-bold hover:bg-gray-700 transition-all cursor-pointer">'
+                . '<a href="#" data-history-back class="px-8 py-3 bg-gray-600 text-white rounded-xl font-bold hover:bg-gray-700 transition-all cursor-pointer">'
                 . 'Volver</a></div></div></div>';
         } else {
             // En producción: error genérico
@@ -246,7 +246,7 @@ class Response
                 . '<p class="mb-5 text-base font-normal text-gray-500 md:text-lg dark:text-gray-400">'
                 . 'Ha ocurrido un error inesperado. Por favor, inténtelo de nuevo más tarde.</p>'
                 . '<div class="flex justify-center mt-8">'
-                . '<a onclick="history.go(-1)" data-spa class="px-8 py-3 bg-gray-600 text-white rounded-xl font-bold hover:bg-gray-700 transition-all cursor-pointer">'
+                . '<a href="#" data-history-back class="px-8 py-3 bg-gray-600 text-white rounded-xl font-bold hover:bg-gray-700 transition-all cursor-pointer">'
                 . 'Volver</a></div></div></div>';
         }
 

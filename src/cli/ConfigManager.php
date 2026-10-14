@@ -167,6 +167,8 @@ class ConfigManager
         $defaults['session']['user_cookie']['key_encript'] = bin2hex(random_bytes(32));
         // Los proyectos nuevos reciben la entrada tal cual: el escape se hace al mostrar
         $defaults['security']['sanitize_input'] = false;
+        // Y exigen el nonce en los <script> inline: el panel base ya lo usa en todas sus plantillas
+        $defaults['csp']['nonce'] = true;
         $template = json_encode($defaults, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         // Asegurarse de que el directorio de configuración exista

@@ -182,6 +182,16 @@ class SecurityUtils
      *
      * @return string Token CSRF
      */
+    /**
+     * Nonce de CSP de esta petición: el mismo para la cabecera y para cada <script> de la página.
+     */
+    public static function cspNonce(): string
+    {
+        static $nonce = null;
+
+        return $nonce ??= base64_encode(random_bytes(16));
+    }
+
     public static function generateCsrfToken(): string
     {
         if (session_status() === PHP_SESSION_NONE) {
