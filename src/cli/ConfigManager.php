@@ -167,6 +167,8 @@ class ConfigManager
         $defaults['session']['user_cookie']['key_encript'] = bin2hex(random_bytes(32));
         // Y exigen el nonce en los <script> inline: el panel base ya lo usa en todas sus plantillas
         $defaults['csp']['nonce'] = true;
+        // Y sin eval: el panel base no compila plantillas en el navegador
+        $defaults['csp']['unsafe_eval'] = false;
         $template = json_encode($defaults, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         // Asegurarse de que el directorio de configuración exista

@@ -85,7 +85,7 @@ return [
     ],
     'cors' => ['allowed_origins' => []],
     // nonce: exige el nonce de la petición en los <script> inline (ver csp_nonce() en Twig)
-    'csp' => ['enabled' => true, 'nonce' => false],
+    'csp' => ['enabled' => true, 'nonce' => false, 'unsafe_eval' => true],
     'websocket_service' => ['ws_url' => ''],
     'logging' => [
         'dir' => './versaWYS/logs/',

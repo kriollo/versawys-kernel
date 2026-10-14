@@ -36,8 +36,9 @@ if (!($config['build']['debug'] ?? false) && ($config['csp']['enabled'] ?? true)
     $csp = $config['csp'] ?? [];
     $extra = static fn (string $directive): string => implode(' ', (array) ($csp[$directive] ?? []));
 
-    // ponytail: 'unsafe-inline' y 'unsafe-eval' siguen porque los templates usan scripts inline
-    // y el runtime de Vue compila plantillas; quitar cuando se migre a nonces y build precompilado.
+    // ponytail: 'unsafe-inline' sigue como respaldo para navegadores sin soporte de nonce.
+    // csp.unsafe_eval (true si falta): Vue necesita eval solo si compila plantillas en el navegador
+    // (un `template:` en texto). Con todos los componentes precompilados se apaga.
     // csp.nonce: los <script> inline solo corren si llevan el nonce de la petición (csp_nonce() en Twig,
     // <meta name="csp-nonce"> para los que crea el JavaScript). Los navegadores con soporte de nonce
     // ignoran 'unsafe-inline'; se deja como respaldo para los antiguos
@@ -47,10 +48,11 @@ if (!($config['build']['debug'] ?? false) && ($config['csp']['enabled'] ?? true)
     $wsOrigin = isset($ws['scheme'], $ws['host']) ? $ws['scheme'] . '://' . $ws['host'] . (isset($ws['port']) ? ':' . $ws['port'] : '') . ' ' : '';
 
     $nonce = ($csp['nonce'] ?? false) === true ? "'nonce-" . versaWYS\kernel\SecurityUtils::cspNonce() . "' " : '';
+    $eval = ($csp['unsafe_eval'] ?? true) === true ? "'unsafe-eval' " : '';
 
     header(
         "Content-Security-Policy: default-src 'self'; "
-        . "script-src 'self' {$nonce}'unsafe-inline' 'unsafe-eval' {$extra('script-src')}; "
+        . "script-src 'self' {$nonce}'unsafe-inline' {$eval}{$extra('script-src')}; "
         . "style-src 'self' 'unsafe-inline' fonts.googleapis.com {$extra('style-src')}; "
         . "font-src 'self' fonts.gstatic.com {$extra('font-src')}; "
         . "img-src 'self' data: blob: https: {$extra('img-src')}; "

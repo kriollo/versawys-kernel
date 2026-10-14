@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.1.0] - 2026-10-14
+
+### Añadido
+- **`csp.unsafe_eval`.** Con `false`, `script-src` deja de incluir `'unsafe-eval'`: un script inyectado ya no puede ejecutar código con `eval` ni `new Function`. Vue solo lo necesita si compila plantillas en el navegador (un `template:` en texto); los `.vue` compilados y las funciones `render` no. Por defecto `true`, así los proyectos existentes no cambian; `config:init` crea los nuevos con `false`, porque el panel base ya no compila en el navegador.
+
+### Verificación
+El panel base se recorrió con Chrome sin interfaz (login, 10 pantallas, navegación SPA, 404, selector de empresa) con nonce y sin `'unsafe-eval'`: 0 bloqueos. Con el `vue-loader` anterior, que usaba `template:`, se bloquean todas las pantallas.
+
 ## [3.0.0] - 2026-10-14
 
 Versión mayor: quita lo que en 2.x quedó solo por compatibilidad. **−643 líneas** en `src/` y el baseline de phpstan baja de 2.959 a 2.815. Cómo actualizar: [UPGRADE.md](UPGRADE.md#de-2x-a-30).
