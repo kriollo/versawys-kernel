@@ -2,6 +2,20 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [2.11.0] - 2026-10-14
+
+### Añadido
+- **Nonce de CSP** (`csp.nonce`). Cada petición genera un nonce que se agrega a `script-src`, y los `<script>` inline solo corren si lo llevan. Un script inyectado por XSS deja de ejecutarse. En las plantillas se usa `<script nonce="{{ csp_nonce() }}">`; para los scripts que crea el JavaScript, `<meta name="csp-nonce" content="{{ csp_nonce() }}">`. Apagado por defecto: los proyectos existentes no cambian. `config:init` crea los nuevos con el nonce activo, porque el panel base ya está preparado.
+- `SecurityUtils::cspNonce()` y la función Twig `csp_nonce()`, que devuelve vacío si la opción está apagada; así las plantillas pueden llevarla siempre.
+
+### Cambiado
+- El HTML de error que genera el kernel usa `data-history-back` en vez de `onclick="history.go(-1)"`: con nonce, los manejadores inline quedan bloqueados.
+
+### Verificación
+El panel base se recorrió con Chrome sin interfaz por el protocolo de DevTools: login, 10 pantallas, el 404, la navegación SPA, el botón "Volver" y el selector de empresa.
+- Con el nonce activo y sin adaptar las plantillas: 13 bloqueos.
+- Ya adaptadas: 0 bloqueos y 0 errores de JavaScript, con el nonce activo y con el nonce apagado.
+
 ## [2.10.0] - 2026-10-14
 
 Limpieza a partir de la auditoría de sobreingeniería: **−2.060 líneas**. El baseline de phpstan baja de 3.103 a 2.959 líneas.

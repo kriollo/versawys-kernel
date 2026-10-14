@@ -570,6 +570,17 @@ class Functions
      *
      * @return array the array of Twig functions
      */
+    /**
+     * Nonce de CSP para `<script nonce="{{ csp_nonce() }}">`. Vacío si csp.nonce está apagado: así
+     * las plantillas pueden llevarlo siempre.
+     */
+    public static function cspNonce(): string
+    {
+        global $config;
+
+        return ($config['csp']['nonce'] ?? false) === true ? \versaWYS\kernel\SecurityUtils::cspNonce() : '';
+    }
+
     public function setTwigFunctions(): array
     {
         return [
@@ -578,6 +589,7 @@ class Functions
             ['csrf_field', self::class . '::csrf_field'],
             ['getAssets', self::class . '::getAssets'],
             ['getPanelUrl', self::class . '::getPanelUrl'],
+            ['csp_nonce', self::class . '::cspNonce'],
         ];
     }
 
