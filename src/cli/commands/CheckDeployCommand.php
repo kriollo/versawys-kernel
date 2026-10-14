@@ -474,6 +474,82 @@ class CheckDeployCommand extends BaseCommand
                 $this->add($level, $message, $file, hint: $hint);
             }
         }
+
+        foreach (self::schemaFindings(ConfigManager::getConfig(), ConfigManager::defaults()) as [$severity, $message, $hint]) {
+            $this->add(['serious' => $serious, 'minor' => $minor][$severity], $message, $file, hint: $hint);
+        }
+    }
+
+    /**
+     * Secciones donde un error de tipeo desactiva una protección sin avisar (`secure` mal escrito
+     * deja la cookie con su valor por defecto). Las demás aceptan claves propias del proyecto.
+     */
+    private const array STRICT_SECTIONS = ['build', 'session', 'session.user_cookie', 'auth', 'cors', 'admin', 'login_attempt', 'twig'];
+
+    /** Claves que ningún código lee. Se aceptan hasta 4.0; aquí se avisa para que nadie confíe en ellas. */
+    public const array DEAD_KEYS = [
+        'session.user_cookie.key_encript' => 'nada la usa para cifrar',
+        'twig.default_template_404' => 'el 404 siempre usa versaWYS/404',
+        'api.auth' => 'la autenticación de cada ruta la deciden sus middlewares',
+        'rate_limiting.storage' => 'los contadores se guardan siempre en archivos locales; con varios servidores cada uno cuenta por separado',
+        'build.cacheRoute' => 'la caché de rutas se eliminó en 2.10',
+        'build.cacheRouteFile' => 'la caché de rutas se eliminó en 2.10',
+        'build.cacheRouteMinifyLevel' => 'la caché de rutas se eliminó en 2.10',
+    ];
+
+    /**
+     * Compara config.json con config.default.php: tipos distintos a los del valor por defecto,
+     * claves desconocidas en las secciones estrictas y opciones que no tienen efecto.
+     *
+     * @param array<string, mixed> $config config.json tal como está, sin fusionar
+     * @param array<string, mixed> $defaults
+     *
+     * @return list<array{0: 'serious'|'minor', 1: string, 2: ?string}>
+     */
+    public static function schemaFindings(array $config, array $defaults, string $path = ''): array
+    {
+        $findings = [];
+        foreach ($config as $key => $value) {
+            $name = ltrim($path . '.' . $key, '.');
+            if (!array_key_exists($key, $defaults)) {
+                if (in_array($path, self::STRICT_SECTIONS, true) && !array_key_exists($name, self::DEAD_KEYS)) {
+                    $findings[] = ['minor', "Clave desconocida en config.json: {$name}. El kernel no la lee.", '¿Un error de tipeo? Las claves válidas están en config.default.php.'];
+                }
+
+                continue;
+            }
+
+            $default = $defaults[$key];
+            if (is_bool($default) && !is_bool($value)) {
+                // "false" en texto, o 0 en vez de false, se lee como otra cosa
+                $findings[] = ['serious', "{$name} debe ser true o false, no " . json_encode($value) . '.', null];
+            } elseif (is_int($default) && !is_int($value)) {
+                $findings[] = ['minor', "{$name} debe ser un número entero, no " . json_encode($value) . '.', null];
+            } elseif (is_array($default) && !is_array($value)) {
+                $findings[] = ['serious', "{$name} debe ser una lista u objeto JSON, no " . json_encode($value) . '.', null];
+            } elseif (is_array($default) && is_array($value) && $default !== [] && !array_is_list($default)) {
+                $findings = [...$findings, ...self::schemaFindings($value, $default, $name)];
+            }
+        }
+
+        if ($path === '') {
+            // Los config.json antiguos traen todas: un solo aviso con las que haya
+            $present = [];
+            foreach (self::DEAD_KEYS as $dead => $reason) {
+                $node = $config;
+                foreach (explode('.', $dead) as $part) {
+                    $node = is_array($node) && array_key_exists($part, $node) ? $node[$part] : null;
+                }
+                if ($node !== null) {
+                    $present[] = "{$dead} ({$reason})";
+                }
+            }
+            if ($present !== []) {
+                $findings[] = ['minor', 'Claves de config.json sin efecto: ' . implode('; ', $present) . '.', 'Quitarlas de config.json: no cambian nada y se dejan de aceptar en 4.0.'];
+            }
+        }
+
+        return $findings;
     }
 
     /**

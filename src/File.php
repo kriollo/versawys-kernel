@@ -367,7 +367,8 @@ class File extends SplFileInfo implements \ArrayAccess
     }
 
     /**
-     * Ningún archivo subido puede quedar con un nombre que el servidor web ejecute o interprete.
+     * Ningún archivo subido puede quedar con un nombre que el servidor web ejecute o interprete, ni
+     * fuera de la carpeta indicada: un `..` (por ejemplo, de un nombre que envió el cliente) se rechaza.
      */
     private function assertSafeDestination(string $destination): void
     {
@@ -375,6 +376,7 @@ class File extends SplFileInfo implements \ArrayAccess
 
         if (
             $name === ''
+            || preg_match('#(^|[/\\\\])\.\.([/\\\\]|$)#', $destination) === 1
             || str_starts_with($name, '.')
             || preg_match('/\.(php\d?|phtml|pht|phar|cgi|pl|sh|htaccess|htpasswd)(\.|$)/', $name) === 1
         ) {

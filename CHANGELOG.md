@@ -2,6 +2,40 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.2.0] - 2026-10-14
+
+Avance del ROADMAP: pasos 1 y 2 completos, decisiones de los pasos 3 a 5 documentadas.
+
+### Seguridad
+- **Subida de archivos:** `moveToNewName()` rechaza destinos con `..`. Si una aplicación armaba la ruta con un nombre enviado por el cliente, un `../` sacaba el archivo de la carpeta prevista.
+- **URL base sin `build.base_url`:** la cabecera `Host` solo se usa si es un nombre de host o una IP con puerto. Antes, cualquier valor terminaba dentro de los enlaces de los correos (por ejemplo `evil.test"><img…`).
+- **URL propia del panel:** solo se reescribe el prefijo. Antes `/panel/a/panel` se convertía en `/admin/a/admin`.
+- **Logs:** los valores de claves con nombre de secreto (`password`, `token`, `secret`, `api_key`, `authorization`, `cookie`, `csrf`) se reemplazan por `[oculto]` en el contexto, a cualquier profundidad. La IP de las entradas de error es la del cliente (respeta `trusted_proxies`), no la del proxy.
+
+### Añadido
+- **`request_id`** en cada entrada de log y en la cabecera `X-Request-Id`. Se respeta el que envía un proxy de `trusted_proxies`.
+- **Migraciones en transacción:** cada `migrate:up` corre su migración y su registro en una transacción. En PostgreSQL, una migración que falla a la mitad ya no deja tablas creadas sin registrar (verificado: con 3.1.2 la tabla quedaba huérfana).
+- **`--no-interaction` (`-n`)** en versaCLI: toda pregunta toma su valor por defecto sin leer la entrada, y una confirmación es "no".
+- **Validación:** reglas `nullable` (el campo puede faltar o venir vacío), `in:a,b,c` y `boolean`.
+- **`app:check:deploy` valida la configuración** contra `config.default.php`: tipos (un `"false"` en texto donde va `false` es crítico con `--production`), claves desconocidas en las secciones donde un error de tipeo desactiva una protección (`session`, `build`, `auth`, `cors`…) y claves sin efecto.
+- **Rutas duplicadas:** `route:check` y `app:check:deploy` marcan como error dos declaraciones con el mismo método y URL, porque la que se carga después reemplaza a la otra sin aviso.
+- `composer bench` y `BENCHMARK.md`: línea base de rendimiento repetible, con el entorno de cada medición.
+- Documentos: `API.md` (qué es estable, interno o deprecado), `LIFECYCLE.md` (recorrido de una petición), `DECISIONS.md` (lo evaluado y no implementado, con su señal de revisión).
+- Pruebas del kernel: de 15 a 65. Cubren Router (HEAD, 405, grupos, barras, override, panel oculto, 404 sin detalles), archivos, rate limiting (incluida concurrencia con 8 procesos), validación, configuración, contrato kernel ↔ app, logs y escape de comandos.
+
+### Corregido
+- **`required` rechazaba `0`, `"0"` y `false`** (usaba `empty()`): un estado o una cantidad en 0 no se podían enviar. Ahora solo cuentan como vacíos `null`, un texto vacío o con solo espacios y un arreglo vacío.
+
+### Cambiado
+- **`min` y `max` cuentan caracteres, no bytes.** "José" mide 4. Un texto con tildes que antes pasaba `min` contando bytes puede dejar de pasarlo.
+- Un `migrate:refresh`/`dropAll` cancelado termina con código 1: un script no debe leer "éxito" si no se hizo.
+- Dentro de versaCLI, los errores se muestran en la terminal según `Response::$cli` (lo activa versaCLI) y no según `PHP_SAPI`, para que las pruebas reciban la respuesta HTTP.
+- `config:init` ya no genera `session.user_cookie.key_encript`.
+
+### Deprecado (se elimina en 4.0)
+- `SecurityUtils::validateCsrfToken()`: usar `Functions::validateCSRFToken()`.
+- Claves de configuración sin efecto: `session.user_cookie.key_encript`, `twig.default_template_404`, `api.auth`, `rate_limiting.storage` y los restos de `build.cacheRoute*`. `app:check:deploy` las lista.
+
 ## [3.1.2] - 2026-10-14
 
 ### Seguridad

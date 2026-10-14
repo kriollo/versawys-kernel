@@ -66,12 +66,16 @@ class MigrationManager extends VersaORMModel
                 CLIErrorHandler::info(sprintf('Ejecutando... %s....:', $className));
 
                 try {
+                    // Una transacción por migración: en PostgreSQL, si falla a la mitad no queda nada
+                    // aplicado ni registrado. En MySQL los cambios de esquema confirman solos.
+                    self::orm()->beginTransaction();
                     // prettier-ignore
                     $result = (new $fullClassName())->up();
                     $c++;
 
                     if (!$result['success']) {
                         echo " ✗ FALLÓ\n";
+                        self::orm()->rollBack();
                         CLIErrorHandler::handleMigrationResultError($result['message'], $className, 'up');
                     }
 
@@ -83,7 +87,9 @@ class MigrationManager extends VersaORMModel
                         'created_at' => date('Y-m-d H:i:s'),
                     ];
                     $this->qb()->insert($migrationData);
+                    self::orm()->commit();
                 } catch (VersaORMException $e) {
+                    self::orm()->rollBack();
                     echo " ✗ FALLÓ\n";
                     CLIErrorHandler::handleMigrationError($e, $className);
                 }
@@ -324,6 +330,9 @@ class MigrationManager extends VersaORMModel
                 }
 
                 try {
+                    // Una transacción por migración: en PostgreSQL, si falla a la mitad no queda nada
+                    // aplicado ni registrado. En MySQL los cambios de esquema confirman solos.
+                    self::orm()->beginTransaction();
                     // prettier-ignore
                     $result = (new $fullClassName())->up();
                     $c++;
@@ -332,6 +341,8 @@ class MigrationManager extends VersaORMModel
                         if ($verbose) {
                             echo " ✗ FALLÓ\n";
                         }
+
+                        self::orm()->rollBack();
 
                         CLIErrorHandler::handleMigrationResultError($result['message'], $className, 'up');
                     }
@@ -346,7 +357,9 @@ class MigrationManager extends VersaORMModel
                         'created_at' => date('Y-m-d H:i:s'),
                     ];
                     $this->orm()->table('versa_migrations')->insert($migrationData);
+                    self::orm()->commit();
                 } catch (VersaORMException $e) {
+                    self::orm()->rollBack();
                     if ($verbose) {
                         echo " ✗ FALLÓ\n";
                     }

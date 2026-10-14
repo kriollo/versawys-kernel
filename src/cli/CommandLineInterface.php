@@ -6,6 +6,7 @@ namespace versaWYS\kernel\cli;
 
 use Exception;
 use Throwable;
+use versaWYS\kernel\Response;
 
 class CommandLineInterface
 {
@@ -22,10 +23,15 @@ class CommandLineInterface
         // --force omite las confirmaciones de comandos destructivos (CI / deploy)
         $this->force = in_array('--force', $this->args, strict: true);
 
+        // --no-interaction: toda pregunta toma su valor por defecto (en las confirmaciones, "no")
+        if (in_array('--no-interaction', $this->args, strict: true) || in_array('-n', $this->args, strict: true)) {
+            CLIHelper::$interactive = false;
+        }
+
         // Remover flags globales de los argumentos
         $this->args = array_filter(
             $this->args,
-            static fn ($arg): bool => !in_array($arg, ['--verbose', '-v', '--force'], strict: true),
+            static fn ($arg): bool => !in_array($arg, ['--verbose', '-v', '--force', '--no-interaction', '-n'], strict: true),
         );
         $this->args = array_values($this->args); // Re-indexar array
     }
@@ -39,6 +45,7 @@ class CommandLineInterface
     {
         // Permitir que el grupo tenga permisos de escritura en todos los archivos/dirs que PHP cree
         umask(0002);
+        Response::$cli = true;
 
         // El CLI usa rutas relativas a la raíz del proyecto: fijarla permite invocarlo desde cualquier directorio (cron)
         chdir($root);
@@ -48,9 +55,8 @@ class CommandLineInterface
         if (!file_exists($configPath) && ($argv[1] ?? null) !== 'config:init') {
             echo "Advertencia: El archivo de configuración ('{$configPath}') no existe.\n";
             echo "Puede crearlo ejecutando: php versaCLI config:init\n\n";
-            echo '¿Desea intentar crear el archivo de configuración ahora? (s/n): ';
-
-            if (strtolower(trim((string) fgets(STDIN))) !== 's') {
+            $nonInteractive = in_array('--no-interaction', $argv, true) || in_array('-n', $argv, true);
+            if ($nonInteractive || !CLIHelper::confirm('¿Desea intentar crear el archivo de configuración ahora?')) {
                 echo "Operación cancelada. El archivo de configuración es necesario para la mayoría de las operaciones.\n";
                 exit(1);
             }
@@ -517,6 +523,8 @@ class CommandLineInterface
             && !CLIHelper::confirm("migrate:{$action} ELIMINA datos de la base de datos. ¿Continuar?")
         ) {
             CLIErrorHandler::info('Operación cancelada. Use --force para omitir esta confirmación.');
+            // Código 1: un script que pidió borrar la base no debe leer "éxito" si no se hizo
+            CLIErrorHandler::$failed = true;
 
             return;
         }

@@ -100,7 +100,9 @@ class Functions
 
             // Definir las validaciones en un arreglo tipo hash
             $validations = [
-                'required' => static fn ($field, $value): ?string => !self::e($value)
+                // Vacío es null, texto vacío o solo espacios y arreglo vacío. 0, "0" y false son valores:
+                // con empty() un estado o una cantidad en 0 no se podían enviar
+                'required' => static fn ($field, $value): ?string => $value === null || $value === [] || (is_string($value) && trim($value) === '')
                     ? sprintf('El campo %s es requerido', $field)
                     : null,
                 'email' => static fn ($field, $value): ?string => filter_var($value, FILTER_VALIDATE_EMAIL)
@@ -109,10 +111,11 @@ class Functions
                 'rut' => static fn ($field, $value): ?string => self::validarRut($value)
                     ? null
                     : sprintf('El campo %s no es un rut valido', $field),
-                'min' => static fn ($field, $value, $param): ?string => strlen((string) $value) < $param
+                // Caracteres, no bytes: "José" mide 4
+                'min' => static fn ($field, $value, $param): ?string => mb_strlen((string) $value) < $param
                     ? sprintf('El campo %s debe tener minimo %s caracteres', $field, $param)
                     : null,
-                'max' => static fn ($field, $value, $param): ?string => strlen((string) $value) > $param
+                'max' => static fn ($field, $value, $param): ?string => mb_strlen((string) $value) > $param
                     ? sprintf('El campo %s debe tener maximo %s caracteres', $field, $param)
                     : null,
                 'numeric' => static fn ($field, $value): ?string => is_numeric($value)
@@ -181,10 +184,26 @@ class Functions
                 'url' => static fn ($field, $value): ?string => filter_var($value, FILTER_VALIDATE_URL)
                     ? null
                     : sprintf('El campo %s debe ser una url valida', $field),
+                // in:activo,inactivo — uno de los valores listados, comparados como texto
+                'in' => static fn ($field, $value, $param): ?string => is_scalar($value) && in_array((string) $value, explode(',', (string) $param), true)
+                    ? null
+                    : sprintf('El campo %s debe ser uno de: %s', $field, str_replace(',', ', ', (string) $param)),
+                // true/false, 1/0, "true"/"false", "1"/"0", "on"/"off" (checkbox de formulario)
+                'boolean' => static fn ($field, $value): ?string => filter_var($value, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) !== null
+                    ? null
+                    : sprintf('El campo %s debe ser verdadero o falso', $field),
             ];
 
             foreach ($rules as $field => $rule) {
                 $rulesArray = explode('|', $rule);
+
+                // nullable: si el campo no llega o viene vacío, las demás reglas no se aplican
+                if (in_array('nullable', $rulesArray, true)) {
+                    if (!isset($params[$field]) || $params[$field] === '') {
+                        continue;
+                    }
+                    $rulesArray = array_values(array_diff($rulesArray, ['nullable']));
+                }
 
                 foreach ($rulesArray as $rul) {
                     [$rulName, $param] = array_pad(explode(':', $rul), 2, null);

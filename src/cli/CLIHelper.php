@@ -8,6 +8,9 @@ use RuntimeException;
 
 class CLIHelper
 {
+    /** false con --no-interaction (-n): ask() y confirm() responden su valor por defecto sin leer la entrada. */
+    public static bool $interactive = true;
+
     /**
      * Carpeta del composer.json que instaló el vendor en uso: la raíz en proyectos creados con
      * composer create-project, o versaWYS/ en los anteriores. Se le pregunta a Composer, porque
@@ -30,6 +33,13 @@ class CLIHelper
             echo CLIErrorHandler::colorize(" [{$default}]", 'yellow');
         }
         echo ': ';
+
+        if (!self::$interactive) {
+            // Automatización (deploy, CI, otro proceso): nunca quedar esperando una respuesta
+            echo $default . PHP_EOL;
+
+            return $default;
+        }
 
         $handle = fopen('php://stdin', 'r');
         $line = fgets($handle);

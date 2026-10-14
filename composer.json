@@ -49,6 +49,7 @@
         "pint": "pint",
         "pint:check": "pint --test",
         "test": "phpunit",
+        "bench": "@php -d xdebug.mode=off -d opcache.enable_cli=1 bench/run.php",
         "stan": "phpstan analyse --ansi --memory-limit=1G",
         "check": [
             "@pint:check",

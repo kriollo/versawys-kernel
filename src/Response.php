@@ -10,6 +10,9 @@ use versaWYS\kernel\cli\CLIErrorHandler;
 
 class Response
 {
+    /** true dentro de versaCLI (lo activa CommandLineInterface::main): los errores van a la terminal. */
+    public static bool $cli = false;
+
     /**
      * Sends a JSON response.
      *
@@ -60,8 +63,10 @@ class Response
     {
         global $twig, $config;
 
-        // Si estamos en CLI, usar el manejador específico de CLI
-        if (PHP_SAPI === 'cli') {
+        // Dentro de versaCLI el error se muestra en la terminal y el proceso termina con código 1.
+        // Se decide por la bandera y no por PHP_SAPI: las pruebas también corren en CLI y necesitan
+        // la respuesta HTTP, no un exit que corte la suite
+        if (self::$cli) {
             self::handleCLIError($data, $code);
 
             return false; // Nunca debería llegar aquí
