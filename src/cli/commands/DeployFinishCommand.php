@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli\commands;
 
+use Override;
 use versaWYS\kernel\cli\BaseCommand;
 use versaWYS\kernel\cli\CLIErrorHandler;
 
@@ -29,7 +30,7 @@ class DeployFinishCommand extends BaseCommand
     /**
      * @param array<mixed> $params
      */
-    #[\Override]
+    #[Override]
     public function execute(array $params = []): int
     {
         $number = 0;
@@ -64,13 +65,13 @@ class DeployFinishCommand extends BaseCommand
         return 0;
     }
 
-    #[\Override]
+    #[Override]
     public function getDescription(): string
     {
         return 'Pasos posteriores al despliegue: config:merge, migraciones, cachés y app:check:deploy --production';
     }
 
-    #[\Override]
+    #[Override]
     public function getHelp(): string
     {
         $steps = '';

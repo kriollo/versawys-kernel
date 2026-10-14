@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\helpers;
 
+use CURLFile;
 use DateTime;
 use Exception;
 use Random\RandomException;
+use SensitiveParameter;
+use Throwable;
+use versaWYS\kernel\SecurityUtils;
 
 class Functions
 {
@@ -233,6 +237,7 @@ class Functions
                     if (!isset($params[$field]) || $params[$field] === '') {
                         continue;
                     }
+
                     $rulesArray = array_values(array_diff($rulesArray, ['nullable']));
                 }
 
@@ -251,9 +256,10 @@ class Functions
                         // Un valor de tipo inesperado (arreglo, null) es un dato inválido, no un error 500
                         try {
                             $error = $validations[$rulName]($field, $params[$field], $param);
-                        } catch (\Throwable) {
+                        } catch (Throwable) {
                             $error = sprintf('El campo %s no es valido', $field);
                         }
+
                         // Depuración: imprimir sólo si hay un error
                         if ($error) {
                             $errors[$field] = $error;
@@ -326,7 +332,7 @@ class Functions
     /**
      * Permite generar un token para la contraseña.
      */
-    public static function hash(#[\SensitiveParameter] string $password): string
+    public static function hash(#[SensitiveParameter] string $password): string
     {
         // PASSWORD_DEFAULT: bcrypt con el costo que fije PHP (12 desde PHP 8.4). Argon2id no está en
         // todas las compilaciones de PHP: una base copiada a otra máquina dejaría a todos sin poder ingresar
@@ -345,7 +351,7 @@ class Functions
     /**
      * Permite comparar el token generado con la contraseña.
      */
-    public static function verifyHash(#[\SensitiveParameter] string $password, string $hash): bool
+    public static function verifyHash(#[SensitiveParameter] string $password, string $hash): bool
     {
         return password_verify($password, $hash);
     }
@@ -368,9 +374,9 @@ class Functions
      * @return bool returns true if the token is valid, false otherwise
      */
     public static function validateCSRFToken(
-        #[\SensitiveParameter]
+        #[SensitiveParameter]
         mixed $tokenSession,
-        #[\SensitiveParameter]
+        #[SensitiveParameter]
         mixed $tokenFormUser,
     ): bool {
         // Sesión sin token, token vacío o enviado como arreglo (_csrf_token[]=…): inválido, nunca un error 500
@@ -627,7 +633,7 @@ class Functions
     {
         global $config;
 
-        return ($config['csp']['nonce'] ?? false) === true ? \versaWYS\kernel\SecurityUtils::cspNonce() : '';
+        return ($config['csp']['nonce'] ?? false) === true ? SecurityUtils::cspNonce() : '';
     }
 
     public function setTwigFunctions(): array
@@ -732,6 +738,7 @@ class Functions
             $hasUserAgent = true;
             break;
         }
+
         if (!$hasUserAgent && !empty($opts['user_agent'])) {
             $finalHeaders[] = 'User-Agent: ' . $opts['user_agent'];
         }
@@ -740,41 +747,28 @@ class Functions
             $finalHeaders[] = 'Cookie: ' . $opts['cookies'];
         }
 
-        switch ($method) {
-            case 'GET':
-                curl_setopt($ch, CURLOPT_HTTPGET, true);
-                break;
-            case 'POST':
-                curl_setopt($ch, CURLOPT_POST, true);
-                break;
-            case 'PUT':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
-                break;
-            case 'DELETE':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
-                break;
-            case 'PATCH':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');
-                break;
-            case 'HEAD':
-                curl_setopt($ch, CURLOPT_NOBODY, true);
-                break;
-            default:
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-                break;
-        }
+        match ($method) {
+            'GET' => curl_setopt($ch, CURLOPT_HTTPGET, true),
+            'POST' => curl_setopt($ch, CURLOPT_POST, true),
+            'PUT' => curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT'),
+            'DELETE' => curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE'),
+            'PATCH' => curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH'),
+            'HEAD' => curl_setopt($ch, CURLOPT_NOBODY, true),
+            default => curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method),
+        };
 
         if ($method !== 'GET' && $method !== 'HEAD') {
             if (is_array($body)) {
                 $hasFile = false;
                 foreach ($body as $value) {
-                    if (!$value instanceof \CURLFile) {
+                    if (!$value instanceof CURLFile) {
                         continue;
                     }
 
                     $hasFile = true;
                     break;
                 }
+
                 if ($hasFile) {
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
                 } else {
@@ -831,6 +825,7 @@ class Functions
                 if ($line === '' || str_starts_with($line, 'HTTP/')) {
                     continue;
                 }
+
                 $colonPos = strpos($line, ':');
                 if ($colonPos !== false) {
                     $name = trim(substr($line, 0, $colonPos));
@@ -916,7 +911,7 @@ class Functions
         }
 
         $postData = array_merge($additionalData, [
-            $fieldName => new \CURLFile(
+            $fieldName => new CURLFile(
                 $filePath,
                 mime_content_type($filePath) ?: 'application/octet-stream',
                 $clientFileName !== null && $clientFileName !== '' ? $clientFileName : basename($filePath),

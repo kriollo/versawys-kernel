@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace versaWYS\kernel\Tests;
 
 use PHPUnit\Framework\TestCase;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use versaWYS\kernel\cli\commands\CheckDeployCommand;
 
 final class ConfigSchemaTest extends TestCase
@@ -58,14 +60,18 @@ final class ConfigSchemaTest extends TestCase
     {
         // Si alguien vuelve a leer una de estas claves, debe sacarla de la lista
         $kernel = '';
-        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(dirname(__DIR__) . '/src')) as $file) {
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__ . '/../src')) as $file) {
             if (
-                $file->getExtension() === 'php'
-                && !str_ends_with($file->getPathname(), 'config.default.php')
-                && !str_ends_with($file->getPathname(), 'CheckDeployCommand.php')
+                !(
+                    $file->getExtension() === 'php'
+                    && !str_ends_with($file->getPathname(), 'config.default.php')
+                    && !str_ends_with($file->getPathname(), 'CheckDeployCommand.php')
+                )
             ) {
-                $kernel .= file_get_contents($file->getPathname());
+                continue;
             }
+
+            $kernel .= file_get_contents($file->getPathname());
         }
 
         // Lecturas, no los unset() que limpian la clave
@@ -91,6 +97,6 @@ final class ConfigSchemaTest extends TestCase
     /** @return list<array{0: string, 1: string, 2: ?string}> */
     private static function findings(array $config): array
     {
-        return CheckDeployCommand::schemaFindings($config, require dirname(__DIR__) . '/src/config/config.default.php');
+        return CheckDeployCommand::schemaFindings($config, require __DIR__ . '/../src/config/config.default.php');
     }
 }

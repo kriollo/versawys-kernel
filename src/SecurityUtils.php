@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel;
 
+use SensitiveParameter;
+
 /**
  * Clase de utilidades de seguridad para sanitización y validación de datos.
  */
@@ -79,7 +81,7 @@ class SecurityUtils
      *
      * @deprecated 3.2 Usar Functions::validateCSRFToken(), que es la que usa el Router. Se elimina en 4.0.
      */
-    public static function validateCsrfToken(#[\SensitiveParameter] ?string $token): bool
+    public static function validateCsrfToken(#[SensitiveParameter] ?string $token): bool
     {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();

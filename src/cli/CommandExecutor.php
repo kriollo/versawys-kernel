@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli;
 
+use RuntimeException;
 use versaWYS\kernel\Loggin;
 
 /**
@@ -85,7 +86,7 @@ class CommandExecutor
     private static function buildParamsString(array $params): string
     {
         $serializedParams = array_map(
-            static function ($param) {
+            static function ($param): string|false {
                 // Si es un array u objeto, serializar a JSON
                 if (is_array($param) || is_object($param)) {
                     return json_encode($param, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -135,7 +136,7 @@ class CommandExecutor
         }
 
         // Si no se encuentra, lanzar excepción
-        throw new \RuntimeException('No se pudo localizar el archivo versaCLI desde ' . getcwd());
+        throw new RuntimeException('No se pudo localizar el archivo versaCLI desde ' . getcwd());
     }
 
     /**

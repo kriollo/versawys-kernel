@@ -15,6 +15,9 @@ return static function (RectorConfig $rectorConfig): void {
 
     $rectorConfig->skip([
         __DIR__ . '/vendor',
+        // Biblioteca: pasar un método estático a método de instancia cambia cómo lo usan las aplicaciones
+        // (y las pruebas del esqueleto lo invocan por reflexión)
+        Rector\CodeQuality\Rector\ClassMethod\LocallyCalledStaticMethodToNonStaticRector::class,
     ]);
 
     // === BASE RULES ===

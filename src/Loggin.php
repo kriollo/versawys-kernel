@@ -133,7 +133,7 @@ class Loggin
 
         // Crear directorio de logs si no existe
         if (!is_dir(self::$logDir)) {
-            set_error_handler(static function () {}, E_WARNING);
+            set_error_handler(static function (): void {}, E_WARNING);
             $mkdirSuccess = @mkdir(self::$logDir, 0o775, true);
             restore_error_handler();
 
@@ -146,6 +146,7 @@ class Loggin
                     echo '<h1>Error interno del servidor</h1><p>Por favor, contacte al administrador.</p>';
                     exit();
                 }
+
                 echo
                     '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>VersaWYS Error - Sistema de Logs</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;margin:0;padding:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;align-items:center;justify-content:center}.error-container{background:white;padding:0;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:800px;margin:20px;overflow:hidden}.error-header{background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);color:white;padding:30px;text-align:center}.error-header h1{margin:0 0 10px;font-size:28px;font-weight:600}.error-header p{margin:0;opacity:0.9;font-size:16px}.error-body{padding:30px}.error-section{margin:20px 0;padding:20px;background:#f8fafc;border-left:4px solid #dc2626;border-radius:4px}.error-section h3{margin:0 0 15px;color:#1e293b;font-size:18px;font-weight:600}.code{background:#1e293b;color:#e2e8f0;padding:15px;border-radius:6px;font-family:"JetBrains Mono",Consolas,Monaco,monospace;font-size:13px;overflow-x:auto;line-height:1.6}.location{background:#fef3c7;padding:15px;border-radius:6px;margin:10px 0;border-left:4px solid #f59e0b}.info-grid{display:grid;grid-template-columns:120px 1fr;gap:10px;margin:10px 0}.info-grid strong{color:#475569}.solution-steps{background:white;padding:15px;border-radius:6px;border:2px solid #10b981}.solution-steps h4{margin:0 0 15px;color:#059669;font-size:16px}.command{background:#1e293b;color:#10b981;padding:12px;border-radius:4px;font-family:monospace;margin:8px 0;font-size:13px;cursor:pointer;transition:all 0.2s}.command:hover{background:#0f172a;transform:translateX(4px)}.footer{text-align:center;padding:20px;color:#64748b;font-size:14px}.icon{font-size:48px;margin-bottom:10px}</style></head><body><div class="error-container"><div class="error-header"><div class="icon">📝</div><h1>VersaWYS Framework Error</h1><p>Error en Sistema de Logs</p></div><div class="error-body"><div class="error-section"><h3>📁 Directorio de Logs No Disponible</h3><div class="code">'
                         . htmlspecialchars(self::$logDir)
@@ -160,6 +161,7 @@ class Loggin
                         . '</div></div></div></div><div class="footer">VersaWYS Framework © 2026 | Sistema de Manejo de Errores</div></div></body></html>';
                 exit();
             }
+
             // 02775 = 0775 + setgid: los archivos de log creados dentro heredan el grupo
             @chmod(self::$logDir, 0o2775);
         }
@@ -721,7 +723,7 @@ class Loggin
 
         // Verificar que el directorio existe y es escribible
         if (!is_dir(self::$logDir)) {
-            set_error_handler(static function () {}, E_WARNING);
+            set_error_handler(static function (): void {}, E_WARNING);
             $mkdirSuccess = @mkdir(self::$logDir, 0o775, true);
             restore_error_handler();
 
@@ -731,6 +733,7 @@ class Loggin
 
                 return;
             }
+
             // 02775 = 0775 + setgid: los archivos de log creados dentro heredan el grupo
             @chmod(self::$logDir, 0o2775);
         }
@@ -742,7 +745,7 @@ class Loggin
 
         if (!file_exists($logFile)) {
             $previousUmask = umask(0);
-            set_error_handler(static function () {}, E_WARNING);
+            set_error_handler(static function (): void {}, E_WARNING);
             $handle = @fopen($logFile, 'ab');
             restore_error_handler();
             umask($previousUmask);
@@ -786,7 +789,7 @@ class Loggin
             return;
         }
 
-        set_error_handler(static function () {}, E_WARNING);
+        set_error_handler(static function (): void {}, E_WARNING);
         $chmodSuccess = @chmod($path, $mode);
         restore_error_handler();
 
@@ -869,7 +872,7 @@ class Loggin
         $cutoffTime = time() - (self::$retentionDays * 86_400);
 
         foreach ($files as $file) {
-            if (!(is_file($file) && filemtime($file) < $cutoffTime)) {
+            if (!is_file($file) || filemtime($file) >= $cutoffTime) {
                 continue;
             }
 

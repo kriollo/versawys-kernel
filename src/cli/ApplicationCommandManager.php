@@ -87,18 +87,18 @@ class ApplicationCommandManager
                 CLIErrorHandler::warning("Comando terminó con código de salida: {$exitCode}");
                 exit($exitCode);
             }
-        } catch (Exception $e) {
+        } catch (Exception $exception) {
             Loggin::error(
-                "Error ejecutando comando app:{$commandName}: " . $e->getMessage(),
+                "Error ejecutando comando app:{$commandName}: " . $exception->getMessage(),
                 'ApplicationCommandManager',
                 [
                     'command' => $commandName,
                     'params' => $params,
-                    'trace' => $e->getTraceAsString(),
+                    'trace' => $exception->getTraceAsString(),
                 ],
             );
 
-            CLIErrorHandler::handleGeneralError($e, "Comando: app:{$commandName}");
+            CLIErrorHandler::handleGeneralError($exception, "Comando: app:{$commandName}");
             exit(1);
         }
     }

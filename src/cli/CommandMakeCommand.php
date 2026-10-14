@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli;
 
+use Override;
+
 /**
  * Comando para generar nuevos comandos desde plantilla.
  *
@@ -11,7 +13,7 @@ namespace versaWYS\kernel\cli;
  */
 class CommandMakeCommand extends BaseCommand
 {
-    #[\Override]
+    #[Override]
     public function execute(array $params): int
     {
         // Manejar flag de ayuda
@@ -21,7 +23,7 @@ class CommandMakeCommand extends BaseCommand
             return 0;
         }
 
-        if (empty($params)) {
+        if ($params === []) {
             $this->error('Falta el nombre del comando');
             echo "\n";
             echo $this->getHelp() . "\n";
@@ -77,6 +79,7 @@ class CommandMakeCommand extends BaseCommand
 
             return 1;
         }
+
         chmod($filePath, 0o775);
 
         $this->success("✓ Comando creado exitosamente: {$filePath}");
@@ -107,13 +110,13 @@ class CommandMakeCommand extends BaseCommand
         return 0;
     }
 
-    #[\Override]
+    #[Override]
     public function getDescription(): string
     {
         return 'Genera un nuevo comando desde plantilla';
     }
 
-    #[\Override]
+    #[Override]
     public function getHelp(): string
     {
         return <<<'HELP'

@@ -23,6 +23,7 @@ class ControllerManager
 
                 return;
             }
+
             unlink($controllersFile);
         }
 

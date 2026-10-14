@@ -24,13 +24,15 @@ $config = json_decode(file_get_contents($configPath), true);
 if (json_last_error() !== JSON_ERROR_NONE) {
     throw new Exception('Error parsing configuration file: ' . json_last_error_msg());
 }
+
 $config = array_replace_recursive(ConfigManager::defaults(), $config);
 
-if (version_compare(PHP_VERSION, '8.3.0', '<')) {
+if (PHP_VERSION_ID < 80_300) {
     Loggin::error('Error inicializando VersaORM: La versión de PHP debe ser 8.3 o superior.', 'VersaWYS');
 
     throw new Exception('La versión de PHP debe ser 8.3 o superior. VersaWYS no puede continuar.');
 }
+
 if (!extension_loaded('intl')) {
     Loggin::error('Error inicializando VersaORM: La extensión PHP "intl" no está cargada.', 'VersaWYS');
 
@@ -53,6 +55,7 @@ if (file_exists($envPath)) {
         if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) {
             continue;
         }
+
         [$name, $value] = explode('=', $line, 2);
         $name = trim($name);
         $value = trim($value);

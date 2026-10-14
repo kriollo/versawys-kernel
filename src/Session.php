@@ -17,6 +17,7 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use InvalidArgumentException;
 use RuntimeException;
+use SensitiveParameter;
 use versaWYS\kernel\helpers\Functions;
 
 /**
@@ -95,7 +96,7 @@ class Session
     /**
      * Invalida un JWT antes de su expiración (logout). Guarda su `jti` hasta que expire por sí solo.
      */
-    public function revokeToken(#[\SensitiveParameter] ?string $jwt): void
+    public function revokeToken(#[SensitiveParameter] ?string $jwt): void
     {
         try {
             $decoded = $this->decodeJWT((string) $jwt);
@@ -113,6 +114,7 @@ class Session
         if (!is_dir(self::REVOKED_DIR)) {
             @mkdir(self::REVOKED_DIR, 0o2775, true);
         }
+
         if (@file_put_contents(self::REVOKED_DIR . $decoded['jti'], (string) $decoded['exp']) === false) {
             // El logout borra la cookie, pero el token seguiría valiendo hasta que expire si alguien lo copió
             Loggin::error('No se pudo revocar el JWT: ' . self::REVOKED_DIR . ' no es escribible.', 'security');
@@ -122,9 +124,11 @@ class Session
         $revoked = glob(self::REVOKED_DIR . '*');
 
         foreach ($revoked === false ? [] : $revoked as $file) {
-            if ((int) @file_get_contents($file) < time()) {
-                @unlink($file);
+            if ((int) @file_get_contents($file) >= time()) {
+                continue;
             }
+
+            @unlink($file);
         }
     }
 
@@ -338,9 +342,7 @@ class Session
     {
         global $config;
         if ($attempts[$email]['attempts'] >= $config['login_attempt']['max']) {
-            if ($attempts[$email]['time'] === null) {
-                $attempts[$email]['time'] = time() + $config['login_attempt']['time'];
-            }
+            $attempts[$email]['time'] ??= time() + $config['login_attempt']['time'];
 
             $this->set('login_user_attempts', $attempts);
 
@@ -493,6 +495,7 @@ class Session
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_regenerate_id(true);
         }
+
         $this->setCSRFToken();
     }
 

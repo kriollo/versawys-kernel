@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli;
 
+use Throwable;
+
 class HelpView
 {
     public static function printHelp(): void
@@ -298,7 +300,7 @@ class HelpView
 
                 ++$count;
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable) {
             // Si hay error al descubrir comandos, no mostrar nada
             echo "  {$cyan}(Error al cargar comandos de aplicación){$reset}\n";
         }

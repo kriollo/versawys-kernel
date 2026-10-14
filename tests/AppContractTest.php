@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace versaWYS\kernel\Tests;
 
 use PHPUnit\Framework\TestCase;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use versaWYS\kernel\cli\commands\CheckDeployCommand;
 
 /**
@@ -16,11 +18,12 @@ final class AppContractTest extends TestCase
     public function testTheKernelOnlyImportsAppClassesListedInTheContract(): void
     {
         $imported = [];
-        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(dirname(__DIR__) . '/src'));
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__ . '/../src'));
         foreach ($files as $file) {
             if ($file->getExtension() !== 'php') {
                 continue;
             }
+
             preg_match_all(
                 '/^use (app\\\\(?:models|services|controllers|middleware)\\\\\w+);/m',
                 (string) file_get_contents($file->getPathname()),
@@ -39,7 +42,7 @@ final class AppContractTest extends TestCase
 
     public function testUpgradeGuideListsExactlyTheContract(): void
     {
-        $guide = (string) file_get_contents(dirname(__DIR__) . '/UPGRADE.md');
+        $guide = (string) file_get_contents(__DIR__ . '/../UPGRADE.md');
         preg_match_all('/^\| `(app\\\\[^`]+)` \| (.+) \|$/m', $guide, $rows, PREG_SET_ORDER);
 
         $documented = [];

@@ -142,7 +142,7 @@ class RedisModel
             }
 
             return $redis->setex($key, $expiration, $serializedValue);
-        } catch (\RedisException $redisException) {
+        } catch (RedisException $redisException) {
             self::log('Error en set(): ' . $redisException->getMessage());
 
             return false;
@@ -169,7 +169,7 @@ class RedisModel
             }
 
             return self::unserialize($value);
-        } catch (\RedisException $redisException) {
+        } catch (RedisException $redisException) {
             self::log('Error en get(): ' . $redisException->getMessage());
 
             return $default;

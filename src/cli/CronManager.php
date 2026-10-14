@@ -27,6 +27,7 @@ class CronManager
 
                 return;
             }
+
             unlink($cronFile);
         }
 
@@ -120,8 +121,8 @@ class CronManager
 
             $duration = round(microtime(true) - $startTime, 4);
             CLIErrorHandler::success("Ejecución finalizada en {$duration}s.");
-        } catch (Exception $e) {
-            CLIErrorHandler::handleGeneralError($e, "Ejecutando cron {$name}");
+        } catch (Exception $exception) {
+            CLIErrorHandler::handleGeneralError($exception, "Ejecutando cron {$name}");
         }
     }
 }

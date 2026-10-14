@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli\commands;
 
+use Exception;
+use Override;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use versaWYS\kernel\cli\BaseCommand;
@@ -29,7 +31,7 @@ class CheckPsr4Command extends BaseCommand
     /** @var array<string,array<mixed>> Cache de tokens por filepath para evitar re-tokenización */
     private array $tokenCache = [];
 
-    #[\Override]
+    #[Override]
     public function execute(array $params): int
     {
         $projectRoot = getcwd();
@@ -169,13 +171,13 @@ class CheckPsr4Command extends BaseCommand
     // DEAD CODE DETECTION
     // =========================================================
 
-    #[\Override]
+    #[Override]
     public function getDescription(): string
     {
         return 'Análisis completo PSR-4: estructura, namespaces, case-sensitivity y referencias';
     }
 
-    #[\Override]
+    #[Override]
     public function getHelp(): string
     {
         return <<<'HELP'
@@ -240,14 +242,18 @@ class CheckPsr4Command extends BaseCommand
             if (!in_array($segment, $entries, true)) {
                 $actual = null;
                 foreach ($entries as $entry) {
-                    if (strcasecmp($entry, $segment) === 0) {
-                        $actual = $entry;
-                        break;
+                    if (strcasecmp($entry, $segment) !== 0) {
+                        continue;
                     }
+
+                    $actual = $entry;
+                    break;
                 }
+
                 if ($actual === null) {
                     return [null, null];
                 }
+
                 $mismatch ??= ['used' => $segment, 'expected' => $actual];
                 $segment = $actual;
             }
@@ -291,7 +297,7 @@ class CheckPsr4Command extends BaseCommand
                     'traits' => array_map('strtolower', $declared['traits']),
                 ];
             }
-        } catch (\Exception $e) {
+        } catch (Exception) {
         }
     }
 
@@ -337,10 +343,10 @@ class CheckPsr4Command extends BaseCommand
                     $issues[] = $caseIssue;
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $exception) {
             $issues[] = [
                 'type' => 'scan_error',
-                'message' => "Error escaneando {$dir}: " . $e->getMessage(),
+                'message' => "Error escaneando {$dir}: " . $exception->getMessage(),
             ];
         }
 
@@ -402,10 +408,10 @@ class CheckPsr4Command extends BaseCommand
                     }
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $exception) {
             $issues[] = [
                 'type' => 'scan_error',
-                'message' => "Error analizando use statements en {$dir}: " . $e->getMessage(),
+                'message' => "Error analizando use statements en {$dir}: " . $exception->getMessage(),
             ];
         }
 
@@ -444,10 +450,12 @@ class CheckPsr4Command extends BaseCommand
                         ++$i;
                         continue;
                     }
+
                     if ($t[0] === T_WHITESPACE) {
                         ++$i;
                         continue;
                     }
+
                     if ($t[0] === T_AS) {
                         break;
                     }
@@ -456,6 +464,7 @@ class CheckPsr4Command extends BaseCommand
                         break;
                     }
                 }
+
                 ++$i;
             }
 
@@ -496,10 +505,10 @@ class CheckPsr4Command extends BaseCommand
                     }
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $exception) {
             $issues[] = [
                 'type' => 'scan_error',
-                'message' => "Error analizando rutas en {$dir}: " . $e->getMessage(),
+                'message' => "Error analizando rutas en {$dir}: " . $exception->getMessage(),
             ];
         }
 
@@ -621,10 +630,10 @@ class CheckPsr4Command extends BaseCommand
                     ];
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $exception) {
             $issues[] = [
                 'type' => 'scan_error',
-                'message' => "Error analizando llamadas estáticas en {$dir}: " . $e->getMessage(),
+                'message' => "Error analizando llamadas estáticas en {$dir}: " . $exception->getMessage(),
             ];
         }
 
@@ -686,10 +695,10 @@ class CheckPsr4Command extends BaseCommand
                     ];
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $exception) {
             $issues[] = [
                 'type' => 'scan_error',
-                'message' => "Error analizando instanciaciones new en {$dir}: " . $e->getMessage(),
+                'message' => "Error analizando instanciaciones new en {$dir}: " . $exception->getMessage(),
             ];
         }
 
@@ -707,7 +716,7 @@ class CheckPsr4Command extends BaseCommand
         for ($i = 0; $i < $count; ++$i) {
             $token = $tokens[$i] ?? null;
 
-            if (!(is_array($token) && $token[0] === T_DOUBLE_COLON)) {
+            if (!is_array($token) || $token[0] !== T_DOUBLE_COLON) {
                 continue;
             }
 
@@ -731,6 +740,7 @@ class CheckPsr4Command extends BaseCommand
                         if ($line === 0) {
                             $line = $prev[2] ?? 0;
                         }
+
                         --$j;
                         continue;
                     }
@@ -783,7 +793,7 @@ class CheckPsr4Command extends BaseCommand
         for ($i = 0; $i < $count; ++$i) {
             $token = $tokens[$i] ?? null;
 
-            if (!(is_array($token) && $token[0] === T_NEW)) {
+            if (!is_array($token) || $token[0] !== T_NEW) {
                 continue;
             }
 
@@ -870,14 +880,17 @@ class CheckPsr4Command extends BaseCommand
                     if ($current === ';' || $current === '{') {
                         break;
                     }
+
                     if (
                         is_array($current)
                         && in_array($current[0], [T_STRING, T_NS_SEPARATOR, T_NAME_QUALIFIED], strict: true)
                     ) {
                         $ns .= $current[1];
                     }
+
                     ++$i;
                 }
+
                 $namespace = trim($ns, '\\');
                 continue;
             }
@@ -893,9 +906,11 @@ class CheckPsr4Command extends BaseCommand
                 if (is_array($back) && $back[0] === T_WHITESPACE) {
                     continue;
                 }
+
                 $prevSignificant = $back;
                 break;
             }
+
             if (is_array($prevSignificant) && $prevSignificant[0] === T_FUNCTION) {
                 continue;
             }
@@ -985,11 +1000,7 @@ class CheckPsr4Command extends BaseCommand
             return $namespace !== '' ? $namespace . '\\' . $name : $name;
         }
 
-        if (isset($aliases[strtolower($name)])) {
-            return $aliases[strtolower($name)];
-        }
-
-        return $namespace !== '' ? $namespace . '\\' . $name : $name;
+        return $aliases[strtolower($name)] ?? ($namespace !== '' ? $namespace . '\\' . $name : $name);
     }
 
     private function extractFilePaths(string $file): array
@@ -1082,6 +1093,7 @@ class CheckPsr4Command extends BaseCommand
             if ($dot === null || $tokens[$dot] !== '.') {
                 return null;
             }
+
             $fromDir = true;
             $i = $this->getNextSignificantTokenIndex($tokens, $dot);
         }
@@ -1127,9 +1139,11 @@ class CheckPsr4Command extends BaseCommand
             if ($found === null) {
                 continue;
             }
+
             if ($caseDiff === null) {
                 return null; // existe con la capitalización exacta
             }
+
             $mismatch ??= $caseDiff;
         }
 
@@ -1171,13 +1185,14 @@ class CheckPsr4Command extends BaseCommand
             $prefixSegs = explode('\\', $prefixTrim);
             $match = true;
             foreach ($prefixSegs as $k => $pseg) {
-                if (!(!isset($nsSegments[$k]) || strcasecmp($nsSegments[$k], $pseg) !== 0)) {
+                if (isset($nsSegments[$k]) && strcasecmp($nsSegments[$k], $pseg) === 0) {
                     continue;
                 }
 
                 $match = false;
                 break;
             }
+
             if ($match) {
                 $nsSegments = array_slice($nsSegments, count($prefixSegs));
             }
@@ -1210,6 +1225,7 @@ class CheckPsr4Command extends BaseCommand
                             'context' => 'Estructura de directorios no coincide con namespace',
                         ];
                     }
+
                     $matched = $entry;
                     break;
                 }
@@ -1230,9 +1246,8 @@ class CheckPsr4Command extends BaseCommand
         $grouped = [];
         foreach ($issues as $issue) {
             $type = $issue['type'] ?? 'unknown';
-            if (!isset($grouped[$type])) {
-                $grouped[$type] = [];
-            }
+            $grouped[$type] ??= [];
+
             $grouped[$type][] = $issue;
         }
 
@@ -1285,6 +1300,7 @@ class CheckPsr4Command extends BaseCommand
                 if (isset($issue['context'])) {
                     echo '    ' . CLIErrorHandler::colorize($issue['context'], 'yellow') . "\n";
                 }
+
                 break;
 
             case 'use_case_mismatch':
@@ -1429,10 +1445,10 @@ class CheckPsr4Command extends BaseCommand
                     }
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $exception) {
             $issues[] = [
                 'type' => 'scan_error',
-                'message' => "Error analizando métodos en {$dir}: " . $e->getMessage(),
+                'message' => "Error analizando métodos en {$dir}: " . $exception->getMessage(),
             ];
         }
 
@@ -1469,6 +1485,7 @@ class CheckPsr4Command extends BaseCommand
                     // Si el padre no está indexado (ej: vendor), asumimos que el método podría existir allí
                     return true;
                 }
+
                 $res = $this->checkMethodExists($parent, $methodName, $mustBeStatic);
                 if ($res !== 'not_found' && $res !== false) {
                     return $res;
@@ -1480,6 +1497,7 @@ class CheckPsr4Command extends BaseCommand
                     // Si la interfaz o trait no está indexado, asumimos que el método podría estar allí
                     return true;
                 }
+
                 $res = $this->checkMethodExists($ref, $methodName, $mustBeStatic);
                 if ($res !== 'not_found' && $res !== false) {
                     return $res;
@@ -1615,9 +1633,7 @@ class CheckPsr4Command extends BaseCommand
      */
     private function getTokens(string $filePath): array
     {
-        if (!isset($this->tokenCache[$filePath])) {
-            $this->tokenCache[$filePath] = token_get_all(file_get_contents($filePath));
-        }
+        $this->tokenCache[$filePath] ??= token_get_all(file_get_contents($filePath));
 
         return $this->tokenCache[$filePath];
     }
@@ -1700,6 +1716,7 @@ class CheckPsr4Command extends BaseCommand
                                 $ext .= $tokens[$i][1];
                                 ++$i;
                             }
+
                             $extends = $this->resolveClassNameFromContext($ext, $namespace, $context['uses']);
                             continue;
                         }
@@ -1739,8 +1756,10 @@ class CheckPsr4Command extends BaseCommand
                                     break;
                                 }
                             }
+
                             continue;
                         }
+
                         $i++;
                     }
 
@@ -1777,6 +1796,7 @@ class CheckPsr4Command extends BaseCommand
                                                 $context['uses'],
                                             );
                                         }
+
                                         $i++;
                                     }
                                 } elseif ($t[0] === T_FUNCTION) {
@@ -1791,12 +1811,15 @@ class CheckPsr4Command extends BaseCommand
                                         if ($mod === T_STATIC) {
                                             $isStatic = true;
                                         }
+
                                         if ($mod === T_ABSTRACT) {
                                             $isAbstract = true;
                                         }
+
                                         if ($mod === T_PRIVATE) {
                                             $isPrivate = true;
                                         }
+
                                         if (in_array(
                                             $mod,
                                             [
@@ -1828,9 +1851,11 @@ class CheckPsr4Command extends BaseCommand
                                     }
                                 }
                             }
+
                             $i++;
                         }
                     }
+
                     break;
                 }
             }

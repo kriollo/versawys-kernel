@@ -121,6 +121,7 @@ class GlobalControllers
                 $likes[] = 'LOWER(CONCAT(' . $field . ", '')) LIKE ?";
                 $bindings[] = '%' . mb_strtolower($fitro) . '%';
             }
+
             $conditions[] = '(' . implode(' OR ', $likes) . ')';
         }
 

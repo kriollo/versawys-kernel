@@ -7,6 +7,7 @@ namespace versaWYS\kernel;
 use app\models\Dashboard;
 use app\models\Users;
 use Exception;
+use SensitiveParameter;
 use versaWYS\kernel\helpers\Functions;
 
 class GlobalMiddleware
@@ -286,7 +287,7 @@ class GlobalMiddleware
         $url = $request->getUrl();
         $menuUser = (new Dashboard())->getMenuUser($iduser);
         foreach ($menuUser as $value) {
-            if (!($value['url_menu'] === $url || $value['url_submenu'] === $url)) {
+            if ($value['url_menu'] !== $url && $value['url_submenu'] !== $url) {
                 continue;
             }
 
@@ -296,7 +297,7 @@ class GlobalMiddleware
         Response::redirect('/e404');
     }
 
-    public function validatePolicyPassword(#[\SensitiveParameter] $password): bool
+    public function validatePolicyPassword(#[SensitiveParameter] $password): bool
     {
         global $config;
 
@@ -328,7 +329,7 @@ class GlobalMiddleware
             return false;
         }
 
-        return !($specialChars && !preg_match('/[^a-zA-Z\d]/', $password));
+        return !$specialChars || preg_match('/[^a-zA-Z\d]/', $password) === 1;
     }
 
     public function getMessagePolicyPassword(): string

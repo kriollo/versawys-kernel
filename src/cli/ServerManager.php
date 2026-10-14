@@ -37,6 +37,7 @@ class ServerManager
                 if (isset($processInfo['name']) && $processInfo['name'] !== null) {
                     echo '   Proceso: ' . CLIErrorHandler::colorize($processInfo['name'], 'cyan') . "\n";
                 }
+
                 echo "\n";
                 echo "💡 Para liberar el puerto, puedes:\n";
 
@@ -153,10 +154,8 @@ class ServerManager
                 // El patrón busca ":8000 " o similar para evitar matchear ":80001"
                 // Y verifica que la línea contenga LISTENING o ESCUCHANDO
                 if (
-                    !(
-                        (str_contains($line, ":{$port} ") || str_contains($line, ":{$port}\t"))
-                        && (stripos($line, 'LISTENING') !== false || stripos($line, 'ESCUCHANDO') !== false)
-                    )
+                    !str_contains($line, ":{$port} ") && !str_contains($line, ":{$port}\t")
+                    || stripos($line, 'LISTENING') === false && stripos($line, 'ESCUCHANDO') === false
                 ) {
                     continue;
                 }
@@ -232,10 +231,8 @@ class ServerManager
         $lines = explode("\n", $output);
         foreach ($lines as $line) {
             if (
-                !(
-                    (stripos($line, ":{$port}") !== false || stripos($line, ":{$port} ") !== false)
-                    && (stripos($line, 'LISTENING') !== false || stripos($line, 'ESCUCHANDO') !== false)
-                )
+                stripos($line, ":{$port}") === false && stripos($line, ":{$port} ") === false
+                || stripos($line, 'LISTENING') === false && stripos($line, 'ESCUCHANDO') === false
             ) {
                 continue;
             }

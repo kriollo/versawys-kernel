@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli;
 
+use Exception;
+
 class FrontManager
 {
     private static string $templateTwig = 'app/templates/dashboard/';
@@ -19,8 +21,8 @@ class FrontManager
 
         try {
             CLIHelper::ensureDirectory($path, 0o775);
-        } catch (\Exception $e) {
-            CLIErrorHandler::warning($e->getMessage());
+        } catch (Exception $exception) {
+            CLIErrorHandler::warning($exception->getMessage());
 
             return false;
         }
@@ -31,6 +33,7 @@ class FrontManager
 
                 return false;
             }
+
             unlink($templateTWIG);
         }
 
@@ -62,8 +65,8 @@ class FrontManager
 
         try {
             CLIHelper::ensureDirectory($path, 0o775);
-        } catch (\Exception $e) {
-            CLIErrorHandler::warning($e->getMessage());
+        } catch (Exception $exception) {
+            CLIErrorHandler::warning($exception->getMessage());
 
             return false;
         }
@@ -74,6 +77,7 @@ class FrontManager
 
                 return false;
             }
+
             unlink($componentVue);
         }
 

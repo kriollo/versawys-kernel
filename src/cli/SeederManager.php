@@ -120,6 +120,7 @@ class SeederManager extends VersaORMModel
         if ($files === false) {
             $files = [];
         }
+
         sort($files, SORT_NATURAL | SORT_FLAG_CASE);
 
         $count = 0;
@@ -171,6 +172,7 @@ class SeederManager extends VersaORMModel
         if ($files === false) {
             $files = [];
         }
+
         sort($files, SORT_NATURAL | SORT_FLAG_CASE);
 
         foreach ($files as $file) {

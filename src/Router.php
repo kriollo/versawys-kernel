@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel;
 
+use Composer\InstalledVersions;
 use Error;
 use Exception;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -84,8 +86,8 @@ class Router
 
         return [
             'status' => 'ok',
-            'kernel' => \Composer\InstalledVersions::isInstalled('versawys/kernel')
-                ? \Composer\InstalledVersions::getPrettyVersion('versawys/kernel')
+            'kernel' => InstalledVersions::isInstalled('versawys/kernel')
+                ? InstalledVersions::getPrettyVersion('versawys/kernel')
                 : 'dev',
             'php' => PHP_VERSION,
             'sapi' => PHP_SAPI,
@@ -427,8 +429,8 @@ class Router
             require_once $file;
 
             return true;
-        } catch (Throwable $e) {
-            self::routeLoadError(sprintf("Error loading route file '%s': %s", $file, $e->getMessage()));
+        } catch (Throwable $throwable) {
+            self::routeLoadError(sprintf("Error loading route file '%s': %s", $file, $throwable->getMessage()));
 
             return false;
         }
@@ -443,7 +445,7 @@ class Router
 
         error_log($message);
         if ($config['build']['debug'] ?? false) {
-            ErrorHandler::handleException(new \RuntimeException($message));
+            ErrorHandler::handleException(new RuntimeException($message));
         }
     }
 
@@ -582,8 +584,10 @@ class Router
 
     /**
      * Ejecuta los middlewares de forma centralizada.
+     *
+     * @param array<int, array{0: class-string, 1: string}> $middlewares
      */
-    private function executeMiddlewares($middlewares, array $slug = []): bool|string|null
+    private function executeMiddlewares(array $middlewares, array $slug = []): bool|string|null
     {
         global $request, $config;
         foreach ($middlewares as $middleware) {

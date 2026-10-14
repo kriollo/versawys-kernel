@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli;
 
+use Composer\InstalledVersions;
 use RuntimeException;
 
 class CLIHelper
@@ -18,7 +19,7 @@ class CLIHelper
      */
     public static function composerDir(): string
     {
-        $path = realpath(\Composer\InstalledVersions::getRootPackage()['install_path']);
+        $path = realpath(InstalledVersions::getRootPackage()['install_path']);
 
         return $path !== false ? $path : getcwd() . '/versaWYS';
     }
@@ -32,6 +33,7 @@ class CLIHelper
         if ($default !== '') {
             echo CLIErrorHandler::colorize(" [{$default}]", 'yellow');
         }
+
         echo ': ';
 
         if (!self::$interactive) {

@@ -12,7 +12,7 @@ final class App
     public static function run(string $root): void
     {
         // Permitir que el grupo tenga permisos de escritura en todos los archivos/dirs que PHP cree
-        umask(0002);
+        umask(0o002);
 
         // El kernel usa rutas relativas a la raíz del proyecto
         chdir($root);

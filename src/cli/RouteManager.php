@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli;
 
+use InvalidArgumentException;
+use RuntimeException;
+use SensitiveParameter;
+
 class RouteManager
 {
     private static string $path = 'app/routes/';
@@ -100,6 +104,7 @@ class RouteManager
         if (!is_dir(self::$path)) {
             return [];
         }
+
         $routes = scandir(self::$path);
         $routes = array_filter($routes, static fn($route): bool => str_ends_with($route, '.php'));
 
@@ -146,12 +151,12 @@ class RouteManager
     {
         // El nombre llega desde la URL de /doc: solo se aceptan archivos que existen en app/routes
         if (!in_array($routeFile, self::getRoutes(), strict: true)) {
-            throw new \InvalidArgumentException("El archivo de rutas '{$routeFile}' no existe.");
+            throw new InvalidArgumentException("El archivo de rutas '{$routeFile}' no existe.");
         }
 
         $routeContent = file_get_contents(self::$path . $routeFile);
         if ($routeContent === false) {
-            throw new \RuntimeException("No se pudo leer el archivo de rutas: {$routeFile}");
+            throw new RuntimeException("No se pudo leer el archivo de rutas: {$routeFile}");
         }
 
         return self::parseRouteSource($routeContent);
@@ -193,6 +198,7 @@ class RouteManager
             if (count($places) < 2) {
                 continue;
             }
+
             foreach ($places as [$file, $i]) {
                 $others = array_map(
                     static fn(array $place): string => $place[0],
@@ -238,6 +244,7 @@ class RouteManager
             $route['csrf'] = self::csrfMode($route);
             $route['issues'] = self::routeIssues($route, $imports);
         }
+
         unset($route);
 
         return $routes;
@@ -404,16 +411,18 @@ class RouteManager
         if ($route['class'] === null) {
             $issues[] = [
                 'level' => 'error',
-                'message' => 'No se pudo determinar el controlador: debe ser [Clase::class, \'metodo\'].',
+                'message' => "No se pudo determinar el controlador: debe ser [Clase::class, 'metodo'].",
             ];
         } elseif (($problem = $missing($route['class'], (string) $route['class_method'])) !== null) {
             $issues[] = ['level' => 'error', 'message' => 'Controlador: ' . $problem . '.'];
         }
 
         foreach ($route['middleware'] as $middleware) {
-            if (($problem = $missing($middleware['class'], $middleware['class_method'])) !== null) {
-                $issues[] = ['level' => 'error', 'message' => 'Middleware: ' . $problem . '.'];
+            if (($problem = $missing($middleware['class'], $middleware['class_method'])) === null) {
+                continue;
             }
+
+            $issues[] = ['level' => 'error', 'message' => 'Middleware: ' . $problem . '.'];
         }
 
         if ($route['description'] === '') {
@@ -424,6 +433,7 @@ class RouteManager
         foreach (array_diff($route['routeParams'], $documented) as $param) {
             $issues[] = ['level' => 'warning', 'message' => "Falta `// path-param name:{$param} ...`."];
         }
+
         foreach (array_diff($documented, $route['routeParams']) as $param) {
             $issues[] = ['level' => 'warning', 'message' => "`path-param {$param}` no aparece en la URL de la ruta."];
         }
@@ -647,19 +657,23 @@ class RouteManager
             'request-body' => 'requestBody',
             'query-param' => 'queryParams',
         ] as $tag => $key) {
-            if (preg_match(
-                '/^\s*\/\/\s*' . preg_quote($tag, '/') . '\s+name:(.+?)\s+type:(.+?)\s+description:(.+)$/',
-                $comment,
-                $matches,
-            )) {
-                $documentation[$key][] = [
-                    'name' => trim($matches[1]),
-                    'type' => trim($matches[2]),
-                    'description' => trim($matches[3]),
-                ];
-
-                return;
+            if (
+                preg_match(
+                    '/^\s*\/\/\s*' . preg_quote($tag, '/') . '\s+name:(.+?)\s+type:(.+?)\s+description:(.+)$/',
+                    $comment,
+                    $matches,
+                ) !== 1
+            ) {
+                continue;
             }
+
+            $documentation[$key][] = [
+                'name' => trim($matches[1]),
+                'type' => trim($matches[2]),
+                'description' => trim($matches[3]),
+            ];
+
+            return;
         }
     }
 
@@ -701,7 +715,9 @@ class RouteManager
     private static function findMatchingToken(
         array $tokens,
         int $openIndex,
+        #[SensitiveParameter]
         string $openToken,
+        #[SensitiveParameter]
         string $closeToken,
         int $end,
     ): ?int {
@@ -815,6 +831,7 @@ class RouteManager
             if (is_array($tokens[$index]) && in_array($tokens[$index][0], [T_COMMENT, T_DOC_COMMENT], true)) {
                 continue;
             }
+
             $value .= is_array($tokens[$index]) ? $tokens[$index][1] : $tokens[$index];
         }
 

@@ -12,11 +12,11 @@ final class SessionCookieTest extends TestCase
     {
         // Otro proceso: session_start() no puede correr dentro de la suite, que ya envió salida
         $script = tempnam(sys_get_temp_dir(), 'ses') . '.php';
-        $config = require dirname(__DIR__) . '/src/config/config.default.php';
+        $config = require __DIR__ . '/../src/config/config.default.php';
         $config['logging']['dir'] = sys_get_temp_dir() . '/versawys-test-logs/';
         file_put_contents($script, '<?php
             require '
-        . var_export(dirname(__DIR__) . '/vendor/autoload.php', true)
+        . var_export(__DIR__ . '/../vendor/autoload.php', true)
         . ';
             $GLOBALS["config"] = '
         . var_export($config, true)

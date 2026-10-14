@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace versaWYS\kernel\cli;
 
 use ReflectionClass;
+use Throwable;
 use versaWYS\kernel\Loggin;
 
 /**
@@ -66,7 +67,7 @@ class CommandRegistry
                     }
 
                     $commands[$commandName] = $fullClassName;
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     Loggin::warning("No se pudo registrar comando: {$className}", 'CommandRegistry', [
                         'error' => $e->getMessage(),
                     ]);
@@ -151,7 +152,7 @@ class CommandRegistry
                 'description' => $instance->getDescription(),
                 'help' => $instance->getHelp(),
             ];
-        } catch (\Throwable $e) {
+        } catch (Throwable) {
             return null;
         }
     }

@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli\commands;
 
+use FilesystemIterator;
+use Override;
+use ParseError;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use Throwable;
 use versaWYS\kernel\cli\BaseCommand;
 use versaWYS\kernel\cli\CLIErrorHandler;
 use versaWYS\kernel\cli\ConfigManager;
@@ -51,6 +57,7 @@ class CheckDeployCommand extends BaseCommand
         'build.cacheRouteFile' => 'la caché de rutas se eliminó en 2.10',
         'build.cacheRouteMinifyLevel' => 'la caché de rutas se eliminó en 2.10',
     ];
+
     private const array CODE_DIRS = ['app', 'versaWYS/kernel'];
 
     /**
@@ -84,7 +91,7 @@ class CheckDeployCommand extends BaseCommand
     /** URL del sitio para las sondas HTTP (--url, o build.base_url con --production) */
     private string $url = '';
 
-    #[\Override]
+    #[Override]
     public function execute(array $args = []): int
     {
         $flags = array_merge($args, $_SERVER['argv'] ?? []);
@@ -92,10 +99,13 @@ class CheckDeployCommand extends BaseCommand
         $this->strict = in_array('--strict', $flags, true);
         $this->production = in_array('--production', $flags, true);
         foreach ($flags as $flag) {
-            if (is_string($flag) && str_starts_with($flag, '--url=')) {
-                $this->url = substr($flag, 6);
+            if (!is_string($flag) || !str_starts_with($flag, '--url=')) {
+                continue;
             }
+
+            $this->url = substr($flag, 6);
         }
+
         $this->root = (string) getcwd();
 
         $phases = [
@@ -188,10 +198,12 @@ class CheckDeployCommand extends BaseCommand
                 foreach (explode('.', $dead) as $part) {
                     $node = is_array($node) && array_key_exists($part, $node) ? $node[$part] : null;
                 }
+
                 if ($node !== null) {
                     $present[] = "{$dead} ({$reason})";
                 }
             }
+
             if ($present !== []) {
                 $findings[] = [
                     'minor',
@@ -204,13 +216,13 @@ class CheckDeployCommand extends BaseCommand
         return $findings;
     }
 
-    #[\Override]
+    #[Override]
     public function getDescription(): string
     {
         return 'Revisión previa al despliegue: código, rutas, plantillas, secretos, configuración y servidor';
     }
 
-    #[\Override]
+    #[Override]
     public function getHelp(): string
     {
         return <<<'HELP'
@@ -280,13 +292,15 @@ class CheckDeployCommand extends BaseCommand
 
         foreach (self::APP_CONTRACT as $class => $methods) {
             foreach ($methods as $method) {
-                if (!method_exists($class, $method)) {
-                    $this->add(
-                        'critical',
-                        "El kernel llama a {$class}::{$method}() y el proyecto no lo tiene.",
-                        hint: 'Actualizar esa clase del panel base o fijar una versión anterior del kernel.',
-                    );
+                if (method_exists($class, $method)) {
+                    continue;
                 }
+
+                $this->add(
+                    'critical',
+                    "El kernel llama a {$class}::{$method}() y el proyecto no lo tiene.",
+                    hint: 'Actualizar esa clase del panel base o fijar una versión anterior del kernel.',
+                );
             }
         }
     }
@@ -299,7 +313,7 @@ class CheckDeployCommand extends BaseCommand
         foreach ($this->phpFiles([...self::CODE_DIRS, 'index.php', 'versaCLI']) as $file) {
             try {
                 token_get_all((string) file_get_contents($file), TOKEN_PARSE);
-            } catch (\ParseError $error) {
+            } catch (ParseError $error) {
                 $this->add('critical', 'Error de sintaxis: ' . $error->getMessage(), $file, $error->getLine());
             }
         }
@@ -333,8 +347,8 @@ class CheckDeployCommand extends BaseCommand
     {
         try {
             $all = RouteManager::extractAllRouteData();
-        } catch (\Throwable $exception) {
-            $this->add('critical', 'No se pudieron analizar los archivos de rutas: ' . $exception->getMessage());
+        } catch (Throwable $throwable) {
+            $this->add('critical', 'No se pudieron analizar los archivos de rutas: ' . $throwable->getMessage());
 
             return;
         }
@@ -372,6 +386,7 @@ class CheckDeployCommand extends BaseCommand
         foreach ($this->phpFiles(self::CODE_DIRS) as $file) {
             $this->collectMatches($file, '/->\s*render(?:Direct)?\(\s*([\'"])([^\'"$]+)\1/', $references);
         }
+
         foreach ($this->files($templatesDir, 'twig') as $file) {
             $this->collectMatches(
                 $file,
@@ -416,15 +431,17 @@ class CheckDeployCommand extends BaseCommand
             }
 
             foreach ($this->stringLiterals($file) as [$line, $value]) {
-                if (preg_match('/^[A-Za-z]:[\\\\\/][^\s]/', $value) === 1) {
-                    $this->add(
-                        'warning',
-                        'Ruta absoluta de Windows: ' . $this->excerpt($value),
-                        $file,
-                        $line,
-                        'No existe en Linux. Usar rutas relativas al proyecto, o marcar con // deploy-check:ignore si solo se usa en Windows.',
-                    );
+                if (preg_match('/^[A-Za-z]:[\\\\\/][^\s]/', $value) !== 1) {
+                    continue;
                 }
+
+                $this->add(
+                    'warning',
+                    'Ruta absoluta de Windows: ' . $this->excerpt($value),
+                    $file,
+                    $line,
+                    'No existe en Linux. Usar rutas relativas al proyecto, o marcar con // deploy-check:ignore si solo se usa en Windows.',
+                );
             }
 
             foreach ($this->lines($file) as $index => $text) {
@@ -437,6 +454,7 @@ class CheckDeployCommand extends BaseCommand
                 ) {
                     continue;
                 }
+
                 $command = strtolower($match[1]);
                 if (isset($windowsCommands[$command])) {
                     $this->add(
@@ -492,9 +510,9 @@ class CheckDeployCommand extends BaseCommand
                 $next = $this->significant($tokens, $i, 1);
                 $isCall =
                     $next === '('
-                    && !(
-                        is_array($prev)
-                        && in_array(
+                    && (
+                        !is_array($prev)
+                        || !in_array(
                             $prev[0],
                             [T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_DOUBLE_COLON, T_FUNCTION, T_NEW],
                             true,
@@ -546,15 +564,17 @@ class CheckDeployCommand extends BaseCommand
 
                 if ($token[0] === T_CONSTANT_ENCAPSED_STRING) {
                     foreach ($knownFormats as $pattern => $kind) {
-                        if (preg_match($pattern, $token[1]) === 1) {
-                            $this->add(
-                                'critical',
-                                "Secreto con formato conocido ({$kind}) escrito en el código.",
-                                $file,
-                                $token[2],
-                                'Moverla a config.json o a una variable de entorno, y rotarla.',
-                            );
+                        if (preg_match($pattern, $token[1]) !== 1) {
+                            continue;
                         }
+
+                        $this->add(
+                            'critical',
+                            "Secreto con formato conocido ({$kind}) escrito en el código.",
+                            $file,
+                            $token[2],
+                            'Moverla a config.json o a una variable de entorno, y rotarla.',
+                        );
                     }
                 }
 
@@ -629,13 +649,15 @@ class CheckDeployCommand extends BaseCommand
             ? (string) file_get_contents($this->root . '/.gitignore')
             : '';
         foreach (['.env' => '.env', 'config.json' => ConfigManager::dir() . '/config.json'] as $needle => $path) {
-            if (!str_contains($gitignore, $needle)) {
-                $this->add(
-                    'critical',
-                    "{$path} no está en .gitignore.",
-                    hint: 'Contiene credenciales: agregarlo a .gitignore.',
-                );
+            if (str_contains($gitignore, $needle)) {
+                continue;
             }
+
+            $this->add(
+                'critical',
+                "{$path} no está en .gitignore.",
+                hint: 'Contiene credenciales: agregarlo a .gitignore.',
+            );
         }
 
         if (!is_dir($this->root . '/.git')) {
@@ -767,9 +789,11 @@ class CheckDeployCommand extends BaseCommand
         ];
 
         foreach ($rules as [$level, $failed, $message, $hint]) {
-            if ($failed) {
-                $this->add($level, $message, $file, hint: $hint);
+            if (!$failed) {
+                continue;
             }
+
+            $this->add($level, $message, $file, hint: $hint);
         }
 
         foreach (self::schemaFindings(ConfigManager::getConfig(), ConfigManager::defaults()) as [
@@ -889,6 +913,7 @@ class CheckDeployCommand extends BaseCommand
                 hint: 'opcache.enable=1 en el php.ini de FPM/Apache y recargar el servicio.',
             );
         }
+
         if ($health['xdebug'] === true) {
             $this->add(
                 $this->production ? 'critical' : 'warning',
@@ -896,6 +921,7 @@ class CheckDeployCommand extends BaseCommand
                 hint: 'Desinstalarlo en producción o fijar xdebug.mode=off.',
             );
         }
+
         if ($this->production && $health['opcache_validate_timestamps'] === true) {
             $this->add(
                 'info',
@@ -919,7 +945,7 @@ class CheckDeployCommand extends BaseCommand
 
         $config = $this->projectConfig();
 
-        if (version_compare(PHP_VERSION, '8.3.0', '<')) {
+        if (PHP_VERSION_ID < 80_300) {
             $this->add('critical', 'PHP ' . PHP_VERSION . ': se requiere 8.3 o superior.');
         }
 
@@ -927,10 +953,13 @@ class CheckDeployCommand extends BaseCommand
             ? 'pdo_mysql'
             : 'pdo_pgsql';
         foreach (['intl', 'pdo', $driver, 'mbstring', 'fileinfo', 'curl', 'zip', 'json'] as $extension) {
-            if (!extension_loaded($extension)) {
-                $this->add('critical', "Falta la extensión de PHP '{$extension}'.");
+            if (extension_loaded($extension)) {
+                continue;
             }
+
+            $this->add('critical', "Falta la extensión de PHP '{$extension}'.");
         }
+
         if (!extension_loaded('Zend OPcache') || !(bool) ini_get('opcache.enable')) {
             $this->add('info', 'OPcache no está activo: PHP recompila cada archivo en cada petición.');
         }
@@ -968,10 +997,13 @@ class CheckDeployCommand extends BaseCommand
             'node_modules/sweetalert2/dist/sweetalert2.esm.all.js' => 'Falta SweetAlert2 en node_modules (pnpm install --production).',
         ];
         foreach ($required as $path => $message) {
-            if (!is_file($this->root . '/' . $path)) {
-                $this->add('critical', $message, $path);
+            if (is_file($this->root . '/' . $path)) {
+                continue;
             }
+
+            $this->add('critical', $message, $path);
         }
+
         if (is_dir($this->root . '/versaWYS/vendor/pestphp') || is_dir($this->root . '/versaWYS/vendor/phpstan')) {
             $this->add(
                 'warning',
@@ -1006,8 +1038,8 @@ class CheckDeployCommand extends BaseCommand
             $executed = in_array('versa_migrations', $orm->schema('tables'), true)
                 ? array_column($orm->exec('SELECT name FROM versa_migrations'), 'name')
                 : [];
-        } catch (\Throwable $exception) {
-            $this->add('critical', 'No se pudo conectar a la base de datos: ' . strtok($exception->getMessage(), "\n"));
+        } catch (Throwable $throwable) {
+            $this->add('critical', 'No se pudo conectar a la base de datos: ' . strtok($throwable->getMessage(), "\n"));
 
             return;
         }
@@ -1048,12 +1080,15 @@ class CheckDeployCommand extends BaseCommand
         if ($file !== null) {
             $finding['file'] = $this->relative($file);
         }
+
         if ($line !== null) {
             $finding['line'] = $line;
         }
+
         if ($hint !== null) {
             $finding['hint'] = $hint;
         }
+
         $this->findings[] = $finding;
     }
 
@@ -1078,6 +1113,7 @@ class CheckDeployCommand extends BaseCommand
                     $ignoredLines[$file][$index + 1] = true;
                     $ignoredLines[$file][$index + 2] = true;
                 }
+
                 if ($inBlock) {
                     $ignoredLines[$file][$index + 1] = true;
                 }
@@ -1133,15 +1169,18 @@ class CheckDeployCommand extends BaseCommand
     private function files(string $directory, string $extension): array
     {
         $files = [];
-        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(
             $directory,
-            \FilesystemIterator::SKIP_DOTS,
+            FilesystemIterator::SKIP_DOTS,
         ));
         foreach ($iterator as $file) {
-            if ($file->isFile() && strtolower($file->getExtension()) === $extension) {
-                $files[] = $file->getPathname();
+            if (!$file->isFile() || strtolower($file->getExtension()) !== $extension) {
+                continue;
             }
+
+            $files[] = $file->getPathname();
         }
+
         sort($files);
 
         return $files;
@@ -1155,10 +1194,12 @@ class CheckDeployCommand extends BaseCommand
     private function collectMatches(string $file, string $pattern, array &$references): void
     {
         foreach ($this->lines($file) as $index => $text) {
-            if (preg_match_all($pattern, $text, $matches) > 0) {
-                foreach ($matches[2] as $name) {
-                    $references[] = [$file, $index + 1, $name];
-                }
+            if (preg_match_all($pattern, $text, $matches) <= 0) {
+                continue;
+            }
+
+            foreach ($matches[2] as $name) {
+                $references[] = [$file, $index + 1, $name];
             }
         }
     }
@@ -1172,9 +1213,11 @@ class CheckDeployCommand extends BaseCommand
     {
         $literals = [];
         foreach (token_get_all((string) file_get_contents($file)) as $token) {
-            if (is_array($token) && $token[0] === T_CONSTANT_ENCAPSED_STRING) {
-                $literals[] = [$token[2], stripslashes(substr($token[1], 1, -1))];
+            if (!is_array($token) || $token[0] !== T_CONSTANT_ENCAPSED_STRING) {
+                continue;
             }
+
+            $literals[] = [$token[2], stripslashes(substr($token[1], 1, -1))];
         }
 
         return $literals;
@@ -1191,6 +1234,7 @@ class CheckDeployCommand extends BaseCommand
             if (is_array($tokens[$i]) && in_array($tokens[$i][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
                 continue;
             }
+
             $foundIndex = $i;
 
             return $tokens[$i];
@@ -1257,6 +1301,7 @@ class CheckDeployCommand extends BaseCommand
         if ($critical > 0) {
             $detail[] = $critical . ($critical === 1 ? ' crítico' : ' críticos');
         }
+
         if ($warning > 0) {
             $detail[] = $warning . ($warning === 1 ? ' aviso' : ' avisos');
         }
@@ -1308,6 +1353,7 @@ class CheckDeployCommand extends BaseCommand
                 if ($location !== '') {
                     echo '      ' . CLIErrorHandler::colorize(trim($location), 'cyan') . "\n";
                 }
+
                 if (isset($item['hint'])) {
                     echo "      💡 {$item['hint']}\n";
                 }
@@ -1325,9 +1371,11 @@ class CheckDeployCommand extends BaseCommand
         } else {
             echo CLIErrorHandler::colorize("❌ NO DESPLEGAR: {$blocking} problema(s) por resolver\n", 'red');
         }
+
         if (!$this->production) {
             echo "   Esta ejecución revisó el código. En el servidor, repetir con --production.\n";
         }
+
         CLIErrorHandler::printSeparator();
     }
 }

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\cli\commands;
 
+use FilesystemIterator;
+use Override;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use versaWYS\kernel\cli\BaseCommand;
 use versaWYS\kernel\cli\CLIErrorHandler;
 
@@ -23,12 +27,13 @@ class KernelPublishCommand extends BaseCommand
     {
         $dir = dirname(__DIR__, 3) . '/stubs';
         $files = [];
-        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(
             $dir,
-            \FilesystemIterator::SKIP_DOTS,
+            FilesystemIterator::SKIP_DOTS,
         )) as $file) {
             $files[substr($file->getPathname(), strlen($dir) + 1)] = $file->getPathname();
         }
+
         ksort($files);
 
         return $files;
@@ -37,7 +42,7 @@ class KernelPublishCommand extends BaseCommand
     /**
      * @param array<mixed> $params
      */
-    #[\Override]
+    #[Override]
     public function execute(array $params = []): int
     {
         $force = in_array('--force', [...$params, ...($_SERVER['argv'] ?? [])], true);
@@ -54,6 +59,7 @@ class KernelPublishCommand extends BaseCommand
                 if (!is_dir(dirname($target))) {
                     mkdir(dirname($target), 0o775, true);
                 }
+
                 $created = !is_file($target);
                 copy($source, $target);
                 echo
@@ -81,13 +87,13 @@ class KernelPublishCommand extends BaseCommand
         return 0;
     }
 
-    #[\Override]
+    #[Override]
     public function getDescription(): string
     {
         return 'Crea o actualiza index.php, versaCLI, .htaccess y los ejemplos de configs/ desde el kernel';
     }
 
-    #[\Override]
+    #[Override]
     public function getHelp(): string
     {
         return (

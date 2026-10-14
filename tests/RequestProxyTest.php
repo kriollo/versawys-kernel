@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use versaWYS\kernel\Request;
 
@@ -151,7 +152,7 @@ final class RequestProxyTest extends TestCase
         yield 'con usuario' => ['app.ejemplo.cl@evil.test', 'http://localhost'];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('hosts')]
+    #[DataProvider('hosts')]
     public function testTheHostHeaderMustBeAHostName(string $host, string $expected): void
     {
         $_SERVER = ['REQUEST_METHOD' => 'GET', 'HTTP_HOST' => $host, 'REMOTE_ADDR' => '203.0.113.8'];

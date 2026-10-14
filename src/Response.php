@@ -41,6 +41,7 @@ class Response
 
                 return false;
             }
+
             Loggin::warning('Warning previo a la respuesta: ' . $last['message'], 'response', $last);
         }
 
@@ -269,6 +270,7 @@ class Response
             if (is_array($value)) {
                 return array_map($walk, $value);
             }
+
             if (is_string($value) && preg_match(self::INTERNAL_DETAIL, $value) === 1) {
                 $hidden[] = $value;
 
@@ -279,9 +281,11 @@ class Response
         };
 
         foreach (['message', 'errors', 'error'] as $key) {
-            if (array_key_exists($key, $data)) {
-                $data[$key] = $walk($data[$key]);
+            if (!array_key_exists($key, $data)) {
+                continue;
             }
+
+            $data[$key] = $walk($data[$key]);
         }
 
         if ($hidden !== []) {

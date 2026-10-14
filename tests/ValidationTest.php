@@ -46,6 +46,7 @@ final class ValidationTest extends TestCase
                 var_export($value, true),
             );
         }
+
         self::assertArrayHasKey('ok', Functions::validateParams(['ok' => 'quizás'], ['ok' => 'boolean']));
     }
 

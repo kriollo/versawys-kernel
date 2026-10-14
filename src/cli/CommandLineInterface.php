@@ -48,7 +48,7 @@ class CommandLineInterface
     public static function main(string $root, array $argv): never
     {
         // Permitir que el grupo tenga permisos de escritura en todos los archivos/dirs que PHP cree
-        umask(0002);
+        umask(0o002);
         Response::$cli = true;
 
         // El CLI usa rutas relativas a la raíz del proyecto: fijarla permite invocarlo desde cualquier directorio (cron)

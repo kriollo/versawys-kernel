@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use versaWYS\kernel\Loggin;
+use versaWYS\kernel\SecurityUtils;
+
 global $config;
 
 // CORS: solo se responde a los orígenes listados en config `cors.allowed_origins`.
@@ -21,7 +24,7 @@ if ($origin !== '' && in_array($origin, $config['cors']['allowed_origins'] ?? []
 header('X-Frame-Options: SAMEORIGIN');
 header('X-Content-Type-Options: nosniff');
 // El mismo identificador que llevan las entradas de log de esta petición
-header('X-Request-Id: ' . versaWYS\kernel\Loggin::requestId());
+header('X-Request-Id: ' . Loggin::requestId());
 header('Referrer-Policy: strict-origin-when-cross-origin');
 // "0" apaga el filtro XSS antiguo de los navegadores, que tenía fallas propias (recomendación de OWASP);
 // la protección real es la CSP
@@ -31,6 +34,7 @@ $permissionsPolicy = (string) ($config['permissions_policy'] ?? '');
 if ($permissionsPolicy !== '') {
     header('Permissions-Policy: ' . $permissionsPolicy);
 }
+
 // Aísla la ventana de otros orígenes; allow-popups mantiene los popups de OAuth (Google)
 header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
 
@@ -63,9 +67,7 @@ if (!($config['build']['debug'] ?? false) && ($config['csp']['enabled'] ?? true)
 
     // Con nonce, 'unsafe-inline' se omite: los navegadores con nonce ya lo ignoraban, y sin él un script
     // inyectado sin nonce no corre en ninguno
-    $nonce = ($csp['nonce'] ?? false) === true
-        ? "'nonce-" . versaWYS\kernel\SecurityUtils::cspNonce() . "' "
-        : "'unsafe-inline' ";
+    $nonce = ($csp['nonce'] ?? false) === true ? "'nonce-" . SecurityUtils::cspNonce() . "' " : "'unsafe-inline' ";
     $eval = ($csp['unsafe_eval'] ?? true) === true ? "'unsafe-eval' " : '';
 
     header(

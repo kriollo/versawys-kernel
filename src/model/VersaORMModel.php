@@ -129,6 +129,7 @@ class VersaORMModel extends VersaModel
         // Inicializar la instancia global de VersaORM
         self::$orm = new VersaORM($finalConfig);
         self::$orm->setTimezone($config['build']['timezone'] ?? 'America/Santiago');
+
         $versaOrm = self::$orm;
         // Registrar en VersaModel para que sus factory methods (dispense, load, find) funcionen
         VersaModel::setORM(self::$orm);

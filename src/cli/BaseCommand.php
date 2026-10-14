@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace versaWYS\kernel\cli;
 
 use Exception;
+use Override;
+use ReflectionClass;
+use Throwable;
 use VersaORM\VersaModel;
 use versaWYS\kernel\Loggin;
 use versaWYS\kernel\model\OrmFactory;
@@ -43,7 +46,7 @@ abstract class BaseCommand implements CommandInterface
                     ],
                 );
                 VersaModel::setORM($versaOrm);
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 $versaOrm = null;
             }
         }
@@ -55,7 +58,7 @@ abstract class BaseCommand implements CommandInterface
      * Implementación por defecto de getHelp.
      * Los comandos pueden sobreescribir para proporcionar ayuda detallada.
      */
-    #[\Override]
+    #[Override]
     public function getHelp(): string
     {
         return $this->getDescription();
@@ -176,7 +179,7 @@ abstract class BaseCommand implements CommandInterface
      */
     protected function getLogModule(): string
     {
-        $className = (new \ReflectionClass($this))->getShortName();
+        $className = (new ReflectionClass($this))->getShortName();
 
         return 'cli:' . strtolower(preg_replace('/Command$/', '', $className));
     }

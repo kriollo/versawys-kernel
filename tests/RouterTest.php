@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use versaWYS\kernel\Request;
 use versaWYS\kernel\Router;
 
@@ -219,7 +221,7 @@ final class RouterTest extends TestCase
         yield 'barra invertida' => ['/kernel-test-otra\\..\\kernel-test-destino'];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('trickyPaths')]
+    #[DataProvider('trickyPaths')]
     public function testEncodedTraversalNeverReachesAnotherRoute(string $path): void
     {
         Router::get('/kernel-test-destino', [RouterTestController::class, 'show']);
@@ -239,7 +241,7 @@ final class RouterTest extends TestCase
         yield 'navegador' => [['HTTP_ACCEPT' => 'text/html']];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('clients')]
+    #[DataProvider('clients')]
     public function testAnUncaughtExceptionAnswers500WithoutItsDetails(array $client): void
     {
         $result = $this->dispatchIsolated(
@@ -281,7 +283,7 @@ final class RouterTest extends TestCase
             use versaWYS\\kernel\\Request;
             use versaWYS\\kernel\\Router;
             require '
-        . var_export(dirname(__DIR__) . '/vendor/autoload.php', true)
+        . var_export(__DIR__ . '/../vendor/autoload.php', true)
         . ';
             require '
         . var_export(__FILE__, true)
@@ -373,7 +375,7 @@ final class RouterTestController
     /** @return array<string, mixed> */
     public function pdoCode(): array
     {
-        return ['success' => 0, 'message' => 'Error', 'code' => 23000];
+        return ['success' => 0, 'message' => 'Error', 'code' => 23_000];
     }
 
     public function echo(string $id): string
@@ -383,7 +385,7 @@ final class RouterTestController
 
     public function explode(): never
     {
-        throw new \RuntimeException(
+        throw new RuntimeException(
             'PDO engine execution error: SQL failed (get): SELECT password FROM versa_users en /var/www/app/models/Users.php:40',
         );
     }

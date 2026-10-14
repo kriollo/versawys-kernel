@@ -1,10 +1,17 @@
-# Linter y analizador del kernel. El formato lo da Pint (composer pint): no usar `mago fmt`.
+# Formato, linter y analizador del kernel: la misma configuración que mago.toml de vservDigitalizacion.
+# `composer fixer:all` corre todas las herramientas; `mago fmt` es el último paso y define el formato.
 # Documentación: https://mago.carthage.software
 php-version = "8.3.0"
 
 [source]
 paths = ["src", "tests", "bench"]
 excludes = ["vendor"]
+
+[formatter]
+print-width = 120
+tab-width = 4
+use-tabs = false
+parentheses-around-new-in-member-access = true
 
 [linter]
 integrations = ["phpunit"]
@@ -30,3 +37,11 @@ no-isset = { enabled = false }
 no-ini-set = { enabled = false }
 # Las pruebas usan self::assert…()
 assertion-style = { style = "self" }
+
+[analyzer]
+find-unused-definitions = true
+find-unused-expressions = true
+analyze-dead-code = true
+check-throws = true
+allow-possibly-undefined-array-keys = true
+perform-heuristic-checks = true
