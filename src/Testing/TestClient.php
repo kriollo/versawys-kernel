@@ -217,7 +217,15 @@ final class TestClient
         try {
             $GLOBALS['session'] = new Session((int) ($config['session']['lifetime'] ?? 3600));
             if ($this->sendCsrfToken && !in_array($method, ['GET', 'HEAD', 'OPTIONS', 'QUERY'], true)) {
-                $_SERVER['HTTP_X_CSRF_TOKEN'] ??= (string) ($_SESSION['csrf_token'] ?? '');
+                $token = (string) ($_SESSION['csrf_token'] ?? '');
+                // Como el panel: fetch lo manda en la cabecera y un formulario, en el campo oculto _csrf_token
+                $_SERVER['HTTP_X_CSRF_TOKEN'] ??= $token;
+                if ($body === null) {
+                    $_POST['_csrf_token'] ??= $token;
+                    // @mago-expect lint:no-request-variable
+                    $_REQUEST = $_GET + $_POST;
+                    Request::setInput(http_build_query($_POST));
+                }
             }
 
             $GLOBALS['request'] = new Request();
