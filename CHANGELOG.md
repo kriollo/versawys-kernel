@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.3.3] - 2026-10-14
+
+### Cambiado
+- **`validateParams`: un campo obligatorio que falta o llega vacío dice "El campo X es obligatorio"**, en lugar de "no existe" (si no llegaba) o "es requerido" (si llegaba vacío). Si una aplicación compara el texto del mensaje, tiene que actualizarlo.
+
 ## [3.3.2] - 2026-10-14
 
 Lo que encontró construir una aplicación nueva desde cero (`composer create-project versawys/versawys`): un tablero kanban con tareas, etiquetas y notas, generado con `versaMODULE`.

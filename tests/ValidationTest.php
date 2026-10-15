@@ -57,9 +57,9 @@ final class ValidationTest extends TestCase
         self::assertSame([], Functions::validateParams(['cantidad' => 0, 'estado' => '0', 'activo' => false], $rules));
         self::assertSame(
             [
-                'cantidad' => 'El campo cantidad es requerido',
-                'estado' => 'El campo estado es requerido',
-                'activo' => 'El campo activo es requerido',
+                'cantidad' => 'El campo cantidad es obligatorio',
+                'estado' => 'El campo estado es obligatorio',
+                'activo' => 'El campo activo es obligatorio',
             ],
             Functions::validateParams(['cantidad' => '', 'estado' => '   ', 'activo' => []], $rules),
         );
@@ -71,5 +71,13 @@ final class ValidationTest extends TestCase
         Functions::validateParams($params, ['nombre' => 'required|string']);
 
         self::assertSame("O'Brien <b>", $params['nombre']);
+    }
+
+    public function testMissingOrEmptyRequiredFieldSaysItIsMandatory(): void
+    {
+        $errores = Functions::validateParams(['vacio' => '  '], ['falta' => 'required', 'vacio' => 'required']);
+
+        self::assertSame('El campo falta es obligatorio', $errores['falta']);
+        self::assertSame('El campo vacio es obligatorio', $errores['vacio']);
     }
 }
