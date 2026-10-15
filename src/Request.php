@@ -405,18 +405,24 @@ class Request
      */
     public function getHeader(string $headerName): ?string
     {
-        $headers = getallheaders();
-        $headerName = strtolower($headerName);
-
-        foreach ($headers as $key => $headerValue) {
-            if (strtolower($key) !== $headerName) {
-                continue;
+        // getallheaders() solo existe con Apache y FPM: con el servidor de desarrollo, la consola o las pruebas
+        // la cabecera se lee de $_SERVER, donde PHP la deja como HTTP_NOMBRE_EN_MAYUSCULAS
+        if (function_exists('getallheaders')) {
+            foreach (getallheaders() as $key => $headerValue) {
+                if (strtolower($key) === strtolower($headerName)) {
+                    return $headerValue;
+                }
             }
 
-            return $headerValue;
+            return null;
         }
 
-        return null;
+        $key = strtoupper(str_replace('-', '_', $headerName));
+        $value =
+            $_SERVER['HTTP_' . $key]
+            ?? (in_array($key, ['CONTENT_TYPE', 'CONTENT_LENGTH'], true) ? $_SERVER[$key] ?? null : null);
+
+        return is_string($value) ? $value : null;
     }
 
     /**
