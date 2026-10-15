@@ -16,6 +16,9 @@ class Response
     /** true dentro de versaCLI (lo activa CommandLineInterface::main): los errores van a la terminal. */
     public static bool $cli = false;
 
+    /** Errores en la misma petición: al tercero se muestra el error simple, sin Twig, para no entrar en un ciclo. */
+    private static int $errorCount = 0;
+
     /**
      * Sends a JSON response.
      *
@@ -93,10 +96,9 @@ class Response
         }
 
         // Protección contra loops infinitos de errores
-        static $errorCount = 0;
-        $errorCount++;
+        self::$errorCount++;
 
-        if ($errorCount > 2) {
+        if (self::$errorCount > 2) {
             // Si ya hemos tenido demasiados errores, mostrar error simple sin Twig
             Output::status($code);
 
@@ -293,6 +295,12 @@ class Response
         }
 
         return $data;
+    }
+
+    /** @internal Testing\TestClient lo llama entre peticiones: este estado vale para una sola petición. */
+    public static function resetRequestState(): void
+    {
+        self::$errorCount = 0;
     }
 
     /**

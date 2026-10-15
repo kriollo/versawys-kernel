@@ -418,6 +418,12 @@ class GlobalMiddleware
         return $expiration < $today;
     }
 
+    /** @internal Testing\TestClient lo llama entre peticiones: este estado vale para una sola petición. */
+    public static function resetRequestState(): void
+    {
+        self::$currentUserData = null;
+    }
+
     /**
      * Usuario de la petición: el que ya cargó checkSession o, si no se ejecutó antes, desde la BD.
      *

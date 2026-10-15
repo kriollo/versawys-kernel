@@ -29,6 +29,14 @@ class Request
 
     protected mixed $rawBodyLength;
 
+    /**
+     * Estado de la petición actual: su identificador (X-Request-Id) y, en pruebas, el cuerpo que fija
+     * Testing\TestClient (sin él se lee php://input).
+     *
+     * @var array{id?: string, input?: string}
+     */
+    private static array $current = [];
+
     public function __construct()
     {
         try {
@@ -42,7 +50,7 @@ class Request
             $this->prepareFiles();
             $this->prepareParams();
 
-            $this->rawBody = file_get_contents('php://input') ?? null;
+            $this->rawBody = self::input();
             $this->rawBodyLength = strlen($this->rawBody) ?? 0;
 
             // Solo un POST puede cambiar de método (nunca convertir un GET en escritura): por el campo
@@ -479,6 +487,39 @@ class Request
         return strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest';
     }
 
+    /** @internal Testing\TestClient lo llama entre peticiones: este estado vale para una sola petición. */
+    public static function resetRequestState(): void
+    {
+        self::$current = [];
+    }
+
+    /** @internal Testing\TestClient fija así el cuerpo de la petición (php://input no se puede escribir). */
+    public static function setInput(?string $body): void
+    {
+        if ($body === null) {
+            unset(self::$current['input']);
+
+            return;
+        }
+
+        self::$current['input'] = $body;
+    }
+
+    /**
+     * Identificador de la petición: el X-Request-Id que manda un proxy confiable o uno nuevo. Va en la
+     * cabecera de la respuesta y en cada línea de log, para encontrar todo lo de una petición.
+     */
+    public static function id(): string
+    {
+        $incoming = $_SERVER['HTTP_X_REQUEST_ID'] ?? '';
+
+        return self::$current['id'] ??= $incoming !== ''
+        && preg_match('/^[A-Za-z0-9._-]{8,64}$/', $incoming) === 1
+        && self::isTrustedProxy($_SERVER['REMOTE_ADDR'] ?? '')
+            ? $incoming
+            : bin2hex(random_bytes(8));
+    }
+
     protected function prepareParams(): void
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
@@ -487,7 +528,7 @@ class Request
             $this->params = $_GET ?? [];
         } elseif ($method === 'POST') {
             if ($this->contentType !== '' && str_starts_with(strtolower($this->contentType), 'application/json')) {
-                $this->params = json_decode(file_get_contents('php://input'), true) ?? [];
+                $this->params = json_decode(self::input(), true) ?? [];
             } else {
                 // Para POST multipart/form-data, no aplicar filtros agresivos
                 $this->params = $_POST;
@@ -502,13 +543,11 @@ class Request
 
     protected function processNonPostParams(): void
     {
-        $params = file_get_contents('php://input');
+        $params = self::input();
 
         // str_starts_with: el Content-Type suele llevar "; charset=utf-8"
         if (str_starts_with(strtolower($this->contentType), 'application/json')) {
-            $this->params = $params === '' || $params === null || !Functions::validateJson($params)
-                ? []
-                : json_decode($params, true);
+            $this->params = $params === '' || !Functions::validateJson($params) ? [] : json_decode($params, true);
         } elseif (str_contains($this->contentType, 'multipart/form-data')) {
             $this->params = $this->procesaFormData($params);
         } else {
@@ -582,5 +621,10 @@ class Request
             'size' => strlen($fileTmpContent), // Puedes ajustar según necesidad
             'from' => 'formData',
         ];
+    }
+
+    private static function input(): string
+    {
+        return self::$current['input'] ?? (string) file_get_contents('php://input');
     }
 }

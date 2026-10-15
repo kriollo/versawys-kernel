@@ -896,4 +896,10 @@ class Session
         session_unset();
         session_destroy();
     }
+
+    /** @internal Testing\TestClient lo llama entre peticiones: este estado vale para una sola petición. */
+    public static function resetRequestState(): void
+    {
+        self::$validatedThisRequest = false;
+    }
 }

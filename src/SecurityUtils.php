@@ -11,6 +11,9 @@ use SensitiveParameter;
  */
 class SecurityUtils
 {
+    /** Nonce de la CSP de la petición actual: el mismo en la cabecera y en cada <script>. */
+    private static ?string $cspNonce = null;
+
     /**
      * Sanitiza una URL removiendo caracteres peligrosos para SQL injection
      * de manera inteligente, preservando rutas legítimas.
@@ -67,9 +70,7 @@ class SecurityUtils
      */
     public static function cspNonce(): string
     {
-        static $nonce = null;
-
-        return $nonce ??= base64_encode(random_bytes(16));
+        return self::$cspNonce ??= base64_encode(random_bytes(16));
     }
 
     /**
@@ -210,6 +211,12 @@ class SecurityUtils
                 @unlink($file); // Eliminar archivo si expiró o quedó corrupto
             }
         }
+    }
+
+    /** @internal Testing\TestClient lo llama entre peticiones: este estado vale para una sola petición. */
+    public static function resetRequestState(): void
+    {
+        self::$cspNonce = null;
     }
 
     /**

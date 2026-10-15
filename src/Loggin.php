@@ -570,17 +570,7 @@ class Loggin
      */
     public static function requestId(): string
     {
-        static $id = null;
-        if ($id === null) {
-            $incoming = $_SERVER['HTTP_X_REQUEST_ID'] ?? '';
-            $id = $incoming !== ''
-            && preg_match('/^[A-Za-z0-9._-]{8,64}$/', $incoming) === 1
-            && Request::isTrustedProxy($_SERVER['REMOTE_ADDR'] ?? '')
-                ? $incoming
-                : bin2hex(random_bytes(8));
-        }
-
-        return $id;
+        return Request::id();
     }
 
     /**

@@ -6,7 +6,7 @@ namespace versaWYS\kernel;
 
 class Cookie
 {
-    /** @param 'Lax'|'Strict'|'None' $sameSite */
+    /** @param 'Lax'|'None'|'Strict' $sameSite */
     public function set(
         string $key,
         $value,
