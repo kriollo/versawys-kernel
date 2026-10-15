@@ -120,6 +120,12 @@ return [
         'timeout' => 2.5,
         'default_expiration' => 3600,
     ],
+    // Caché de la aplicación (Cache): 'file' o 'redis' (usa la conexión de 'redis')
+    'cache' => ['driver' => 'file', 'dir' => 'versaWYS/cache/data/'],
+    // Cola de trabajos (Queue): 'database' (tabla versa_jobs + queue:work) o 'sync' (en el acto)
+    'queue' => ['driver' => 'database'],
+    // Archivos de la aplicación (Storage), fuera de lo que sirve el servidor web
+    'storage' => ['root' => 'versaWYS/storage'],
     'rate_limiting' => [
         'enabled' => true,
         'storage' => 'file',

@@ -29,6 +29,7 @@ Claves de primer nivel de `config.default.php`, todas estables: `framework`, `da
 En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden cambiar sin aviso.
 
 - **`App`** — `run`
+- **`Cache`** — `get`, `has`, `set`, `remember`, `forget`, `flush`
 - **`CacheUsers`** — `updateMenuVersion`, `invalidateUserCache`, `invalidateAllUserCache`; *interno*: `getUserData`
 - **`Container`** — `getInstance`, `bind`, `singleton`, `instance`, `forget`, `has`, `get`, `make`, `call`; *interno*: `resetGlobal`
 - **`ContentType`** — enum del tipo de contenido de un correo (`HTML`, `TEXT`, `TWIG`)
@@ -40,16 +41,19 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`GlobalControllers`** — `getParamsPaginate`
 - **`GlobalMiddleware`** — `getLoadedUserData`, `checkSession`, `validateCSRFToken`, `onlyAdmin`, `onlySuperAdmin`, `validatePolicyPassword`, `getMessagePolicyPassword`, `onlyDebug`, `checkLoginRateLimit`, `onlyUserWithAccess` (lo escribe route:make), `panelPath`; *interno*: `isPasswordExpired`, `resetRequestState`
 - **`Loggin`** — `initialize`, `setCustomHandler`, `log`, `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`, `exception`, `query`, `request`, `auth`, `performance`, `read`, `getConfig`
+- **`Job`** — interfaz de un trabajo de la cola: `handle(array $data)`
 - **`MailSender`** — `send`
 - **`Output`** — `header`, `removeHeader`, `status`, `cookie`, `halt`, `capturing`; *interno*: `capture`, `release`. El kernel escribe la respuesta solo por aquí: en producción equivale a `header()`, `http_response_code()`, `setcookie()` y `exit()`
 - **`RouteParameterMismatch`** — un parámetro de la ruta no calza con el tipo del método (`int $id`): el Router responde 404
 - **`RequestHalted`** — en pruebas reemplaza al `exit()` de una petición (extiende `Error`)
+- **`Queue`** — `push`, `work`, `failed`, `retry`, `createTable` (la llama la migración del proyecto)
 - **`RateLimitMiddleware`** — `checkApiLimit`, `checkLoginLimit`, `checkUploadLimit`, `checkSensitiveLimit`
 - **`Request`** — `setParam`, `get`, `file`, `getAllParams`, `getRawParams`, `getAllFiles`, `getContentType`, `getMethod`, `getUrl`, `getFiles`, `getIp`, `getClientIp`, `getRawBody`, `getBaseUrl`, `clientIp`, `isTrustedProxy`, `getHeader`, `isApiCall`, `id`; *interno*: `setInput`, `resetRequestState`, `procesaFormData`, `parseProxyRange`, `isSPARequest`, `isSPARequestStatic`, `isApiRequest`
 - **`Response`** — `json`, `jsonError`, `textPlain`, `redirect`; *interno*: `resetRequestState`
 - **`Router`** — `health`, `normalize_url`, `group`, `get`, `post`, `put`, `patch`, `delete`, `query`, `withoutCsrf`, `middleware`, `resolve`; *interno*: `loadRoutes`, `healthToken`
 - **`SecurityUtils`** — `validateAndCleanUrl`; *interno*: `sanitizeUrl`, `cspNonce`, `resetRequestState`, `checkRateLimit`, `checkGlobalRateLimit`, `cleanExpiredLimits`; *deprecado*: `validateCsrfToken`
 - **`Session`** — `revokeToken`, `regenerate`, `setCSRFToken`, `getCSRFToken`, `set`, `has`, `get`, `getAll`, `delete`, `clear`, `getAttempts`, `getAllAttempts`, `setAttempts`, `restoreAttempts`, `setAttemptsSession`, `maximumAttempts`, `generateJWT`, `decodeJWT`, `setUserSession`, `refreshUserSession`, `checkUserSession`, `touchSessionActivity`, `destroy`; *interno*: `checkExistSession`, `checkUserSessionCached`, `resetRequestState`
+- **`Storage`** — `put`, `get`, `exists`, `delete`, `files`, `path`
 - **`Tenant`** — `id`, `owns`, `ensure` (404 si la fila no existe o es de otra empresa)
 - **`Validator`** — `make`, `fails`, `errors`, `validated`
 - **`versaController`** — `versaRoute`
