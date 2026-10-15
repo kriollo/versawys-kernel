@@ -55,12 +55,6 @@ parameters:
 			path: src/Cookie.php
 
 		-
-			message: '#^Cannot call method isApiCall\(\) on class\-string\|object\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: src/ErrorHandler.php
-
-		-
 			message: '#^Expression on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.expr
 			count: 1

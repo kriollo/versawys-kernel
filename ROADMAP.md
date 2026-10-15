@@ -182,7 +182,7 @@ Esto inicia la base de pruebas, pero **no completa** el inventario de contratos,
 
 ## Paso 7 — Al nivel de Laravel y Symfony en el trabajo diario
 
-**Estado: fases A (3.5.0), B (3.6.0), C (3.7.0) y D (3.8.0) completas.**
+**Estado: fases A–E completas (3.5.0 a 3.9.0).**
 
 El objetivo de los pasos 1–6 era un kernel robusto sin replicar la amplitud de Laravel o Symfony. Este paso apunta más alto: igualarlos en lo que hace seguro y productivo el trabajo diario. No se mide por número de funciones. Cada fase mantiene la API actual y los proyectos adoptan lo nuevo de a poco.
 
@@ -192,7 +192,7 @@ El objetivo de los pasos 1–6 era un kernel robusto sin replicar la amplitud de
 | B | Contenedor optativo con inyección por constructor en controladores y middlewares; `global` sigue funcionando | Hecha (3.6.0) |
 | C | Validación con reglas en arreglo, datos anidados y Form Requests; autorización con políticas y aislamiento por empresa | Hecha (3.7.0) |
 | D | Colas, caché y almacenamiento de archivos con adaptadores simples (archivos/BD primero, Redis/S3 optativos) | Hecha (3.8.0): Redis para la caché; S3 cuando un proyecto lo pida |
-| E | Página de error con contexto, sitio de documentación, toolchain de frontend sin trampas (builds mezclados, importmap) | Pendiente |
+| E | Página de error con contexto, sitio de documentación, toolchain de frontend sin trampas (builds mezclados, importmap) | Hecha (3.9.0): página de error con código; builds mezclados resueltos en versaCompiler. El sitio de documentación espera a tener usuarios externos (GitHub ya muestra `documentacion/`) |
 
 Por qué A primero: los errores que encontró la app de prueba (versaTodo) aparecieron a mano o con un navegador sin interfaz. Con un cliente de pruebas, las suites de cada proyecto los detectan. La primera suite con `TestClient` encontró un 500 en lugar de 422 en el panel base (`EmpresasMiddleware`).
 
