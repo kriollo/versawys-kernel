@@ -34,15 +34,17 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`ErrorHandler`** — `initialize`, `handleError`; *interno*: `handleException`, `handleShutdown`
 - **`File`** — `offsetExists`, `offsetGet`, `offsetSet`, `offsetUnset`, `getName`, `getExtension`, `getSize`, `getSizeForHumans`, `getType`, `getTmpName`, `getMetadata`, `moveToOriginalName`, `moveToNewName`; *interno*: `isValidUpload`
 - **`GlobalControllers`** — `getParamsPaginate`
-- **`GlobalMiddleware`** — `getLoadedUserData`, `checkSession`, `validateCSRFToken`, `onlyAdmin`, `onlySuperAdmin`, `validatePolicyPassword`, `getMessagePolicyPassword`, `onlyDebug`, `checkLoginRateLimit`, `onlyUserWithAccess` (lo escribe route:make); *interno*: `isPasswordExpired`
+- **`GlobalMiddleware`** — `getLoadedUserData`, `checkSession`, `validateCSRFToken`, `onlyAdmin`, `onlySuperAdmin`, `validatePolicyPassword`, `getMessagePolicyPassword`, `onlyDebug`, `checkLoginRateLimit`, `onlyUserWithAccess` (lo escribe route:make), `panelPath`; *interno*: `isPasswordExpired`, `resetRequestState`
 - **`Loggin`** — `initialize`, `setCustomHandler`, `log`, `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`, `exception`, `query`, `request`, `auth`, `performance`, `read`, `getConfig`
 - **`MailSender`** — `send`
+- **`Output`** — `header`, `removeHeader`, `status`, `cookie`, `halt`, `capturing`; *interno*: `capture`, `release`. El kernel escribe la respuesta solo por aquí: en producción equivale a `header()`, `http_response_code()`, `setcookie()` y `exit()`
+- **`RequestHalted`** — en pruebas reemplaza al `exit()` de una petición (extiende `Error`)
 - **`RateLimitMiddleware`** — `checkApiLimit`, `checkLoginLimit`, `checkUploadLimit`, `checkSensitiveLimit`
-- **`Request`** — `setParam`, `get`, `file`, `getAllParams`, `getRawParams`, `getAllFiles`, `getContentType`, `getMethod`, `getUrl`, `getFiles`, `getIp`, `getClientIp`, `getRawBody`, `getBaseUrl`, `clientIp`, `isTrustedProxy`, `getHeader`, `isApiCall`; *interno*: `procesaFormData`, `parseProxyRange`, `isSPARequest`, `isSPARequestStatic`, `isApiRequest`
-- **`Response`** — `json`, `jsonError`, `textPlain`, `redirect`
+- **`Request`** — `setParam`, `get`, `file`, `getAllParams`, `getRawParams`, `getAllFiles`, `getContentType`, `getMethod`, `getUrl`, `getFiles`, `getIp`, `getClientIp`, `getRawBody`, `getBaseUrl`, `clientIp`, `isTrustedProxy`, `getHeader`, `isApiCall`, `id`; *interno*: `setInput`, `resetRequestState`, `procesaFormData`, `parseProxyRange`, `isSPARequest`, `isSPARequestStatic`, `isApiRequest`
+- **`Response`** — `json`, `jsonError`, `textPlain`, `redirect`; *interno*: `resetRequestState`
 - **`Router`** — `health`, `normalize_url`, `group`, `get`, `post`, `put`, `patch`, `delete`, `query`, `withoutCsrf`, `middleware`, `resolve`; *interno*: `loadRoutes`, `healthToken`
-- **`SecurityUtils`** — `validateAndCleanUrl`; *interno*: `sanitizeUrl`, `cspNonce`, `checkRateLimit`, `checkGlobalRateLimit`, `cleanExpiredLimits`; *deprecado*: `validateCsrfToken`
-- **`Session`** — `revokeToken`, `regenerate`, `setCSRFToken`, `getCSRFToken`, `set`, `has`, `get`, `getAll`, `delete`, `clear`, `getAttempts`, `getAllAttempts`, `setAttempts`, `restoreAttempts`, `setAttemptsSession`, `maximumAttempts`, `generateJWT`, `decodeJWT`, `setUserSession`, `refreshUserSession`, `checkUserSession`, `touchSessionActivity`, `destroy`; *interno*: `checkExistSession`, `checkUserSessionCached`
+- **`SecurityUtils`** — `validateAndCleanUrl`; *interno*: `sanitizeUrl`, `cspNonce`, `resetRequestState`, `checkRateLimit`, `checkGlobalRateLimit`, `cleanExpiredLimits`; *deprecado*: `validateCsrfToken`
+- **`Session`** — `revokeToken`, `regenerate`, `setCSRFToken`, `getCSRFToken`, `set`, `has`, `get`, `getAll`, `delete`, `clear`, `getAttempts`, `getAllAttempts`, `setAttempts`, `restoreAttempts`, `setAttemptsSession`, `maximumAttempts`, `generateJWT`, `decodeJWT`, `setUserSession`, `refreshUserSession`, `checkUserSession`, `touchSessionActivity`, `destroy`; *interno*: `checkExistSession`, `checkUserSessionCached`, `resetRequestState`
 - **`versaController`** — `versaRoute`
 - **`versaTwig`** — `init`, `addGlobal`, `render`, `errorHandler`; *interno*: `addExtension`, `addFilter`, `renderDirect`
 - **`cli\BaseCommand`** — —; *interno*: `getHelp`
@@ -50,9 +52,11 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`cli\CLIHelper`** — `ask`, `confirm`; *interno*: `composerDir`, `ensureDirectory`
 - **`cli\CommandExecutor`** — `runInBackground`, `run`
 - **`cli\CommandInterface`** — `execute`; *interno*: `getDescription`, `getHelp`
-- **`cli\ConfigManager`** — `dir`, `path`, `defaults`, `getConfig`, `saveConfig`, `setDebug`, `merge`, `clearCache`; *interno*: `setTemplateCache`, `mergeArrays`, `initConfig`
+- **`cli\ConfigManager`** — `dir`, `path`, `defaults`, `getConfig`, `saveConfig`, `setDebug`, `merge`, `align`, `clearCache`; *interno*: `setTemplateCache`, `mergeArrays`, `initConfig`
 - **`helpers\FechasFunction`** — `formatFechaLargaES`; *interno*: `formaFechaFullES`, `formatFecha`, `setTwigFilters`, `setTwigFunctions`
 - **`helpers\Functions`** — `dump`, `cleanString`, `validateParams`, `e`, `validarRut`, `hash`, `needsRehash`, `verifyHash`, `generateCSRFToken`, `validateCSRFToken`, `assets_url`, `csrf_field`, `getAssets`, `removeScape`, `sanitizeSvgContent`, `formatRut`, `getPanelUrl`, `httpRequest`, `httpGet`, `httpPostJson`, `httpUploadFile`; *interno*: `validateJson`, `replace_spaces_with_underscore`, `method_field`, `setTwigFilters`, `cspNonce`, `setTwigFunctions`
+- **`Testing\TestClient`** — `boot`, `withHeaders`, `withoutCsrfToken`, `login`, `get`, `getJson`, `post`, `postJson`, `putJson`, `patchJson`, `deleteJson`, `json`, `request`, `cookies`
+- **`Testing\TestResponse`** — `header`, `json`, `assertStatus`, `assertOk`, `assertRedirect`, `assertHeader`, `assertSee`, `assertDontSee`, `assertJson`, `assertJsonPath`
 - **`model\OrmFactory`** — `make`
 - **`model\RedisModel`** — `initialize`, `getInstance`, `set`, `get`, `delete`, `del`, `exists`, `expire`, `ttl`, `increment`, `decrement`, `rPush`, `lPop`, `lRange`, `lLen`, `scan`, `searchValueBySubKey`, `info`, `ping`, `close`, `multi`, `exec`, `remember`, `forget`, `pull`, `add`, `replace`; *interno*: `setMultiple`, `getMultiple`, `hSet`, `hGet`, `hSetMultiple`, `hGetAll`, `hDel`, `hExists`, `lPush`, `rPop`, `sAdd`, `sMembers`, `sIsMember`, `sRem`, `sCard`, `zAdd`, `zRange`, `zRem`, `zScore`, `dbSize`, `flushDb`, `flushAll`, `rawCommand`, `discard`
 - **`model\VersaORMModel`** — `replaceOrm`, `orm`, `exec`, `tableName`, `definePropertyTypes`, `executeWithErrorHandling`, `escape`; *interno*: `boot`, `isBooted`, `setOrmInstance`

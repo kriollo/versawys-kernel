@@ -2,6 +2,23 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.5.0] - 2026-10-15
+
+Primera fase del plan para estar al nivel de Laravel y Symfony en lo que hace seguro y productivo el trabajo diario (ver ROADMAP.md, paso 7): probar una aplicación sin levantar un servidor.
+
+### Añadido
+- **`Testing\TestClient`**: la petición recorre el kernel completo en el mismo proceso: cabeceras de seguridad, rutas, middlewares, controlador, sesión, CSRF, base de datos y plantillas.
+  - Se comporta como un navegador: guarda las cookies y manda el token CSRF de la sesión (en la cabecera y en el campo `_csrf_token` de los formularios). `withoutCsrfToken()` permite probar que una ruta lo exige.
+  - `login()` entra por el formulario real del panel.
+  - **`Testing\TestResponse`** trae `assertStatus`, `assertOk`, `assertRedirect`, `assertSee`, `assertJson`, `assertJsonPath`, `assertHeader`.
+  - En el esqueleto, 9 pruebas de la aplicación corren en 2 s.
+- **`Output`**: único punto por el que el kernel escribe la respuesta (cabeceras, estado, cookies, `exit()`). En producción hace lo mismo que antes; en pruebas registra la respuesta y termina la petición con `RequestHalted` en vez de `exit()`.
+- **`Request::id()`**: el identificador de la petición (`X-Request-Id`); `Loggin::requestId()` lo usa.
+
+### Corregido
+- `Request::getHeader()` fallaba con `php -S` y en consola, donde no existe `getallheaders()`: ahora lee `$_SERVER`.
+- `Session` solo cambia la configuración de PHP que difiere, y regenera el id a mano si PHP no lo permite por salida previa (solo ocurre en pruebas por consola).
+
 ## [3.4.0] - 2026-10-15
 
 ### Añadido
