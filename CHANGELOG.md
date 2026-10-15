@@ -2,7 +2,21 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
-## [3.8.0] - 2026-10-15
+## [3.9.0] - 2026-10-15
+
+Fase E del paso 7 (ROADMAP.md): la página de error del modo debug.
+
+### Cambiado
+- **Error en modo debug, desde el navegador**: antes respondía un JSON crudo. Ahora muestra una página con:
+  - el mensaje;
+  - el código alrededor de la línea que falló y de cada archivo de la aplicación en la traza (los de `vendor/` atenuados);
+  - el error SQL de VersaORM;
+  - la petición, con su id.
+- La página no usa Twig, por si es Twig lo que falló. Escapa todo y su `<style>` lleva el nonce de la CSP.
+- Las API y el SPA siguen recibiendo JSON, ahora con `code`: el fragmento de la línea del error.
+- En producción nada cambia.
+
+
 
 Fase D del paso 7 (ROADMAP.md): caché, colas y archivos, sin dependencias nuevas.
 

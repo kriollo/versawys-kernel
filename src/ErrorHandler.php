@@ -55,12 +55,10 @@ class ErrorHandler
         }
 
         $errorHandled = true;
+        $isApiCall = $request instanceof Request && $request->isApiCall();
 
         // FAST-PATH para producción: respuesta inmediata sin procesamiento pesado
         if (!$debug) {
-            // Determinar si es una llamada API
-            $isApiCall = isset($request) && method_exists($request, 'isApiCall') && $request->isApiCall();
-
             if ($isApiCall) {
                 // API call en producción: JSON simple y rápido
                 Response::jsonError([
@@ -121,7 +119,107 @@ class ErrorHandler
         ];
 
         self::logError($errorData);
+
+        // Un navegador recibe la página con el código; una API o el SPA, el JSON con el fragmento
+        if (!$isApiCall && !Request::isSPARequestStatic()) {
+            Output::status(500);
+            echo self::debugPage($e, $errorData);
+            Output::halt();
+        }
+
+        $errorData['code'] = self::excerpt((string) $errorData['real_file'], (int) $errorData['real_line']);
         Response::jsonError($errorData, 500);
+    }
+
+    /**
+     * La página de error del modo debug: mensaje, código alrededor de cada línea de la aplicación en la traza
+     * y la petición. Sin Twig (puede ser lo que falló) y todo escapado.
+     *
+     * @internal
+     *
+     * @param array<string, mixed> $errorData
+     */
+    public static function debugPage(Throwable $e, array $errorData = []): string
+    {
+        $h = static fn(mixed $v): string => htmlspecialchars((string) $v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $root = (string) getcwd();
+        $frames = [['file' => $e->getFile(), 'line' => $e->getLine(), 'function' => '']];
+        foreach ($e->getTrace() as $frame) {
+            if (!isset($frame['file'], $frame['line'])) {
+                continue;
+            }
+
+            $frames[] = [
+                'file' => $frame['file'],
+                'line' => $frame['line'],
+                'function' => ($frame['class'] ?? '') . ($frame['type'] ?? '') . $frame['function'],
+            ];
+        }
+
+        $html = '';
+        $opened = 0;
+        foreach ($frames as $i => $frame) {
+            $vendor = str_contains($frame['file'], '/vendor/');
+            $code = '';
+            // El código solo de los archivos de la aplicación (y del primero, aunque sea del kernel)
+            if ($i === 0 || !$vendor) {
+                foreach (self::excerpt($frame['file'], $frame['line']) as $n => $line) {
+                    $code .= sprintf(
+                        '<span class="%s"><b>%d</b>%s</span>',
+                        $n === $frame['line'] ? 'hit' : '',
+                        $n,
+                        $h($line),
+                    );
+                }
+            }
+
+            $html .= sprintf(
+                '<details%s class="%s"><summary>%s:%d <i>%s</i></summary>%s</details>',
+                $code !== '' && $opened++ < 2 ? ' open' : '', // abiertos: los dos primeros con código
+                $vendor ? 'vendor' : '',
+                $h(str_replace($root . '/', '', $frame['file'])),
+                $frame['line'],
+                $h($frame['function']),
+                $code !== '' ? '<pre>' . $code . '</pre>' : '',
+            );
+        }
+
+        $nonce = $h(SecurityUtils::cspNonce());
+        $sql = isset($errorData['sql_error'])
+            ? '<pre class="sql">'
+            . $h(json_encode($errorData['sql_error'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))
+            . '</pre>'
+            : '';
+
+        return (
+            '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>'
+            . $h($e::class)
+            . '</title><style nonce="'
+            . $nonce
+            . '">'
+            . 'body{margin:0;font:14px/1.5 system-ui,sans-serif;background:#f8fafc;color:#0f172a}header{background:#b91c1c;color:#fff;padding:24px}'
+            . 'header small{opacity:.8}h1{margin:.25em 0 0;font-size:20px;white-space:pre-wrap;word-break:break-word}main{padding:16px 24px;max-width:1100px}'
+            . 'details{background:#fff;border:1px solid #e2e8f0;border-radius:6px;margin:8px 0}details.vendor{opacity:.6}summary{cursor:pointer;padding:8px 12px;font-family:ui-monospace,monospace;word-break:break-all}'
+            . 'pre{margin:0;overflow-x:auto;font:13px/1.6 ui-monospace,monospace;border-top:1px solid #e2e8f0}pre span{display:block;padding:0 12px;white-space:pre}'
+            . 'pre b{display:inline-block;width:4em;color:#94a3b8;font-weight:400;user-select:none}.hit{background:#fee2e2}.sql{padding:12px;white-space:pre-wrap}'
+            . 'dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px}dt{color:#64748b}dd{margin:0;word-break:break-all}'
+            . '@media (prefers-color-scheme:dark){body{background:#0f172a;color:#e2e8f0}details{background:#1e293b;border-color:#334155}pre{border-color:#334155}.hit{background:#7f1d1d}}'
+            . '</style></head><body><header><small>'
+            . $h($e::class)
+            . ' · modo debug</small><h1>'
+            . $h($e->getMessage())
+            . '</h1></header><main>'
+            . $sql
+            . $html
+            . '<h2>Petición</h2><dl><dt>Método</dt><dd>'
+            . $h($_SERVER['REQUEST_METHOD'] ?? '')
+            . '</dd><dt>URL</dt><dd>'
+            . $h($_SERVER['REQUEST_URI'] ?? '')
+            . '</dd>'
+            . '<dt>Id</dt><dd>'
+            . $h(Request::id())
+            . '</dd></dl></main></body></html>'
+        );
     }
 
     /**
@@ -181,6 +279,31 @@ class ErrorHandler
         }
 
         return true;
+    }
+
+    /**
+     * Las líneas alrededor de `$line`: número => código.
+     *
+     * @return array<int, string>
+     */
+    private static function excerpt(string $file, int $line, int $around = 7): array
+    {
+        if (!is_file($file) || !is_readable($file)) {
+            return [];
+        }
+
+        $lines = file($file, FILE_IGNORE_NEW_LINES);
+        if ($lines === false) {
+            return [];
+        }
+
+        $start = max(1, $line - $around);
+        $out = [];
+        for ($n = $start; $n <= min(count($lines), $line + $around); $n++) {
+            $out[$n] = $lines[$n - 1];
+        }
+
+        return $out;
     }
 
     /**

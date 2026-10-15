@@ -35,7 +35,7 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`ContentType`** — enum del tipo de contenido de un correo (`HTML`, `TEXT`, `TWIG`)
 - **`Cookie`** — `set`, `has`, `get`, `delete`, `getAll`, `clear`
 - **`FormRequest`** — `rules`, `messages`, `authorize`, `validated`, `input`; *interno*: `validateResolved`. Clase base: el contenedor la valida antes de llamar al controlador (422 con `errors`, 403 si `authorize()` es false)
-- **`ErrorHandler`** — `initialize`, `handleError`; *interno*: `handleException`, `handleShutdown`
+- **`ErrorHandler`** — `initialize`, `handleError`; *interno*: `handleException`, `handleShutdown`, `debugPage`
 - **`File`** — `offsetExists`, `offsetGet`, `offsetSet`, `offsetUnset`, `getName`, `getExtension`, `getSize`, `getSizeForHumans`, `getType`, `getTmpName`, `getMetadata`, `moveToOriginalName`, `moveToNewName`; *interno*: `isValidUpload`
 - **`Gate`** — `define`, `before`, `allows`, `denies`, `authorize`, `check`; *interno*: `reset`
 - **`GlobalControllers`** — `getParamsPaginate`
