@@ -2,7 +2,23 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
-## [3.6.0] - 2026-10-15
+## [3.7.0] - 2026-10-15
+
+Fase C del paso 7 (ROADMAP.md): validación y autorización.
+
+### Añadido
+- **`Validator::make($datos, $reglas, $mensajes)`**: reglas como texto (`'required|max:120'`) o arreglo, con closures como reglas propias.
+  - Datos anidados (`cliente.email`) y cada elemento de un arreglo (`items.*.cantidad`). El error lleva la ruta completa (`items.1.cantidad`).
+  - Mensajes por `campo.regla`, por `items.*.campo.regla` o por campo.
+  - `validated()` devuelve solo los campos con reglas, sin modificarlos. `Functions::validateParams()` sigue igual y usa `Validator`.
+- **`FormRequest`**: un controlador que la recibe como parámetro ya tiene los datos validados; si no, responde 422 con `errors`, o 403 si `authorize()` devuelve false.
+- **`Gate`**: permisos con closures o clases de política (`define('factura.anular', [PoliticaFacturas::class, 'anular'])`), `before()` para un superadministrador, `allows`/`denies`/`authorize` (403).
+- **`Tenant`**: `id()` de la empresa seleccionada, `owns($fila)` y `ensure($fila)`, que responde 404 si la fila no existe o es de otra empresa.
+
+### Corregido
+- **`int:1,2,3` rechazaba cualquier valor**: comparaba el número con la lista como texto.
+
+
 
 Fase B del paso 7 (ROADMAP.md): contenedor de dependencias optativo.
 

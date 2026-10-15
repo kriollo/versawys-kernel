@@ -67,12 +67,6 @@ message = "String concatenation with `sprintf` can be simplified."
 count = 2
 
 [[issues]]
-file = "src/MailSender.php"
-code = "single-class-per-file"
-message = "File contains multiple class-like definitions; found class `MailSender` but enum `ContentType` is already defined in this file."
-count = 1
-
-[[issues]]
 file = "src/Request.php"
 code = "no-empty-catch-clause"
 message = "Do not use empty `catch` blocks."
@@ -268,12 +262,6 @@ count = 4
 file = "src/helpers/Functions.php"
 code = "no-shorthand-ternary"
 message = "Use of the shorthand ternary operator."
-count = 1
-
-[[issues]]
-file = "src/helpers/Functions.php"
-code = "no-sprintf-concat"
-message = "String concatenation with `sprintf` can be simplified."
 count = 1
 
 [[issues]]

@@ -141,7 +141,13 @@ final class Container
             unset($this->resolving[$class]);
         }
 
-        return $reflection->newInstanceArgs($args);
+        $object = $reflection->newInstanceArgs($args);
+        // Una FormRequest pedida por un controlador se valida antes de llamarlo (422/403 y fin de la petición)
+        if ($object instanceof FormRequest) {
+            $object->validateResolved();
+        }
+
+        return $object;
     }
 
     /**
