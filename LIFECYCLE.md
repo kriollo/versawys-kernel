@@ -13,7 +13,8 @@ De `index.php` a la respuesta. Sirve para saber dónde se decide cada cosa antes
    - aplica el modo debug: muestra errores y deja la cookie `debug`;
    - fija zona horaria, locale y charset;
    - conecta VersaORM si hay base de datos configurada;
-   - crea `$request` (Request lee la petición una sola vez: método, URL, parámetros, archivos, cuerpo y *method override*).
+   - crea `$request` (Request lee la petición una sola vez: método, URL, parámetros, archivos, cuerpo y *method override*);
+   - registra en el `Container` lo de la petición (`Request`, `Session`, `versaTwig`, `Cookie`, `VersaORM`) y carga `app/container.php` si existe.
 3. **`init_error_handling.php`**: `ErrorHandler::initialize()` registra los manejadores de errores, excepciones y cierre.
 4. **`init_headers.php`**: cabeceras de seguridad (HSTS fuera de localhost, CSP con nonce y sin eval según `csp.*`, `X-Frame-Options`, `X-XSS-Protection: 0`, `Permissions-Policy`, COOP, CORS según `cors.allowed_origins`, `X-Request-Id`). Se envían antes de resolver la ruta, así que valen también para las respuestas de error.
 
@@ -47,16 +48,21 @@ Primero los del grupo, después los de la ruta. Las rutas `POST`, `PUT`, `PATCH`
 
 ## 4. Controlador
 
-`new Controlador()` y luego el método, con los parámetros de la ruta como argumentos (`string`).
+El `Container` crea el controlador (y cada middleware) y llama al método:
+
+- **Constructor:** los parámetros tipados con una clase se resuelven solos; sin constructor tipado es igual que `new Controlador()`.
+- **Método:** lo tipado con una clase viene del contenedor; el resto recibe los parámetros de la ruta en orden. Un `int $id` recibe el número y, si el segmento no lo es, la ruta responde 404 (`RouteParameterMismatch`).
+- **`FormRequest`:** si el método la pide, se valida antes de llamarlo. Si no autoriza responde 403; si los datos fallan, 422 con `errors`. En ambos casos el método no se ejecuta.
 
 - Devuelve texto (HTML de Twig) → se imprime.
 - Devuelve un arreglo → `Response::json`, con el mismo uso de `code` que los middlewares. Los frontends que tratan 401 como "sesión vencida" dependen de esto.
-- Una excepción → en debug, detalle; en producción, 500 sin SQL ni rutas (`Response::withoutInternals`).
+- Una excepción → en debug, la página de error con el código de cada archivo de la traza (JSON con `code` para API y SPA); en producción, 500 sin SQL ni rutas (`Response::withoutInternals`).
 
 ## 5. Respuesta y errores
 
 - `Response::json`: un warning previo no rompe la respuesta (se registra); en producción una respuesta con `success: 0` no lleva `error`, `trace`, `file` ni `line`.
-- Las respuestas de error terminan la petición con `exit()` después de enviarse. Para probarlas sin servidor, las pruebas las corren en otro proceso (ver `RouterTest::dispatchIsolated`).
+- Cabeceras, estado, cookies y fin de la petición pasan por `Output`. En producción equivale a `header()`, `http_response_code()`, `setcookie()` y `exit()`. Con `Testing\TestClient`, la respuesta queda registrada y la petición termina con `RequestHalted`, sin salir del proceso: así una prueba recorre el kernel completo sin servidor.
+- El estado de cada petición (Request, Response, sesión, middlewares) se reinicia con `resetRequestState()`, para que varias peticiones en un mismo proceso no se mezclen.
 - Dentro de `versaCLI` (`Response::$cli`), un error se imprime en la terminal y el proceso termina con código 1.
 
 ## Dónde extender
@@ -66,3 +72,7 @@ Primero los del grupo, después los de la ruta. Las rutas `POST`, `PUT`, `PATCH`
 | Lógica antes de un controlador | Un middleware en `app/middleware` declarado en la ruta o en su grupo |
 | Algo en todas las peticiones | Un middleware de grupo; el kernel no tiene eventos (ver DECISIONS.md) |
 | Una respuesta propia | Devolver un arreglo con `code`, o usar `Response::json` / `Response::redirect` |
+| Validar los datos de una acción | Una `FormRequest` como parámetro del método, o `Validator::make` |
+| Quién puede hacer qué | `Gate::define` en `app/container.php`; `Tenant::ensure($fila)` para los datos de otra empresa |
+| Un servicio reemplazable (correo, pagos) | Tipar el constructor y, si es una interfaz, registrarla en `app/container.php` |
+| Trabajo que no debe hacer esperar al usuario | Una clase `Job` y `Queue::push`; la procesa `php versaCLI app:queue:work` |

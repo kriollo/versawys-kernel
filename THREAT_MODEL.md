@@ -10,6 +10,8 @@ Qué protege el kernel, de quién y dónde termina su responsabilidad. Sirve par
 | Sesión del usuario | Cookie de sesión PHP + JWT firmado con `session.key`, con `jti` revocable |
 | Datos de los clientes de cada empresa | Base de datos, aislados por `empresaSelected['id']` de la sesión |
 | Archivos subidos | `public/` (sin ejecución de PHP) y carpetas de la aplicación |
+| Archivos privados de la aplicación | `Storage`, en `versaWYS/storage`, que el servidor web no sirve |
+| Trabajos pendientes | Tabla `versa_jobs`: clase y datos en JSON |
 
 ## Límites de confianza
 
@@ -39,6 +41,12 @@ Todo lo que llega en la petición es **no confiable**: parámetros, cuerpo, cook
 | Secretos en los logs | El contexto se limpia de claves con nombre de secreto (`password`, `token`, `api_key`…) a cualquier profundidad | LogTest |
 | Rutas que se pisan | `route:check` y `app:check:deploy` marcan método + URL duplicados | RouteDuplicatesTest |
 | *Method override* para saltarse CSRF | Solo un POST cambia de método, y los métodos que modifican siguen exigiendo CSRF | RouterTest: override |
+| Leer o cambiar datos de otra empresa por id | `Tenant::ensure($fila)` responde 404, sin confirmar que existe; `Tenant::id()` sale de la sesión, no de la petición | AuthorizationTest; versaTodo: «otra empresa no ve ni modifica nada» |
+| Acción sin permiso | `Gate::authorize` responde 403. Una habilidad no definida niega | AuthorizationTest |
+| Datos sin validar en un controlador | Con una `FormRequest`, el método no corre si los datos fallan (422) | AuthorizationTest; ValidatorTest |
+| Traversal en archivos de la aplicación | `Storage` rechaza `..`, rutas absolutas, unidades de Windows y bytes nulos | CacheStorageTest |
+| Objetos inyectados por la caché o la cola | Caché y cola guardan JSON, nunca `serialize`: leerlas no crea objetos | CacheStorageTest; QueueTest |
+| Código fuente expuesto en errores | La página con el código solo existe con `build.debug`; en producción, 500 sin detalles | DebugPageTest; ResponseTest |
 
 ## Fuera del alcance del kernel
 
@@ -46,11 +54,11 @@ El kernel no puede garantizar esto; queda en cada proyecto:
 
 - SQL armado a mano en `app/` (`whereRaw`, `selectRaw` o `sprintf` con datos de la petición).
 - `|raw` y `v-html` con datos que escribe un usuario.
-- Permisos por rol o empresa dentro de cada controlador, más allá de `checkSession` y `onlyUserWithAccess`.
+- Usar `Tenant`, `Gate` o un filtro por empresa en cada consulta. El kernel da las herramientas, pero no las aplica solo.
 - Secretos escritos en el código o en seeders. `app:check:deploy` los busca, pero no puede encontrarlos todos.
 
 ## Límites conocidos
 
-- **Un solo servidor.** Rate limiting y revocación de JWT se guardan en archivos locales. Con varios nodos, cada uno cuenta y revoca por separado; hace falta almacenamiento compartido (paso 5 del ROADMAP).
+- **Un solo servidor.** Rate limiting, revocación de JWT, caché en archivos y `Storage` son locales. Con varios nodos, cada uno cuenta, revoca y guarda por separado; hace falta almacenamiento compartido (paso 5 del ROADMAP). La cola funciona con varios, porque vive en la base de datos.
 - **Fallo abierto del rate limiting** si su carpeta no es escribible. Ver [SECURITY.md](SECURITY.md#comportamiento-ante-fallos).
 - **`'unsafe-inline'`** sigue en `style-src` (Tailwind y Vue) y en `script-src` solo si `csp.nonce` está apagado.

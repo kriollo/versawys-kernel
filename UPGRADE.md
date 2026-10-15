@@ -13,6 +13,18 @@ El panel base (`app/models`, `app/services`) se copia en cada proyecto y el kern
 
 **Agregar algo a esta lista o cambiar una firma es un cambio de versión mayor.** `php versaCLI app:check:deploy` falla si al proyecto le falta alguno.
 
+## 3.2 → 3.9 (sin cambios incompatibles)
+
+`composer update versawys/kernel` basta; el código de los proyectos no cambia. Revisar:
+
+- **`config.json`:** hay claves nuevas, `cache`, `queue` y `storage`. Funcionan con sus valores por defecto; `php versaCLI config:align` las escribe en el archivo.
+- **Controladores (3.6.0):** los crea el contenedor. Sin constructor, o con uno sin parámetros, nada cambia.
+  - Un constructor con un parámetro obligatorio que no es una clase ahora falla con un mensaje claro. Antes PHP fallaba igual con `new`.
+  - Un `int $id` en el método responde 404 si la URL trae algo que no es un número. Antes llegaba el texto, o PHP fallaba con un `TypeError`.
+- **`int:1,2,3` (3.7.0):** antes rechazaba cualquier valor y ahora acepta los listados. Si alguna regla dependía de ese error, revisarla.
+- **Modo debug (3.9.0):** un error en el navegador muestra una página HTML en vez de JSON. Las API y el SPA siguen recibiendo JSON. Producción no cambia.
+- **Cola (3.8.0):** para usar `Queue`, copiar al proyecto la migración `app/migrations/m20261015120000_versa_jobs.php` del esqueleto, correr `migrate:up` y programar `php versaCLI app:queue:work --stop-when-empty` en un cron o dejar `app:queue:work` corriendo.
+
 ## 3.1 → 3.2 (sin cambios incompatibles)
 
 - `required` acepta `0`, `"0"` y `false` como valores. Si un formulario usaba `"0"` como "sin elegir" y dependía de `required` para rechazarlo, usar `int:positive` o `in:...`.

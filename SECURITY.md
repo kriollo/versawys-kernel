@@ -24,6 +24,9 @@ Qué hace el kernel cuando una protección no puede funcionar. La regla: nunca f
 | Carpeta `versaWYS/cache/jwt_revoked/` no escribible | El logout borra la cookie, pero el token no queda revocado: si alguien lo copió, vale hasta que expire. | Error en el log `security`; `app:check:deploy` falla por permisos de escritura. |
 | Entrada inválida en `trusted_proxies` | Se ignora: no se confía en esa IP ni rango. Antes de 3.1.2, un prefijo no numérico (`10.0.0.1/abc`) se leía como `/0` y confiaba en todas las direcciones de esa familia. | `error_log` con la entrada; `app:check:deploy` la marca (crítico con `--production`). |
 | `config.json` sin `session.key` | Los JWT no pueden firmarse. `/up` no entrega detalle a nadie. | `app:check:deploy` (crítico con `--production`). |
+| Habilidad de `Gate` no definida o política sin el método | Se niega: `allows` es false y `authorize` responde 403. | Aviso en el log `security`. |
+| Trabajo de la cola que falla | Se reintenta con espera creciente. Agotados los intentos, queda fallido; nunca se descarta en silencio. | Error en el log `queue`; `php versaCLI app:queue:failed`. |
+| Ruta de `Storage` con `..`, absoluta o con byte nulo | Se rechaza con `InvalidArgumentException`, sin tocar el disco. | La excepción llega al `ErrorHandler`: 500 y log. |
 
 ## Superficie expuesta sin sesión
 

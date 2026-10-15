@@ -2,7 +2,26 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
-## [3.9.0] - 2026-10-15
+## [3.9.1] - 2026-10-15
+
+Cierre del ROADMAP: revisión final de los criterios de salida de los siete pasos, con los límites conocidos.
+
+### Corregido
+- `php versaCLI cache:clear` también vacía la caché de la aplicación (`Cache`). Antes solo limpiaba Twig y rate limiting.
+
+### Documentación
+- **ROADMAP.md:**
+  - el estado al día de los pasos 3 y 4;
+  - la revisión final de los criterios de salida, con evidencia por criterio;
+  - los límites conocidos.
+- **LIFECYCLE.md:** cómo se crean los controladores, las Form Requests, `Output` y dónde extender (validación, permisos, servicios, cola).
+- **DECISIONS.md:**
+  - el contenedor, `Response` sin `exit()` y los mensajes de validación, revisados por el paso 7;
+  - dos decisiones nuevas: colas, caché y archivos, y el sitio de documentación.
+- **UPGRADE.md:** de 3.2 a 3.9, con lo que conviene revisar.
+- **SECURITY.md** y **THREAT_MODEL.md:** `Gate`, `Tenant`, `FormRequest`, `Storage`, la cola, la caché y la página de debug, con su prueba.
+
+
 
 Fase E del paso 7 (ROADMAP.md): la página de error del modo debug.
 
