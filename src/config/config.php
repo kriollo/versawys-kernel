@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use Twig\Environment;
 use VersaORM\VersaModel;
+use VersaORM\VersaORM;
 use versaWYS\kernel\cli\ConfigManager;
+use versaWYS\kernel\Container;
 use versaWYS\kernel\Cookie;
 use versaWYS\kernel\Loggin;
 use versaWYS\kernel\model\OrmFactory;
@@ -162,3 +165,24 @@ if (($config['database']['database'] ?? '') !== '') {
 }
 
 $request = new Request();
+
+// Contenedor de dependencias: lo que el kernel ya creó, y lo que registre la aplicación en app/container.php
+$container = Container::getInstance();
+$container->instance(Container::class, $container);
+$container->bind(Request::class, static fn(): Request => $GLOBALS['request']);
+$container->bind(Session::class, static fn(): Session => $GLOBALS['session']);
+$container->instance(versaTwig::class, $twig);
+$container->instance(Environment::class, $twig);
+$container->instance(Cookie::class, $cookie);
+if (isset($versaOrm)) {
+    $container->instance(VersaORM::class, $versaOrm);
+}
+
+// Ruta del proyecto (cwd), no la del kernel: con una ruta literal rector la vuelve relativa a este archivo
+$appContainer = getcwd() . '/app/container.php';
+if (is_file($appContainer)) {
+    $register = require $appContainer;
+    if (is_callable($register)) {
+        $register($container);
+    }
+}

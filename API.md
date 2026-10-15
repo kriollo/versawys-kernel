@@ -30,6 +30,8 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 
 - **`App`** — `run`
 - **`CacheUsers`** — `updateMenuVersion`, `invalidateUserCache`, `invalidateAllUserCache`; *interno*: `getUserData`
+- **`Container`** — `getInstance`, `bind`, `singleton`, `instance`, `forget`, `has`, `get`, `make`, `call`; *interno*: `resetGlobal`
+- **`ContentType`** — enum del tipo de contenido de un correo (`HTML`, `TEXT`, `TWIG`)
 - **`Cookie`** — `set`, `has`, `get`, `delete`, `getAll`, `clear`
 - **`ErrorHandler`** — `initialize`, `handleError`; *interno*: `handleException`, `handleShutdown`
 - **`File`** — `offsetExists`, `offsetGet`, `offsetSet`, `offsetUnset`, `getName`, `getExtension`, `getSize`, `getSizeForHumans`, `getType`, `getTmpName`, `getMetadata`, `moveToOriginalName`, `moveToNewName`; *interno*: `isValidUpload`
@@ -38,6 +40,7 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`Loggin`** — `initialize`, `setCustomHandler`, `log`, `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`, `exception`, `query`, `request`, `auth`, `performance`, `read`, `getConfig`
 - **`MailSender`** — `send`
 - **`Output`** — `header`, `removeHeader`, `status`, `cookie`, `halt`, `capturing`; *interno*: `capture`, `release`. El kernel escribe la respuesta solo por aquí: en producción equivale a `header()`, `http_response_code()`, `setcookie()` y `exit()`
+- **`RouteParameterMismatch`** — un parámetro de la ruta no calza con el tipo del método (`int $id`): el Router responde 404
 - **`RequestHalted`** — en pruebas reemplaza al `exit()` de una petición (extiende `Error`)
 - **`RateLimitMiddleware`** — `checkApiLimit`, `checkLoginLimit`, `checkUploadLimit`, `checkSensitiveLimit`
 - **`Request`** — `setParam`, `get`, `file`, `getAllParams`, `getRawParams`, `getAllFiles`, `getContentType`, `getMethod`, `getUrl`, `getFiles`, `getIp`, `getClientIp`, `getRawBody`, `getBaseUrl`, `clientIp`, `isTrustedProxy`, `getHeader`, `isApiCall`, `id`; *interno*: `setInput`, `resetRequestState`, `procesaFormData`, `parseProxyRange`, `isSPARequest`, `isSPARequestStatic`, `isApiRequest`
@@ -55,7 +58,7 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`cli\ConfigManager`** — `dir`, `path`, `defaults`, `getConfig`, `saveConfig`, `setDebug`, `merge`, `align`, `clearCache`; *interno*: `setTemplateCache`, `mergeArrays`, `initConfig`
 - **`helpers\FechasFunction`** — `formatFechaLargaES`; *interno*: `formaFechaFullES`, `formatFecha`, `setTwigFilters`, `setTwigFunctions`
 - **`helpers\Functions`** — `dump`, `cleanString`, `validateParams`, `e`, `validarRut`, `hash`, `needsRehash`, `verifyHash`, `generateCSRFToken`, `validateCSRFToken`, `assets_url`, `csrf_field`, `getAssets`, `removeScape`, `sanitizeSvgContent`, `formatRut`, `getPanelUrl`, `httpRequest`, `httpGet`, `httpPostJson`, `httpUploadFile`; *interno*: `validateJson`, `replace_spaces_with_underscore`, `method_field`, `setTwigFilters`, `cspNonce`, `setTwigFunctions`
-- **`Testing\TestClient`** — `boot`, `withHeaders`, `withoutCsrfToken`, `login`, `get`, `getJson`, `post`, `postJson`, `putJson`, `patchJson`, `deleteJson`, `json`, `request`, `cookies`
+- **`Testing\TestClient`** — `boot`, `withHeaders`, `withoutCsrfToken`, `login`, `get`, `getJson`, `post`, `postJson`, `putJson`, `patchJson`, `deleteJson`, `json`, `request`, `container`, `cookies`
 - **`Testing\TestResponse`** — `header`, `json`, `assertStatus`, `assertOk`, `assertRedirect`, `assertHeader`, `assertSee`, `assertDontSee`, `assertJson`, `assertJsonPath`
 - **`model\OrmFactory`** — `make`
 - **`model\RedisModel`** — `initialize`, `getInstance`, `set`, `get`, `delete`, `del`, `exists`, `expire`, `ttl`, `increment`, `decrement`, `rPush`, `lPop`, `lRange`, `lLen`, `scan`, `searchValueBySubKey`, `info`, `ping`, `close`, `multi`, `exec`, `remember`, `forget`, `pull`, `add`, `replace`; *interno*: `setMultiple`, `getMultiple`, `hSet`, `hGet`, `hSetMultiple`, `hGetAll`, `hDel`, `hExists`, `lPush`, `rPop`, `sAdd`, `sMembers`, `sIsMember`, `sRem`, `sCard`, `zAdd`, `zRange`, `zRem`, `zScore`, `dbSize`, `flushDb`, `flushAll`, `rawCommand`, `discard`
