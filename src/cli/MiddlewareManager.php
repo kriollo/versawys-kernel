@@ -33,7 +33,25 @@ class MiddlewareManager
 
             use versaWYS\kernel\helpers\Functions;
 
-            class $middlewareName {}
+            class $middlewareName
+            {
+                // Se declara en la ruta: [$middlewareName::class, 'validar']. Un arreglo con `code` corta la
+                // petición y responde ese estado; `true` la deja seguir. Reglas: documentacion/Validacion.md
+                public function validar(): true|array
+                {
+                    global $request;
+
+                    $errores = Functions::validateParams($request->getAllParams(), [
+                        'nombre' => 'required|max:120',
+                    ]);
+                    if ($errores !== []) {
+                        return ['success' => 0, 'message' => 'Los datos enviados no son correctos', 'errors' => $errores, 'code' => 422];
+                    }
+
+                    return true;
+                }
+            }
+
             EOT;
 
         $template = str_replace('$middlewareName', $middlewareName, $template);

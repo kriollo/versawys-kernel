@@ -339,6 +339,7 @@ class CommandLineInterface
 
             $this->verboseInfo('Generando modelo...');
             $this->handleModel($moduleParams);
+            MigrationManager::createMigration($name);
 
             $this->verboseInfo('Generando middleware...');
             $this->handleMiddleware($moduleParams);
@@ -380,6 +381,7 @@ class CommandLineInterface
 
             $this->verboseInfo(sprintf("Generando modelo para módulo '%s'...", $moduleName));
             $this->handleModel($moduleParams);
+            MigrationManager::createMigration($moduleName);
 
             $this->verboseInfo(sprintf("Generando middleware para módulo '%s'...", $moduleName));
             $this->handleMiddleware($moduleParams);

@@ -16,8 +16,8 @@ class RouteManager
     {
         $controllerName = ucfirst($routeNameModule) . 'Controller';
         $routeName = ucfirst($routeNameModule) . 'Routes';
-        $routeNameModule = strtolower($routeNameModule);
         $middlewareName = ucfirst($routeNameModule) . 'Middleware';
+        $routeNameModule = strtolower($routeNameModule);
 
         CLIErrorHandler::info("Creando ruta {$routeName}...");
         $routesFile = self::$path . ($routeName . '.php');
@@ -38,30 +38,39 @@ class RouteManager
 
             namespace app\routes;
 
-            use versaWYS\kernel\Router;
             use app\controllers\$controllerName;
             use app\middleware\AuthMiddleware;
-            // use app\middleware\$middlewareName;
+            use app\middleware\$middlewareName;
+            use versaWYS\kernel\Router;
 
-            // Rutas de Navegador
-            // index => funcion que se ejecutara en el controlador
-            Router::get('/admin/$routeNameModule',
-                [$controllerName::class,'index']
-            )->middleware([
+            // description: Pantalla de $routeNameModule.
+            Router::get('/admin/$routeNameModule', [$controllerName::class, 'index'])->middleware([
                 [AuthMiddleware::class, 'checkSession'],
+                // Usuarios sin rol admin: solo si su perfil tiene esta pantalla en el menú
                 [AuthMiddleware::class, 'onlyUserWithAccess'],
-                // [$middlewareName::class, 'middlewareMethod'],
             ]);
 
-            // Búsqueda con filtros en el cuerpo: QUERY es seguro e idempotente como GET (no exige CSRF),
-            // pero los filtros viajan en el cuerpo. En desarrollo (php -S) se envía como POST con
-            // la cabecera X-HTTP-Method-Override: QUERY
-            // Router::query('/admin/$routeNameModule/api/buscar',
-            //     [$controllerName::class,'buscar']
-            // )->middleware([
-            //     [AuthMiddleware::class, 'checkSession'],
-            //     [AuthMiddleware::class, 'onlyUserWithAccess'],
-            // ]);
+            // API de la pantalla. onlyUserWithAccess compara con las URL del menú, por eso no va aquí:
+            // los permisos sobre cada registro se revisan en el controlador.
+            Router::group(
+                '/admin/$routeNameModule/api',
+                function (): void {
+                    // description: Lista de $routeNameModule.
+                    Router::get('/list', [$controllerName::class, 'list']);
+
+                    // POST, PUT, PATCH y DELETE exigen el token CSRF (versaFetch lo envía)
+                    // Router::post('/save', [$controllerName::class, 'save'])->middleware([
+                    //     [$middlewareName::class, 'validar'],
+                    // ]);
+
+                    // QUERY: búsqueda segura e idempotente como GET (sin CSRF), con los filtros en el cuerpo.
+                    // En desarrollo (php -S) se envía como POST con la cabecera X-HTTP-Method-Override: QUERY
+                    // Router::query('/buscar', [$controllerName::class, 'buscar']);
+                },
+                [
+                    [AuthMiddleware::class, 'checkSession'],
+                ],
+            );
 
             EOT;
 

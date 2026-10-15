@@ -61,12 +61,23 @@ class CLIHelper
      */
     public static function confirm(string $question, bool $default = false): bool
     {
+        // --force responde que sí, como promete la ayuda (p. ej. sobrescribir un archivo generado)
+        if (in_array('--force', $_SERVER['argv'] ?? [], true)) {
+            return true;
+        }
+
         $defaultStr = $default ? 'y' : 'n';
         $prompt = "{$question} (y/n)";
 
         $input = strtolower(self::ask($prompt, $defaultStr));
 
         return in_array($input, ['y', 'yes', 'si', 's'], true);
+    }
+
+    /** Nombre de tabla para un módulo: MisTareas → mis_tareas. Lo comparten el modelo y la migración. */
+    public static function tableName(string $name): string
+    {
+        return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $name));
     }
 
     /**

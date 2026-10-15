@@ -283,8 +283,7 @@ class GlobalMiddleware
             return;
         }
 
-        $flat = true;
-        $url = $request->getUrl();
+        $url = self::panelPath((string) $request->getUrl(), (string) ($config['admin']['custom_url'] ?? 'admin'));
         $menuUser = (new Dashboard())->getMenuUser($iduser);
         foreach ($menuUser as $value) {
             if ($value['url_menu'] !== $url && $value['url_submenu'] !== $url) {
@@ -295,6 +294,26 @@ class GlobalMiddleware
         }
 
         Response::redirect('/e404');
+    }
+
+    /**
+     * La ruta de la petición tal como se guarda en el menú: relativa al panel y sin query string.
+     * `/admin/tableros?x=1` y `/{custom_url}/tableros` dan `/tableros`.
+     */
+    public static function panelPath(string $requestUri, string $customUrl = 'admin'): string
+    {
+        $path = (string) parse_url($requestUri, PHP_URL_PATH);
+        foreach (array_unique(['/admin', '/' . trim($customUrl, '/')]) as $prefijo) {
+            if (!str_starts_with($path, $prefijo . '/')) {
+                continue;
+            }
+
+            $relativa = rtrim(substr($path, strlen($prefijo)), '/');
+
+            return $relativa === '' ? '/' : $relativa;
+        }
+
+        return $path;
     }
 
     public function validatePolicyPassword(#[SensitiveParameter] $password): bool
