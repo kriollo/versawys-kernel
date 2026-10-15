@@ -55,8 +55,19 @@ final class AuthorizationTest extends TestCase
 {
     private Container $c;
 
+    /** @var array<string, mixed> */
+    private array $server = [];
+
+    private mixed $originalConfig = null;
+
     protected function setUp(): void
     {
+        global $config;
+
+        // Gate escribe en el log: que vaya a la carpeta de pruebas, como en el resto de la suite
+        $this->originalConfig = $config ?? null;
+        $config = ['build' => ['debug' => false], 'logging' => ['dir' => sys_get_temp_dir() . '/versawys-test-logs/']];
+        $this->server = $_SERVER;
         $this->c = new Container();
         ControladorCosas::$llamadas = 0;
         GuardarCosa::$permitir = true;
@@ -66,8 +77,11 @@ final class AuthorizationTest extends TestCase
     protected function tearDown(): void
     {
         Gate::reset();
+        global $config;
+
         Request::setInput(null);
-        $_SERVER = [];
+        $_SERVER = $this->server;
+        $config = $this->originalConfig;
     }
 
     public function testFormRequestValidaAntesDeLlamarAlControlador(): void
