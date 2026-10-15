@@ -2,7 +2,27 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
-## [3.7.0] - 2026-10-15
+## [3.8.0] - 2026-10-15
+
+Fase D del paso 7 (ROADMAP.md): caché, colas y archivos, sin dependencias nuevas.
+
+### Añadido
+- **`Cache`**: `get`, `set` (con segundos de vida), `has`, `remember`, `forget`, `flush`.
+  - Por defecto en archivos (`cache.dir`); con `cache.driver: "redis"` usa RedisModel.
+  - Guarda valores JSON, igual en los dos almacenes.
+- **`Queue`** y la interfaz **`Job`**: trabajos en la tabla `versa_jobs`.
+  - `Queue::push(Trabajo::class, $datos, delay:, tries:, queue:)`.
+  - Un fallo se reintenta con espera creciente. Agotados los intentos, el trabajo queda fallido.
+  - Un trabajo de un worker caído se retoma a los 10 minutos.
+  - `queue.driver: "sync"` ejecuta en el acto.
+  - `Queue::createTable()` define la tabla para la migración del proyecto.
+- Comandos `app:queue:work` (con `--stop-when-empty` para cron), `app:queue:failed` y `app:queue:retry <id|all>`.
+- **`Storage`**: archivos bajo `storage.root` (`versaWYS/storage`).
+  - `put` (atómico), `get`, `exists`, `delete`, `files`, `path`.
+  - Rechaza `..`, rutas absolutas y bytes nulos.
+- Claves nuevas en la configuración: `cache`, `queue`, `storage` (`config:align` las agrega).
+
+
 
 Fase C del paso 7 (ROADMAP.md): validación y autorización.
 
