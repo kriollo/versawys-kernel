@@ -14,6 +14,7 @@ use VersaORM\QueryBuilder;
 use VersaORM\VersaModel;
 use VersaORM\VersaORM;
 use VersaORM\VersaORMException;
+use versaWYS\kernel\RequestHalted;
 use versaWYS\kernel\Response;
 
 /**
@@ -289,6 +290,9 @@ class VersaORMModel extends VersaModel
             $this->sendErrorResponse($errorData);
 
             return null;
+        } catch (RequestHalted $halted) {
+            // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
+            throw $halted;
         } catch (Throwable $e) {
             // Formatear error general y enviarlo
             $errorData = $this->formatGeneralError($e, array_merge($context, [

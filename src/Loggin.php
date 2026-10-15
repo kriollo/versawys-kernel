@@ -139,12 +139,12 @@ class Loggin
 
             if (!$mkdirSuccess && !is_dir(self::$logDir)) {
                 // Mostrar error visible en pantalla con diseño corporativo
-                http_response_code(500);
+                Output::status(500);
                 // El detalle (rutas, usuario del proceso, comandos) solo se muestra al desarrollar
                 if (($config['build']['debug'] ?? false) !== true) {
                     error_log('versaWYS: no se puede crear el directorio de logs: ' . self::$logDir);
                     echo '<h1>Error interno del servidor</h1><p>Por favor, contacte al administrador.</p>';
-                    exit();
+                    Output::halt();
                 }
 
                 echo
@@ -159,7 +159,7 @@ class Loggin
                         . '</div><div class="command">sudo chmod -R 775 '
                         . htmlspecialchars(self::$logDir)
                         . '</div></div></div></div><div class="footer">VersaWYS Framework © 2026 | Sistema de Manejo de Errores</div></div></body></html>';
-                exit();
+                Output::halt();
             }
 
             // 02775 = 0775 + setgid: los archivos de log creados dentro heredan el grupo
@@ -570,17 +570,7 @@ class Loggin
      */
     public static function requestId(): string
     {
-        static $id = null;
-        if ($id === null) {
-            $incoming = $_SERVER['HTTP_X_REQUEST_ID'] ?? '';
-            $id = $incoming !== ''
-            && preg_match('/^[A-Za-z0-9._-]{8,64}$/', $incoming) === 1
-            && Request::isTrustedProxy($_SERVER['REMOTE_ADDR'] ?? '')
-                ? $incoming
-                : bin2hex(random_bytes(8));
-        }
-
-        return $id;
+        return Request::id();
     }
 
     /**

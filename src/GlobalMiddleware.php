@@ -47,7 +47,7 @@ class GlobalMiddleware
                 // Para peticiones no-API, redirigir al login
                 if (!$request->isApiCall()) {
                     Response::redirect('/' . $config['admin']['custom_url'] . '/login');
-                    exit();
+                    Output::halt();
                 }
 
                 // Para peticiones API, devolver error estructurado
@@ -75,7 +75,7 @@ class GlobalMiddleware
 
                 if (!$request->isApiCall()) {
                     Response::redirect('/' . $config['admin']['custom_url'] . '/login');
-                    exit();
+                    Output::halt();
                 }
 
                 return [
@@ -104,7 +104,7 @@ class GlobalMiddleware
 
                 if (!$request->isApiCall()) {
                     Response::redirect('/' . $config['admin']['custom_url'] . '/login');
-                    exit();
+                    Output::halt();
                 }
 
                 return [
@@ -129,7 +129,7 @@ class GlobalMiddleware
 
                 if (!$request->isApiCall()) {
                     Response::redirect('/' . $config['admin']['custom_url'] . '/login');
-                    exit();
+                    Output::halt();
                 }
 
                 return [
@@ -156,7 +156,7 @@ class GlobalMiddleware
                 )
             ) {
                 Response::redirect($adminUrl . '/perfiluser');
-                exit();
+                Output::halt();
             }
 
             // 8. Guardar el estado de expiración para que esté disponible en el controlador y la vista
@@ -181,7 +181,7 @@ class GlobalMiddleware
 
             if (!$request->isApiCall()) {
                 Response::redirect('/' . $config['admin']['custom_url'] . '/login');
-                exit();
+                Output::halt();
             }
 
             return [
@@ -240,7 +240,7 @@ class GlobalMiddleware
         $user = $this->currentUser($iduser);
         if ($user === []) {
             Response::redirect('/' . $config['admin']['custom_url'] . '/login');
-            exit();
+            Output::halt();
         }
 
         if ($user['role'] !== 'admin' && $user['role'] !== 'superadmin') {
@@ -258,7 +258,7 @@ class GlobalMiddleware
         $user = $this->currentUser($iduser);
         if ($user === []) {
             Response::redirect('/' . $config['admin']['custom_url'] . '/login');
-            exit();
+            Output::halt();
         }
 
         if ($user['role'] !== 'superadmin') {
@@ -276,7 +276,7 @@ class GlobalMiddleware
         $user = $this->currentUser($iduser);
         if ($user === []) {
             Response::redirect('/' . $config['admin']['custom_url'] . '/login');
-            exit();
+            Output::halt();
         }
 
         if ($user['role'] === 'admin' || $user['role'] === 'superadmin') {
@@ -418,6 +418,12 @@ class GlobalMiddleware
         return $expiration < $today;
     }
 
+    /** @internal Testing\TestClient lo llama entre peticiones: este estado vale para una sola petición. */
+    public static function resetRequestState(): void
+    {
+        self::$currentUserData = null;
+    }
+
     /**
      * Usuario de la petición: el que ya cargó checkSession o, si no se ejecutó antes, desde la BD.
      *
@@ -441,11 +447,11 @@ class GlobalMiddleware
 
         if (strtoupper((string) $request->getMethod()) !== 'GET') {
             Response::json(['success' => 0, 'message' => 'No tiene permisos para realizar esta acción'], 403);
-            exit();
+            Output::halt();
         }
 
         Response::redirect('/' . $config['admin']['custom_url'] . '/dashboard');
-        exit();
+        Output::halt();
     }
 
     /**

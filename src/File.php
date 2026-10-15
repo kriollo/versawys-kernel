@@ -427,7 +427,7 @@ class File extends SplFileInfo implements ArrayAccess
                     'message' => 'Error en operación de archivo',
                     'code' => 500,
                 ], 500);
-                exit();
+                Output::halt();
             }
 
             // For non-API requests, throw a clean exception that can be caught by controllers

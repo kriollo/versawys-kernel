@@ -44,19 +44,19 @@ class Session
     {
         global $config, $debug;
         // Set the session cookie lifetime
-        ini_set('session.cookie_lifetime', $lifetime);
+        self::iniSet('session.cookie_lifetime', (string) $lifetime);
 
         // Set the session garbage collector lifetime
-        ini_set('session.gc_maxlifetime', $lifetime);
+        self::iniSet('session.gc_maxlifetime', (string) $lifetime);
 
         // 🔒 AGREGAR flags de seguridad ANTES de session_start()
-        ini_set('session.cookie_httponly', $config['session']['user_cookie']['http_only'] ? '1' : '0');
-        ini_set('session.cookie_secure', $config['session']['user_cookie']['secure'] ? '1' : '0');
-        ini_set('session.cookie_samesite', $config['session']['user_cookie']['same_site']);
-        ini_set('session.use_strict_mode', $config['session']['user_cookie']['strict_mode'] ? '1' : '0');
+        self::iniSet('session.cookie_httponly', $config['session']['user_cookie']['http_only'] ? '1' : '0');
+        self::iniSet('session.cookie_secure', $config['session']['user_cookie']['secure'] ? '1' : '0');
+        self::iniSet('session.cookie_samesite', $config['session']['user_cookie']['same_site']);
+        self::iniSet('session.use_strict_mode', $config['session']['user_cookie']['strict_mode'] ? '1' : '0');
         // El id de sesión solo por cookie, nunca en la URL, aunque el php.ini del servidor diga otra cosa
-        ini_set('session.use_only_cookies', '1');
-        ini_set('session.use_trans_sid', '0');
+        self::iniSet('session.use_only_cookies', '1');
+        self::iniSet('session.use_trans_sid', '0');
 
         if (session_status() === PHP_SESSION_NONE) {
             if (!session_start()) {
@@ -67,7 +67,7 @@ class Session
                     // In debug mode, use ErrorHandler to show detailed error
                     $errorHandler = new ErrorHandler();
                     $errorHandler->handleException(new RuntimeException('Failed to start session'));
-                    exit();
+                    Output::halt();
                 }
 
                 // Verifica si esta es una solicitud API utilizando nuestra detección mejorada
@@ -77,14 +77,14 @@ class Session
                         'message' => 'Error interno del servidor',
                         'code' => 500,
                     ], 500);
-                    exit();
+                    Output::halt();
                 }
 
                 // For non-API requests, we could continue without sessions
                 // or show an error page depending on requirements
-                http_response_code(500);
+                Output::status(500);
                 echo '<h1>Error del sistema</h1><p>Error de inicialización. Por favor, contacte al administrador.</p>';
-                exit();
+                Output::halt();
             }
 
             if (empty($_SESSION['csrf_token'])) {
@@ -139,7 +139,7 @@ class Session
     {
         global $debug;
         if (session_status() === PHP_SESSION_ACTIVE) {
-            session_regenerate_id(true);
+            self::regenerateId();
         } else {
             $error_message = 'Cannot regenerate session ID: No active session';
             Loggin::error($error_message, 'Session');
@@ -493,7 +493,7 @@ class Session
 
         // Tras autenticar: id de sesión y token CSRF nuevos, para que nada fijado antes del login sirva después
         if (session_status() === PHP_SESSION_ACTIVE) {
-            session_regenerate_id(true);
+            self::regenerateId();
         }
 
         $this->setCSRFToken();
@@ -895,5 +895,40 @@ class Session
     {
         session_unset();
         session_destroy();
+    }
+
+    /** @internal Testing\TestClient lo llama entre peticiones: este estado vale para una sola petición. */
+    public static function resetRequestState(): void
+    {
+        self::$validatedThisRequest = false;
+    }
+
+    /** Solo si cambia: PHP rechaza tocar la configuración de sesión con salida previa, aunque sea el mismo valor. */
+    private static function iniSet(string $key, string $value): void
+    {
+        if (ini_get($key) === $value) {
+            return;
+        }
+
+        ini_set($key, $value);
+    }
+
+    /**
+     * Id de sesión nuevo, borrando la sesión anterior. Con salida previa (solo en pruebas por consola) PHP no
+     * permite session_regenerate_id(): se hace lo mismo a mano, con los mismos datos y un id nuevo.
+     */
+    private static function regenerateId(): void
+    {
+        if (!headers_sent()) {
+            session_regenerate_id(true);
+
+            return;
+        }
+
+        $data = $_SESSION;
+        session_destroy();
+        session_id((string) session_create_id());
+        session_start();
+        $_SESSION = $data;
     }
 }

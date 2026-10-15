@@ -180,6 +180,22 @@ Esto inicia la base de pruebas, pero **no completa** el inventario de contratos,
 - La matriz CI soportada pasa; auditoría de dependencias y pruebas de integración están verdes.
 - Hay instrucciones de migración y no quedan cambios de API incompatibles sin documentar.
 
+## Paso 7 — Al nivel de Laravel y Symfony en el trabajo diario
+
+**Estado: fase A completa (3.5.0).**
+
+El objetivo de los pasos 1–6 era un kernel robusto sin replicar la amplitud de Laravel o Symfony. Este paso apunta más alto: igualarlos en lo que hace seguro y productivo el trabajo diario. No se mide por número de funciones. Cada fase mantiene la API actual y los proyectos adoptan lo nuevo de a poco.
+
+| Fase | Qué | Estado |
+|---|---|---|
+| A | Probar una aplicación sin servidor: `Testing\TestClient`, salida por `Output`, estado por petición reiniciable | Hecha (3.5.0) |
+| B | Contenedor optativo con inyección por constructor en controladores y middlewares; `global` sigue funcionando | Pendiente |
+| C | Validación con reglas en arreglo, datos anidados y Form Requests; autorización con políticas y aislamiento por empresa | Pendiente |
+| D | Colas, caché y almacenamiento de archivos con adaptadores simples (archivos/BD primero, Redis/S3 optativos) | Cuando un proyecto lo pida |
+| E | Página de error con contexto, sitio de documentación, toolchain de frontend sin trampas (builds mezclados, importmap) | Pendiente |
+
+Por qué A primero: los errores que encontró la app de prueba (versaTodo) aparecieron a mano o con un navegador sin interfaz. Con un cliente de pruebas, las suites de cada proyecto los detectan. La primera suite con `TestClient` encontró un 500 en lugar de 422 en el panel base (`EmpresasMiddleware`).
+
 ## Dependencias y orden sugerido
 
 1. Completar el **paso 1** antes de hacer refactors de arquitectura o medir optimizaciones.

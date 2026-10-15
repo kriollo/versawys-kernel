@@ -7,6 +7,7 @@ use versaWYS\kernel\cli\ConfigManager;
 use versaWYS\kernel\Cookie;
 use versaWYS\kernel\Loggin;
 use versaWYS\kernel\model\OrmFactory;
+use versaWYS\kernel\Output;
 use versaWYS\kernel\Request;
 use versaWYS\kernel\Router;
 use versaWYS\kernel\Session;
@@ -134,12 +135,12 @@ if (($config['database']['database'] ?? '') !== '') {
                     ],
                 ];
 
-                http_response_code(500);
+                Output::status(500);
                 echo $twig->render('versaWYS/databaseError.twig', ['data' => $errorData]);
-                exit(1);
+                Output::halt(1);
             } catch (Exception $twigError) {
                 // Si falla Twig, usar formato simple HTML
-                http_response_code(500);
+                Output::status(500);
                 echo sprintf(
                     "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Error</title></head>"
                     . "<body style='font-family:sans-serif;padding:20px;'>"
@@ -152,7 +153,7 @@ if (($config['database']['database'] ?? '') !== '') {
                     htmlspecialchars($config['framework'] ?? 'versaWYS-PHP'),
                     htmlspecialchars($twigError->getMessage()),
                 );
-                exit(1);
+                Output::halt(1);
             }
         }
 

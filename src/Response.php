@@ -16,6 +16,9 @@ class Response
     /** true dentro de versaCLI (lo activa CommandLineInterface::main): los errores van a la terminal. */
     public static bool $cli = false;
 
+    /** Errores en la misma petición: al tercero se muestra el error simple, sin Twig, para no entrar en un ciclo. */
+    private static int $errorCount = 0;
+
     /**
      * Sends a JSON response.
      *
@@ -56,8 +59,8 @@ class Response
                 $data = self::hideInternalMessages($data);
             }
 
-            header('Content-Type: application/json');
-            http_response_code($code);
+            Output::header('Content-Type: application/json');
+            Output::status($code);
 
             // Para peticiones HEAD, solo enviamos headers, no el cuerpo
             if (!self::isHead()) {
@@ -93,22 +96,21 @@ class Response
         }
 
         // Protección contra loops infinitos de errores
-        static $errorCount = 0;
-        $errorCount++;
+        self::$errorCount++;
 
-        if ($errorCount > 2) {
+        if (self::$errorCount > 2) {
             // Si ya hemos tenido demasiados errores, mostrar error simple sin Twig
-            http_response_code($code);
+            Output::status($code);
 
             // Para peticiones HEAD, solo enviamos headers, no el cuerpo
             if (!self::isHead()) {
                 echo self::renderSimpleError($data);
             }
 
-            exit();
+            Output::halt();
         }
 
-        http_response_code($code);
+        Output::status($code);
 
         // Mejorar la información de error para debugging
         if (isset($config['build']['debug']) && $config['build']['debug']) {
@@ -145,7 +147,7 @@ class Response
                     echo self::renderSimpleError($data);
                 }
 
-                exit();
+                Output::halt();
             }
 
             // ✅ Verificar que Twig esté disponible antes de usarlo
@@ -155,7 +157,7 @@ class Response
                     echo self::renderSimpleError($data);
                 }
 
-                exit();
+                Output::halt();
             }
 
             // Para peticiones HEAD, solo enviamos headers, no el cuerpo
@@ -172,7 +174,7 @@ class Response
                     echo self::renderSimpleError($data);
                 }
 
-                exit();
+                Output::halt();
             }
 
             // Si es otro tipo de error de Twig, continuar con el fallback normal
@@ -203,7 +205,7 @@ class Response
             }
         }
 
-        exit();
+        Output::halt();
     }
 
     public static function textPlain(string $data, int $code = 200): bool|string
@@ -221,8 +223,8 @@ class Response
             return false;
         }
 
-        header('Content-Type: text/plain');
-        http_response_code($code);
+        Output::header('Content-Type: text/plain');
+        Output::status($code);
 
         // Para peticiones HEAD, solo enviamos headers, no el cuerpo
         if (!self::isHead()) {
@@ -242,15 +244,15 @@ class Response
         // Detectar si es una petición SPA para devolver JSON redirección en lugar de 302
         // Esto previene problemas de protocolo (http/https) en el navegador al seguir redirects nativos
         if (Request::isSPARequestStatic()) {
-            header('Content-Type: application/json');
+            Output::header('Content-Type: application/json');
             echo json_encode([
                 'type' => 'redirect',
                 'url' => $route,
             ]);
-            exit();
+            Output::halt();
         }
 
-        header('Location: ' . $route);
+        Output::header('Location: ' . $route);
     }
 
     /**
@@ -293,6 +295,12 @@ class Response
         }
 
         return $data;
+    }
+
+    /** @internal Testing\TestClient lo llama entre peticiones: este estado vale para una sola petición. */
+    public static function resetRequestState(): void
+    {
+        self::$errorCount = 0;
     }
 
     /**
@@ -368,7 +376,7 @@ class Response
             'urlActual' => $_SERVER['REQUEST_URI'] ?? '',
         ], $code);
 
-        exit();
+        Output::halt();
     }
 
     /**

@@ -6,6 +6,7 @@ namespace versaWYS\kernel;
 
 class Cookie
 {
+    /** @param 'Lax'|'None'|'Strict' $sameSite */
     public function set(
         string $key,
         $value,
@@ -24,7 +25,7 @@ class Cookie
         // una cookie creada sin pensar en el flag no viaja por HTTP en producción
         $secure ??= self::defaultSecure();
 
-        setcookie($key, $value, [
+        Output::cookie($key, $value, [
             'expires' => $expires,
             'path' => '/',
             'domain' => $domain,
@@ -56,7 +57,7 @@ class Cookie
         global $config;
         if ($this->has($key)) {
             unset($_COOKIE[$key]);
-            setcookie($key, '', [
+            Output::cookie($key, '', [
                 'expires' => -1,
                 'path' => '/',
                 'domain' => $config['session']['user_cookie']['domain'],
