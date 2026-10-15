@@ -65,7 +65,7 @@ class Request
                 if (class_exists('versaWYS\\kernel\\ErrorHandler')) {
                     $errorHandler = new ErrorHandler();
                     $errorHandler->handleException(new RuntimeException($error_message));
-                    exit();
+                    Output::halt();
                 }
 
                 // Fallback if ErrorHandler is not available yet
@@ -85,12 +85,12 @@ class Request
                     'message' => 'Error interno del servidor',
                     'code' => 500,
                 ], 500);
-                exit();
+                Output::halt();
             }
 
-            http_response_code(500);
+            Output::status(500);
             echo '<h1>Error del sistema</h1><p>Error de inicialización. Por favor, contacte al administrador.</p>';
-            exit();
+            Output::halt();
         }
     }
 

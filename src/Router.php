@@ -228,8 +228,8 @@ class Router
 
             if (!in_array($method, $allowedMethods, true)) {
                 // Método no permitido, responder 405
-                http_response_code(405);
-                header('Allow: ' . implode(', ', array_map('strtoupper', $allowedMethods)));
+                Output::status(405);
+                Output::header('Allow: ' . implode(', ', array_map('strtoupper', $allowedMethods)));
 
                 return Response::jsonError([
                     'success' => 0,
@@ -278,14 +278,14 @@ class Router
                 || str_starts_with($url, 'data:')
             ) {
                 // Un archivo estático que llegó hasta aquí no existe o está protegido: nunca 200 vacío
-                http_response_code(404);
+                Output::status(404);
 
                 return null;
             }
 
             if ($method === 'query') {
                 // RFC del método QUERY: los tipos de cuerpo que se aceptan
-                header('Accept-Query: application/json, application/x-www-form-urlencoded');
+                Output::header('Accept-Query: application/json, application/x-www-form-urlencoded');
             }
 
             // Las peticiones HEAD deben usar las rutas GET (estándar HTTP)
@@ -362,6 +362,9 @@ class Router
                 try {
                     // Permitir guiones en nombres de parámetros y valores
                     $route = preg_replace('#{[a-zA-Z0-9_]+}#', '([a-zA-Z0-9_\-]+)', $route);
+                } catch (RequestHalted $halted) {
+                    // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
+                    throw $halted;
                 } catch (Throwable $e) {
                     if (!empty($config['build']['debug'])) {
                         Loggin::error('Error al procesar patrón de ruta: ' . $e->getMessage(), 'router', [
@@ -397,6 +400,9 @@ class Router
             return $this->handleRouteNotFound($request, $config, $url, $method);
         } catch (Exception $e) {
             self::catch($e);
+        } catch (RequestHalted $halted) {
+            // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
+            throw $halted;
         } catch (Throwable $th) {
             self::catch($th);
         }
@@ -429,6 +435,9 @@ class Router
             require_once $file;
 
             return true;
+        } catch (RequestHalted $halted) {
+            // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
+            throw $halted;
         } catch (Throwable $throwable) {
             self::routeLoadError(sprintf("Error loading route file '%s': %s", $file, $throwable->getMessage()));
 
@@ -617,6 +626,9 @@ class Router
 
                     return Response::json((array) $response, $status >= 100 && $status <= 599 ? $status : 200);
                 }
+            } catch (RequestHalted $halted) {
+                // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
+                throw $halted;
             } catch (Throwable $e) {
                 Loggin::error(
                     'Error en middleware: '
@@ -676,6 +688,9 @@ class Router
             echo $response;
 
             return true;
+        } catch (RequestHalted $halted) {
+            // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
+            throw $halted;
         } catch (Throwable $throwable) {
             if (isset($controllerClass, $controllerMethodName)) {
                 Loggin::error(
@@ -773,17 +788,20 @@ class Router
             } else {
                 // Petición regular en producción: renderizar template 404
                 try {
-                    http_response_code(404);
+                    Output::status(404);
                     $template404Content = $this->render404Template();
                     echo $template404Content;
-                    exit();
+                    Output::halt();
+                } catch (RequestHalted $halted) {
+                    // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
+                    throw $halted;
                 } catch (Throwable $th) {
                     // Si falla el render, log y mostrar fallback
                     Loggin::error('Error renderizando template 404: ' . $th->getMessage(), 'router');
-                    http_response_code(404);
+                    Output::status(404);
                     echo
                         '<!DOCTYPE html><html><head><title>404 - Página no encontrada</title></head><body><h1>404 - Página no encontrada</h1><p>La página que buscas no existe.</p></body></html>';
-                    exit();
+                    Output::halt();
                 }
             }
         } else {
@@ -884,8 +902,8 @@ class Router
 
             // Si la ruta existe pero el método no está permitido, responder 405
             if ($allowedMethods !== []) {
-                http_response_code(405);
-                header('Allow: ' . implode(', ', $allowedMethods));
+                Output::status(405);
+                Output::header('Allow: ' . implode(', ', $allowedMethods));
 
                 return Response::jsonError([
                     'success' => 0,
@@ -909,6 +927,9 @@ class Router
             global $twig;
 
             return $twig->render('versaWYS/404');
+        } catch (RequestHalted $halted) {
+            // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
+            throw $halted;
         } catch (Throwable) {
             Loggin::error('No se pudo cargar Twig para la página 404.', 'router', [
                 'timestamp' => date('Y-m-d H:i:s'),

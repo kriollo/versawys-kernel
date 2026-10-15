@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use versaWYS\kernel\Loggin;
+use versaWYS\kernel\Output;
 use versaWYS\kernel\SecurityUtils;
 
 global $config;
@@ -11,39 +12,39 @@ global $config;
 // Las peticiones same-origin no envían cabecera Origin y no necesitan CORS.
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if ($origin !== '' && in_array($origin, $config['cors']['allowed_origins'] ?? [], strict: true)) {
-    header("Access-Control-Allow-Origin: {$origin}");
-    header('Vary: Origin');
-    header('Access-Control-Allow-Credentials: true');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, QUERY, OPTIONS');
-    header(
+    Output::header("Access-Control-Allow-Origin: {$origin}");
+    Output::header('Vary: Origin');
+    Output::header('Access-Control-Allow-Credentials: true');
+    Output::header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, QUERY, OPTIONS');
+    Output::header(
         'Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token, X-SPA, X-HTTP-Method-Override',
     );
-    header('Access-Control-Max-Age: 86400');
+    Output::header('Access-Control-Max-Age: 86400');
 }
 
-header('X-Frame-Options: SAMEORIGIN');
-header('X-Content-Type-Options: nosniff');
+Output::header('X-Frame-Options: SAMEORIGIN');
+Output::header('X-Content-Type-Options: nosniff');
 // El mismo identificador que llevan las entradas de log de esta petición
-header('X-Request-Id: ' . Loggin::requestId());
-header('Referrer-Policy: strict-origin-when-cross-origin');
+Output::header('X-Request-Id: ' . Loggin::requestId());
+Output::header('Referrer-Policy: strict-origin-when-cross-origin');
 // "0" apaga el filtro XSS antiguo de los navegadores, que tenía fallas propias (recomendación de OWASP);
 // la protección real es la CSP
-header('X-XSS-Protection: 0');
+Output::header('X-XSS-Protection: 0');
 // Qué APIs del navegador puede usar la página. Vacío en config para no enviarla
 $permissionsPolicy = (string) ($config['permissions_policy'] ?? '');
 if ($permissionsPolicy !== '') {
-    header('Permissions-Policy: ' . $permissionsPolicy);
+    Output::header('Permissions-Policy: ' . $permissionsPolicy);
 }
 
 // Aísla la ventana de otros orígenes; allow-popups mantiene los popups de OAuth (Google)
-header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
+Output::header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
 
 $host = explode(':', $_SERVER['HTTP_HOST'] ?? 'localhost')[0];
 $isLocalhost = in_array($host, ['localhost', '127.0.0.1'], strict: true);
 
 // HSTS solo fuera de localhost para no forzar HTTPS en desarrollo
 if (!$isLocalhost) {
-    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+    Output::header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 }
 
 // CSP: cada directiva acepta orígenes extra desde config `csp.<directiva>` (array de strings).
@@ -70,7 +71,7 @@ if (!($config['build']['debug'] ?? false) && ($config['csp']['enabled'] ?? true)
     $nonce = ($csp['nonce'] ?? false) === true ? "'nonce-" . SecurityUtils::cspNonce() . "' " : "'unsafe-inline' ";
     $eval = ($csp['unsafe_eval'] ?? true) === true ? "'unsafe-eval' " : '';
 
-    header(
+    Output::header(
         "Content-Security-Policy: default-src 'self'; "
         . "script-src 'self' {$nonce}{$eval}{$extra('script-src')}; "
         . "style-src 'self' 'unsafe-inline' fonts.googleapis.com {$extra('style-src')}; "
@@ -85,10 +86,10 @@ if (!($config['build']['debug'] ?? false) && ($config['csp']['enabled'] ?? true)
     );
 }
 
-header_remove('Server');
-header_remove('X-Powered-By');
+Output::removeHeader('Server');
+Output::removeHeader('X-Powered-By');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
-    http_response_code(204);
-    exit();
+    Output::status(204);
+    Output::halt();
 }

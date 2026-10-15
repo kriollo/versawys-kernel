@@ -67,7 +67,7 @@ class Session
                     // In debug mode, use ErrorHandler to show detailed error
                     $errorHandler = new ErrorHandler();
                     $errorHandler->handleException(new RuntimeException('Failed to start session'));
-                    exit();
+                    Output::halt();
                 }
 
                 // Verifica si esta es una solicitud API utilizando nuestra detección mejorada
@@ -77,14 +77,14 @@ class Session
                         'message' => 'Error interno del servidor',
                         'code' => 500,
                     ], 500);
-                    exit();
+                    Output::halt();
                 }
 
                 // For non-API requests, we could continue without sessions
                 // or show an error page depending on requirements
-                http_response_code(500);
+                Output::status(500);
                 echo '<h1>Error del sistema</h1><p>Error de inicialización. Por favor, contacte al administrador.</p>';
-                exit();
+                Output::halt();
             }
 
             if (empty($_SESSION['csrf_token'])) {

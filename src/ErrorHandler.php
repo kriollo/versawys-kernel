@@ -77,10 +77,10 @@ class ErrorHandler
                 ], 500);
             } else {
                 // Request regular en producción: mostrar página de error simple sin redirección
-                http_response_code(500);
+                Output::status(500);
                 echo
                     '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Error del Servidor</title><style>body{font-family:system-ui,-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}.container{background:white;padding:3rem;border-radius:1rem;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;max-width:500px}h1{color:#dc2626;font-size:2rem;margin-bottom:1rem}p{color:#4b5563;margin-bottom:2rem}button{background:#667eea;color:white;border:none;padding:0.75rem 2rem;border-radius:0.5rem;font-size:1rem;cursor:pointer;transition:background 0.2s}button:hover{background:#5a67d8}</style></head><body><div class="container"><h1>Error del Servidor</h1><p>Ha ocurrido un error inesperado. Por favor, intenta nuevamente más tarde.</p><button onclick="window.history.back()">Volver</button></div></body></html>';
-                exit();
+                Output::halt();
             }
 
             return;

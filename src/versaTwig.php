@@ -52,12 +52,12 @@ class versaTwig extends Environment
 
                 if (!$mkdirSuccess) {
                     // Mostrar error detallado en pantalla con diseño corporativo
-                    http_response_code(500);
+                    Output::status(500);
                     // El detalle (rutas, usuario del proceso, comandos) solo se muestra al desarrollar
                     if (($config['build']['debug'] ?? false) !== true) {
                         error_log('versaWYS: no se puede crear el directorio de caché de Twig: ' . $__TWIG_CACHE_PATH);
                         echo '<h1>Error interno del servidor</h1><p>Por favor, contacte al administrador.</p>';
-                        exit();
+                        Output::halt();
                     }
 
                     echo
@@ -78,7 +78,7 @@ class versaTwig extends Environment
                             . '</div><div class="command">sudo chmod -R 775 '
                             . htmlspecialchars($__TWIG_CACHE_PATH)
                             . '</div></div></div></div><div class="footer">VersaWYS Framework © 2026 | Sistema de Manejo de Errores</div></div></body></html>';
-                    exit();
+                    Output::halt();
                 }
             } else {
                 // 02775 = 0775 + setgid: los subdirs/archivos creados dentro heredan el grupo del dir
@@ -99,7 +99,7 @@ class versaTwig extends Environment
                     Loggin::error('Error de permisos en Twig: ' . $error_message, 'versaTwig', [
                         'exception' => new RuntimeException($error_message),
                     ]);
-                    exit();
+                    Output::halt();
                 }
 
                 // Check if this is an API request using our improved detection
@@ -112,11 +112,11 @@ class versaTwig extends Environment
                     ], 500);
                 } else {
                     // For non-API requests in production, show simple HTML error
-                    http_response_code(500);
+                    Output::status(500);
                     echo '<h1>Error interno del servidor</h1><p>Por favor, contacte al administrador.</p>';
                 }
 
-                exit();
+                Output::halt();
             }
         }
 
@@ -269,7 +269,7 @@ class versaTwig extends Environment
             'line' => $errline,
             'file' => $errfile,
         ], 500);
-        exit();
+        Output::halt();
     }
 
     /**
@@ -492,9 +492,9 @@ class versaTwig extends Environment
         // Si ya se está manejando un error, evitar duplicación
         if ($versawys_error_handling_in_progress) {
             // Solo mostrar error simple para evitar loops
-            http_response_code(500);
+            Output::status(500);
             echo 'Twig template error occurred during error handling. Message: ' . htmlspecialchars($e->getMessage());
-            exit();
+            Output::halt();
         }
 
         // Marcar que estamos manejando un error
@@ -506,9 +506,9 @@ class versaTwig extends Environment
 
         if ($catchCount > 2) {
             // Si ya hemos capturado demasiados errores, salir con error simple
-            http_response_code(500);
+            Output::status(500);
             echo 'Error loop detected in Twig rendering. Message: ' . htmlspecialchars($e->getMessage());
-            exit();
+            Output::halt();
         }
 
         // Obtener información detallada del error
