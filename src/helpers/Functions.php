@@ -128,7 +128,7 @@ class Functions
                 'required' => static fn($field, $value): ?string => $value === null
                     || $value === []
                     || is_string($value) && trim($value) === ''
-                        ? sprintf('El campo %s es requerido', $field)
+                        ? sprintf('El campo %s es obligatorio', $field)
                         : null,
                 'email' => static fn($field, $value): ?string => filter_var($value, FILTER_VALIDATE_EMAIL)
                     ? null
@@ -246,7 +246,7 @@ class Functions
 
                     // Verificar si el campo existe
                     if (!isset($params[$field])) {
-                        $errors[$field] = sprintf('El campo %s no existe', $field);
+                        $errors[$field] = sprintf('El campo %s es obligatorio', $field);
                     } elseif (!isset($validations[$rulName])) {
                         // Una regla mal escrita no puede dejar pasar el dato sin validar
                         $errors[$field] = sprintf('Regla de validación desconocida para %s: %s', $field, $rulName);
