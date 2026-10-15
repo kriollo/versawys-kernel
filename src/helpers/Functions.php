@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace versaWYS\kernel\helpers;
 
 use CURLFile;
-use DateTime;
 use Exception;
 use Random\RandomException;
 use SensitiveParameter;
-use Throwable;
 use versaWYS\kernel\SecurityUtils;
+use versaWYS\kernel\Validator;
 
 class Functions
 {
@@ -116,163 +115,18 @@ class Functions
      *
      * @return array $errors
      */
+    /**
+     * Errores de validación por campo; vacío si todo está bien. Es Validator::make(...)->errors(): ver Validator
+     * para reglas en arreglo, datos anidados, reglas propias y mensajes.
+     *
+     * @param array<array-key, mixed> $params
+     * @param array<string, mixed> $rules
+     *
+     * @return array<string, string>
+     */
     public static function validateParams(array $params, array $rules): array
     {
-        try {
-            $errors = [];
-
-            // Definir las validaciones en un arreglo tipo hash
-            $validations = [
-                // Vacío es null, texto vacío o solo espacios y arreglo vacío. 0, "0" y false son valores:
-                // con empty() un estado o una cantidad en 0 no se podían enviar
-                'required' => static fn($field, $value): ?string => $value === null
-                    || $value === []
-                    || is_string($value) && trim($value) === ''
-                        ? sprintf('El campo %s es obligatorio', $field)
-                        : null,
-                'email' => static fn($field, $value): ?string => filter_var($value, FILTER_VALIDATE_EMAIL)
-                    ? null
-                    : sprintf('El campo %s no es un email valido', $field),
-                'rut' => static fn($field, $value): ?string => self::validarRut($value)
-                    ? null
-                    : sprintf('El campo %s no es un rut valido', $field),
-                // Caracteres, no bytes: "José" mide 4
-                'min' => static fn($field, $value, $param): ?string => mb_strlen((string) $value) < $param
-                    ? sprintf('El campo %s debe tener minimo %s caracteres', $field, $param)
-                    : null,
-                'max' => static fn($field, $value, $param): ?string => mb_strlen((string) $value) > $param
-                    ? sprintf('El campo %s debe tener maximo %s caracteres', $field, $param)
-                    : null,
-                'numeric' => static fn($field, $value): ?string => is_numeric($value)
-                    ? null
-                    : sprintf('El campo %s debe ser numerico', $field),
-                'int' =>
-                    $int = static function ($field, $value, $param): ?string {
-                        // Sin parámetro ($param null) también: antes str_contains(null) fallaba y "5" quedaba inválido
-                        $param = (string) $param;
-                        if (filter_var($value, FILTER_VALIDATE_INT) === false) {
-                            return sprintf('El campo %s debe ser un número entero', $field);
-                        }
-
-                        $value = (int) $value;
-                        if (str_contains($param, '-')) {
-                            [$min, $max] = explode('-', $param);
-
-                            return $value < $min || $value > $max
-                                ? sprintf('El campo %s debe ser numerico entre %s y %s', $field, $min, $max)
-                                : null;
-                        }
-
-                        if (str_contains($param, ',')) {
-                            $valid = explode(',', $param);
-
-                            return in_array($value, $valid, strict: true)
-                                ? null
-                                : sprintf(
-                                    'El campo %s debe ser numerico y debe ser uno de los siguientes valores ',
-                                    $field,
-                                ) . implode(',', $valid);
-                        }
-
-                        if (str_contains($param, 'positive')) {
-                            return $value > 0 ? null : sprintf('El campo %s debe ser un numero positivo', $field);
-                        }
-
-                        return null;
-                    },
-                'integer' => $int,
-                // Texto o número (un input numérico llega como número en JSON); nunca arreglo, objeto o booleano
-                'string' => static fn($field, $value): ?string => is_string($value)
-                    || is_int($value)
-                    || is_float($value)
-                        ? null
-                        : sprintf('El campo %s debe ser texto', $field),
-                'time' => static fn($field, $value): ?string => preg_match(
-                    '/^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/',
-                    $value,
-                )
-                        ? null
-                        : sprintf('El campo %s debe ser una hora valida', $field),
-                'date' => static function (string $field, $value): ?string {
-                    try {
-                        new DateTime($value);
-
-                        return null;
-                    } catch (Exception) {
-                        return sprintf('El campo %s debe ser una fecha valida', $field);
-                    }
-                },
-                'array' => static function ($field, $value): ?string {
-                    if (is_array($value)) {
-                        return null;
-                    }
-
-                    return is_array(json_decode($value, true)) && json_last_error() === JSON_ERROR_NONE
-                        ? null
-                        : sprintf('El campo %s debe ser un arreglo', $field);
-                },
-                'url' => static fn($field, $value): ?string => filter_var($value, FILTER_VALIDATE_URL)
-                    ? null
-                    : sprintf('El campo %s debe ser una url valida', $field),
-                // in:activo,inactivo — uno de los valores listados, comparados como texto
-                'in' => static fn($field, $value, $param): ?string => is_scalar($value)
-                    && in_array((string) $value, explode(',', (string) $param), true)
-                        ? null
-                        : sprintf('El campo %s debe ser uno de: %s', $field, str_replace(',', ', ', (string) $param)),
-                // true/false, 1/0, "true"/"false", "1"/"0", "on"/"off" (checkbox de formulario)
-                'boolean' => static fn($field, $value): ?string => filter_var(
-                    $value,
-                    FILTER_VALIDATE_BOOL,
-                    FILTER_NULL_ON_FAILURE,
-                ) !== null
-                        ? null
-                        : sprintf('El campo %s debe ser verdadero o falso', $field),
-            ];
-
-            foreach ($rules as $field => $rule) {
-                $rulesArray = explode('|', $rule);
-
-                // nullable: si el campo no llega o viene vacío, las demás reglas no se aplican
-                if (in_array('nullable', $rulesArray, true)) {
-                    if (!isset($params[$field]) || $params[$field] === '') {
-                        continue;
-                    }
-
-                    $rulesArray = array_values(array_diff($rulesArray, ['nullable']));
-                }
-
-                foreach ($rulesArray as $rul) {
-                    [$rulName, $param] = array_pad(explode(':', $rul), 2, null);
-
-                    // Verificar si el campo existe
-                    if (!isset($params[$field])) {
-                        $errors[$field] = sprintf('El campo %s es obligatorio', $field);
-                    } elseif (!isset($validations[$rulName])) {
-                        // Una regla mal escrita no puede dejar pasar el dato sin validar
-                        $errors[$field] = sprintf('Regla de validación desconocida para %s: %s', $field, $rulName);
-                        break;
-                    } else {
-                        // Ejecutar la validación correspondiente
-                        // Un valor de tipo inesperado (arreglo, null) es un dato inválido, no un error 500
-                        try {
-                            $error = $validations[$rulName]($field, $params[$field], $param);
-                        } catch (Throwable) {
-                            $error = sprintf('El campo %s no es valido', $field);
-                        }
-
-                        // Depuración: imprimir sólo si hay un error
-                        if ($error) {
-                            $errors[$field] = $error;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return $errors;
-        } catch (Exception $exception) {
-            return ['error' => $exception->getMessage()];
-        }
+        return Validator::make($params, $rules)->errors();
     }
 
     /**

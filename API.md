@@ -33,8 +33,10 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`Container`** — `getInstance`, `bind`, `singleton`, `instance`, `forget`, `has`, `get`, `make`, `call`; *interno*: `resetGlobal`
 - **`ContentType`** — enum del tipo de contenido de un correo (`HTML`, `TEXT`, `TWIG`)
 - **`Cookie`** — `set`, `has`, `get`, `delete`, `getAll`, `clear`
+- **`FormRequest`** — `rules`, `messages`, `authorize`, `validated`, `input`; *interno*: `validateResolved`. Clase base: el contenedor la valida antes de llamar al controlador (422 con `errors`, 403 si `authorize()` es false)
 - **`ErrorHandler`** — `initialize`, `handleError`; *interno*: `handleException`, `handleShutdown`
 - **`File`** — `offsetExists`, `offsetGet`, `offsetSet`, `offsetUnset`, `getName`, `getExtension`, `getSize`, `getSizeForHumans`, `getType`, `getTmpName`, `getMetadata`, `moveToOriginalName`, `moveToNewName`; *interno*: `isValidUpload`
+- **`Gate`** — `define`, `before`, `allows`, `denies`, `authorize`, `check`; *interno*: `reset`
 - **`GlobalControllers`** — `getParamsPaginate`
 - **`GlobalMiddleware`** — `getLoadedUserData`, `checkSession`, `validateCSRFToken`, `onlyAdmin`, `onlySuperAdmin`, `validatePolicyPassword`, `getMessagePolicyPassword`, `onlyDebug`, `checkLoginRateLimit`, `onlyUserWithAccess` (lo escribe route:make), `panelPath`; *interno*: `isPasswordExpired`, `resetRequestState`
 - **`Loggin`** — `initialize`, `setCustomHandler`, `log`, `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`, `exception`, `query`, `request`, `auth`, `performance`, `read`, `getConfig`
@@ -48,6 +50,8 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`Router`** — `health`, `normalize_url`, `group`, `get`, `post`, `put`, `patch`, `delete`, `query`, `withoutCsrf`, `middleware`, `resolve`; *interno*: `loadRoutes`, `healthToken`
 - **`SecurityUtils`** — `validateAndCleanUrl`; *interno*: `sanitizeUrl`, `cspNonce`, `resetRequestState`, `checkRateLimit`, `checkGlobalRateLimit`, `cleanExpiredLimits`; *deprecado*: `validateCsrfToken`
 - **`Session`** — `revokeToken`, `regenerate`, `setCSRFToken`, `getCSRFToken`, `set`, `has`, `get`, `getAll`, `delete`, `clear`, `getAttempts`, `getAllAttempts`, `setAttempts`, `restoreAttempts`, `setAttemptsSession`, `maximumAttempts`, `generateJWT`, `decodeJWT`, `setUserSession`, `refreshUserSession`, `checkUserSession`, `touchSessionActivity`, `destroy`; *interno*: `checkExistSession`, `checkUserSessionCached`, `resetRequestState`
+- **`Tenant`** — `id`, `owns`, `ensure` (404 si la fila no existe o es de otra empresa)
+- **`Validator`** — `make`, `fails`, `errors`, `validated`
 - **`versaController`** — `versaRoute`
 - **`versaTwig`** — `init`, `addGlobal`, `render`, `errorHandler`; *interno*: `addExtension`, `addFilter`, `renderDirect`
 - **`cli\BaseCommand`** — —; *interno*: `getHelp`
