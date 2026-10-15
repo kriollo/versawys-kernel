@@ -609,7 +609,7 @@ class Router
                     throw new Exception($errorMsg);
                 }
 
-                $middlewareClassTemp = new $middlewareClass();
+                $middlewareClassTemp = Container::getInstance()->get($middlewareClass);
                 if (!method_exists($middlewareClassTemp, $middlewareMethodName)) {
                     $errorMsg = sprintf(
                         "Método '%s' no encontrado en middleware '%s'",
@@ -620,7 +620,7 @@ class Router
                     throw new Exception($errorMsg);
                 }
 
-                $response = $middlewareClassTemp->$middlewareMethodName(...$slug);
+                $response = Container::getInstance()->call($middlewareClassTemp, $middlewareMethodName, $slug);
                 if (is_array($response) || is_object($response)) {
                     $status = is_array($response) ? (int) ($response['code'] ?? 200) : 200;
 
@@ -629,6 +629,8 @@ class Router
             } catch (RequestHalted $halted) {
                 // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
                 throw $halted;
+            } catch (RouteParameterMismatch) {
+                return $this->respondNotFound($request, $config);
             } catch (Throwable $e) {
                 Loggin::error(
                     'Error en middleware: '
@@ -667,7 +669,7 @@ class Router
 
         try {
             [$controllerClass, $controllerMethodName] = $callback;
-            $controllerClassTemp = new $controllerClass();
+            $controllerClassTemp = Container::getInstance()->get($controllerClass);
             if (!method_exists($controllerClassTemp, $controllerMethodName)) {
                 throw new Exception(sprintf(
                     "Método '%s' no encontrado en controlador '%s'",
@@ -676,7 +678,7 @@ class Router
                 ));
             }
 
-            $response = $controllerClassTemp->$controllerMethodName(...$slug);
+            $response = Container::getInstance()->call($controllerClassTemp, $controllerMethodName, $slug);
             if (is_array($response) || is_object($response)) {
                 // Igual que en los middlewares: la clave `code` define el estado HTTP
                 // Solo si es un estado HTTP válido: hay respuestas con code 0 o con el código de una excepción
@@ -691,6 +693,8 @@ class Router
         } catch (RequestHalted $halted) {
             // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
             throw $halted;
+        } catch (RouteParameterMismatch) {
+            return $this->respondNotFound($request, $config);
         } catch (Throwable $throwable) {
             if (isset($controllerClass, $controllerMethodName)) {
                 Loggin::error(

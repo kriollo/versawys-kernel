@@ -2,6 +2,21 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.6.0] - 2026-10-15
+
+Fase B del paso 7 (ROADMAP.md): contenedor de dependencias optativo.
+
+### Añadido
+- **`Container`**: los controladores y middlewares se crean con él.
+  - **Constructor:** los parámetros tipados con una clase se resuelven solos, recursivamente; detecta dependencias circulares y explica qué falta registrar.
+  - **Métodos:** lo tipado con una clase viene del contenedor y el resto recibe los parámetros de la ruta en orden. Un `int $id` recibe el número, y si no lo es la ruta responde 404 (`RouteParameterMismatch`).
+  - Un controlador sin tipos funciona igual que antes.
+- Registros base: `Request` y `Session` (los de la petición), `versaTwig`/`Twig\Environment`, `Cookie`, `VersaORM`. La aplicación agrega los suyos en `app/container.php` (opcional).
+- `TestClient::container()`: en pruebas, `->instance(Servicio::class, $doble)` reemplaza un servicio (p. ej. el de correo) y `forget()` lo devuelve.
+
+### Corregido
+- **`ContentType` en su propio archivo.** Estaba dentro de `MailSender.php` y solo existía si antes se había cargado `MailSender`: usarlo directamente fallaba con «Class not found». `AutoloadTest` comprueba ahora que cada archivo de `src/` declare un solo tipo, con su nombre.
+
 ## [3.5.0] - 2026-10-15
 
 Primera fase del plan para estar al nivel de Laravel y Symfony en lo que hace seguro y productivo el trabajo diario (ver ROADMAP.md, paso 7): probar una aplicación sin levantar un servidor.

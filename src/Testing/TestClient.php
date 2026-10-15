@@ -6,6 +6,7 @@ namespace versaWYS\kernel\Testing;
 
 use RuntimeException;
 use SensitiveParameter;
+use versaWYS\kernel\Container;
 use versaWYS\kernel\GlobalMiddleware;
 use versaWYS\kernel\Output;
 use versaWYS\kernel\Request;
@@ -255,6 +256,12 @@ final class TestClient
         }
 
         return new TestResponse($captured['status'], $captured['headers'], $output);
+    }
+
+    /** El contenedor de la aplicación: en pruebas, `->container()->instance(Servicio::class, $doble)`. */
+    public function container(): Container
+    {
+        return Container::getInstance();
     }
 
     /** @return array<string, string> */

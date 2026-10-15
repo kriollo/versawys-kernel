@@ -13,13 +13,6 @@ use Symfony\Component\Mime\Email;
 use Symfony\Component\Mime\Part\DataPart;
 use Symfony\Component\Mime\Part\File;
 
-enum ContentType: string
-{
-    case HTML = 'html';
-    case TEXT = 'text';
-    case TWIG = 'twig';
-}
-
 class MailSender
 {
     private Mailer $mailer;
