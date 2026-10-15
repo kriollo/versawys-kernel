@@ -27,11 +27,12 @@ class ControllerManager
             unlink($controllersFile);
         }
 
+        $vista = strtolower($controllerNameLimpio);
         $front = match ($front) {
             'twig'
-                => "//metodo para renderizar desde twig por defecto\n    public function index()\n    {\n        return \$this->template->render('dashboard/{$controllerNameLimpio}/index');\n    }",
+                => "public function index(): string\n    {\n        return \$this->template->render('dashboard/{$vista}/dash{$controllerNameUC}');\n    }",
             'vue'
-                => "//metodo para renderizar desde twig y VUE\n    public function index()\n    {\n            return \$this->template->render('dashboard/loader', [\n                'm' => 'dashboard/js/{$controllerNameLimpio}/dash{$controllerNameUC}',\n            ]);\n    }",
+                => "public function index(): string\n    {\n        return \$this->template->render('dashboard/loader', [\n            'm' => 'dashboard/js/{$vista}/dash{$controllerNameUC}',\n        ]);\n    }",
             default => '',
         };
 
@@ -44,10 +45,9 @@ class ControllerManager
 
             use app\models as Models;
             use versaWYS\kernel\GlobalControllers;
-            use versaWYS\kernel\Response;
 
-            //Controlador de la vista $controllerName
-            class $controllerName extends GlobalControllers {
+            class $controllerName extends GlobalControllers
+            {
                 public function __construct()
                 {
                     global $twig, $session;
@@ -55,7 +55,14 @@ class ControllerManager
                 }
 
                 $front
+
+                // API: un arreglo se responde como JSON; la clave `code` fija el estado HTTP
+                public function list(): array
+                {
+                    return ['success' => 1, 'data' => (new Models\$controllerNameUC())->all()];
+                }
             }
+
             EOT;
         $template = str_replace('$front', $front, $template);
         $template = str_replace('$controllerNameUC', $controllerNameUC, $template);

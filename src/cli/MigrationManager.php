@@ -159,6 +159,8 @@ class MigrationManager extends VersaORMModel
             unlink($migrationFile);
         }
 
+        // Punto de partida: crea una tabla con el nombre de la migración. Para cambiar una tabla
+        // existente se reemplaza create() por table() y dropIfExists() por lo inverso.
         $template = <<<'EOT'
             <?php
 
@@ -166,30 +168,48 @@ class MigrationManager extends VersaORMModel
 
             namespace app\migrations;
 
+            use VersaORM\Schema\Blueprint;
+            use VersaORM\VersaORMException;
             use versaWYS\kernel\model\VersaORMModel;
 
-            class $migrationName extends VersaORMModel {
-                public function up() {
+            class $migrationName extends VersaORMModel
+            {
+                public function up(): array
+                {
                     try {
-                        // Agrega tu lógica de migración aquí
+                        $this->orm()->schemaBuilder()->create('$tableName', static function (Blueprint $table): void {
+                            $table->id();
+                            // $table->string('nombre', 120);
+                            // $table->foreignId('id_empresa');
+                            // $table->foreign(['id_empresa'])->references('id')->on('empresas')->onDelete('CASCADE');
+                            $table->timestamps();
+                        });
+
                         return ['message' => 'Migración ejecutada con éxito.', 'success' => true];
-                    } catch (\Exception $e) {
-                        return ['message' => $e->getMessage(), 'success' => false];
+                    } catch (VersaORMException $versaormException) {
+                        return ['message' => $versaormException->getMessage(), 'success' => false];
                     }
                 }
 
-                public function down() {
+                public function down(): array
+                {
                     try {
-                        // Agrega tu lógica para revertir la migración aquí
+                        $this->orm()->schemaBuilder()->dropIfExists('$tableName');
+
                         return ['message' => 'Migración ejecutada con éxito.', 'success' => true];
-                    } catch (\Exception $e) {
-                        return ['message' => $e->getMessage(), 'success' => false];
+                    } catch (VersaORMException $versaormException) {
+                        return ['message' => $versaormException->getMessage(), 'success' => false];
                     }
                 }
             }
+
             EOT;
 
-        $template = str_replace('$migrationName', $migrationName, $template);
+        $template = str_replace(
+            ['$migrationName', '$tableName'],
+            [$migrationName, CLIHelper::tableName((string) $name)],
+            $template,
+        );
 
         CLIHelper::ensureDirectory(self::$path);
 

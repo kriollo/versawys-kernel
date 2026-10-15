@@ -10,7 +10,7 @@ class ModelManager
 
     public static function createModel(string $modelName): void
     {
-        $originalModelName = strtolower($modelName);
+        $originalModelName = CLIHelper::tableName($modelName);
         $modelName = ucfirst($modelName);
 
         CLIErrorHandler::info("Creando modelo {$modelName}...");
@@ -32,52 +32,18 @@ class ModelManager
 
             namespace app\models;
 
-            use Exception;
-            use VersaORM\VersaModel;
-            use versaWYS\kernel\helpers\Functions;
             use versaWYS\kernel\model\VersaORMModel;
 
             class $modelName extends VersaORMModel
             {
-                /**
-                 * @var string
-                 */
                 protected string $table = '$originalModelName';
 
-                /**
-                 * Define las reglas de validación para el modelo.
-                 *
-                 * @return array
-                 */
-                protected array $rules = [];
-
-                /**
-                 * Define los tipos de propiedades para el modelo.
-                 *
-                 * @throws Exception
-                 */
-                public static function definePropertyTypes(): array
-                {
-                    return [
-                        'id' => ['type' => 'int', 'nullable' => false, 'auto_increment' => true],
-                        'estado' => ['type' => 'bool', 'nullable' => false],
-                        'created_at' => ['type' => 'varchar', 'nullable' => false],
-                        'updated_at' => ['type' => 'varchar', 'nullable' => false],
-                    ];
-                }
-
-                /**
-                 * Get all $originalModelName.
-                 *
-                 * Retrieves all the $originalModelName from the database.
-                 *
-                 * @return array An array of user records.
-                 */
                 public function all(): array
                 {
-                    return $this->getAll('SELECT * FROM ' . $this->table);
+                    return $this->qb()->orderBy('id', 'desc')->getAll();
                 }
             }
+
             EOT;
 
         $template = str_replace('$modelName', $modelName, $template);

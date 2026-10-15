@@ -2,6 +2,29 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.3.2] - 2026-10-14
+
+Lo que encontró construir una aplicación nueva desde cero (`composer create-project versawys/versawys`): un tablero kanban con tareas, etiquetas y notas, generado con `versaMODULE`.
+
+### Corregido
+- **`onlyUserWithAccess` negaba la pantalla a todo usuario que no fuera admin**, aunque su perfil la tuviera en el menú: comparaba la URL completa (`/admin/tableros?x=1`) con la del menú, que se guarda relativa al panel (`/tableros`). Ahora compara la ruta relativa al panel, sin query string, con `admin` o con `admin.custom_url`. Ningún proyecto la usaba; solo el código que genera `route:make`.
+- **`route:make` con un nombre en CamelCase** importaba el middleware en minúsculas (`NotasrapidasMiddleware`).
+- **`versaMODULE:twig`** generaba un controlador que renderizaba `dashboard/{nombre}/index`, una plantilla que no existe; ahora usa la que crea `front:makeTwig`.
+- **`--force` ahora responde que sí** a la confirmación de sobrescribir un archivo generado, como dice la ayuda.
+
+### Cambiado
+- **`versaMODULE` y `RCMD` crean también la migración**, con el mismo nombre de tabla que el modelo (`NotasRapidas` → `notas_rapidas`).
+- **Lo generado funciona sin tocarlo y sigue el estilo del esqueleto:**
+  - la migración crea la tabla con `id()` y `timestamps()`, y la borra en `down()`;
+  - el modelo trae `all()`, y el controlador, la API `list()`;
+  - la ruta queda documentada, con la pantalla en `onlyUserWithAccess` y la API en un grupo con `checkSession`;
+  - el middleware trae un ejemplo con `validateParams`;
+  - el componente Vue está en TypeScript, con migas de pan, y ya consulta la API.
+
+### Desarrollo
+- Pruebas nuevas: `GeneratorsTest` (lo generado es PHP válido y los nombres, la tabla y la vista calzan entre sí) y `PanelPathTest`.
+- Línea base de mago: quitadas 33 entradas de hallazgos que ya no existen.
+
 ## [3.3.1] - 2026-10-14
 
 Sin cambios de comportamiento: herramientas y formato.
