@@ -33,7 +33,7 @@ class CommandLineInterface
             $this->args,
             static fn($arg): bool => !in_array(
                 $arg,
-                ['--verbose', '-v', '--force', '--no-interaction', '-n'],
+                ['--verbose', '-v', '--force', '--no-interaction', '-n', '--dry-run'],
                 strict: true,
             ),
         );
@@ -277,7 +277,7 @@ class CommandLineInterface
             return;
         }
 
-        $allowedActions = ['debug', 'templateCache', 'ClearCache', 'init', 'merge'];
+        $allowedActions = ['debug', 'templateCache', 'ClearCache', 'init', 'merge', 'align'];
         $action = $this->validateAction($params[0], $allowedActions, 'config');
 
         if (in_array($action, ['debug', 'templateCache'], strict: true)) {
@@ -298,6 +298,7 @@ class CommandLineInterface
                 'templateCache' => ConfigManager::setTemplateCache($params[1]),
                 'ClearCache' => ConfigManager::clearCache(),
                 'init' => ConfigManager::initConfig(),
+                'align' => ConfigManager::align(),
                 'merge' => ConfigManager::merge($this->requireParam(
                     $params,
                     1,

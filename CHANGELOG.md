@@ -2,6 +2,19 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.4.0] - 2026-10-15
+
+### Añadido
+- **`php versaCLI config:align`** lleva un `config.json` a la estructura actual del kernel sin cambiar cómo se comporta la aplicación:
+  - agrega las claves que faltan con su valor por defecto, que es el que ya se estaba usando;
+  - quita las que el kernel ya no lee (`build.cacheRoute*`, `security.sanitize_input`, `logging.use_redis`, `twig.auto_escape`…);
+  - conserva los valores y las claves propias del proyecto, en el orden de `config.default.php`;
+  - deja una copia del original (`config.json.<fecha>.bak`, permisos 600). `--dry-run` solo informa.
+  - Como `config.json` no está en git, se corre en cada servidor después de desplegar.
+
+### Cambiado
+- `config:init` ya no escribe las claves obsoletas: un proyecto nuevo nace alineado.
+
 ## [3.3.3] - 2026-10-14
 
 ### Cambiado
