@@ -69,7 +69,8 @@ class HelpView
         echo "  {$yellow}config:templateCache:[true/false]{$reset} Activar/desactivar cache de Twig\n";
         echo "  {$yellow}config:ClearCache{$reset}         Limpiar cache de templates\n";
         echo
-            "  {$yellow}config:merge <archivo.json>{$reset} Aplicar ajustes versionados (sin secretos) a config.json\n";
+            "  {$yellow}config:merge <archivo.json>{$reset} Aplicar ajustes versionados (sin secretos) a config.json\n"
+                . "  {$yellow}config:align{$reset}              Llevar config.json a la estructura actual del kernel (--dry-run: solo informa)\n";
         echo "\n";
         echo sprintf('%s%s📊 Base de datos%s%s', $bold, $green, $reset, PHP_EOL);
         echo "  {$yellow}migrate:make:[nombre]{$reset}     Crear nueva migración\n";
@@ -203,6 +204,8 @@ class HelpView
         echo "  {$color}config:templateCache:[true/false]{$reset} Activar/desactivar cache de Twig\n";
         echo "  {$color}config:ClearCache{$reset}         Limpiar cache de templates\n";
         echo "  {$color}config:merge <archivo.json>{$reset} Aplicar ajustes versionados (sin secretos) a config.json\n";
+        echo
+            "  {$color}config:align{$reset}              Llevar config.json a la estructura actual del kernel (--dry-run: solo informa)\n";
     }
 
     private static function printCronHelp(string $color, string $reset): void
