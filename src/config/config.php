@@ -178,8 +178,10 @@ if (isset($versaOrm)) {
     $container->instance(VersaORM::class, $versaOrm);
 }
 
-if (is_file('app/container.php')) {
-    $register = require __DIR__ . '/app/container.php';
+// Ruta del proyecto (cwd), no la del kernel: con una ruta literal rector la vuelve relativa a este archivo
+$appContainer = getcwd() . '/app/container.php';
+if (is_file($appContainer)) {
+    $register = require $appContainer;
     if (is_callable($register)) {
         $register($container);
     }
