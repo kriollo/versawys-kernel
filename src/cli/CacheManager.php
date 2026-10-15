@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace versaWYS\kernel\cli;
 
 use Exception;
+use Throwable;
+use versaWYS\kernel\Cache;
 
 class CacheManager
 {
@@ -51,6 +53,15 @@ class CacheManager
         // Limpiar cache de rate limits
         if (self::clearRateLimitsCache(false)) {
             $cacheCleared++;
+        }
+
+        // La caché de la aplicación (Cache), en archivos o en Redis según cache.driver
+        try {
+            Cache::flush();
+            CLIErrorHandler::success('Caché de la aplicación (Cache) limpiada');
+            $cacheCleared++;
+        } catch (Throwable $throwable) {
+            CLIErrorHandler::warning('No se pudo limpiar la caché de la aplicación: ' . $throwable->getMessage());
         }
 
         echo "\n" . str_repeat('═', 40) . "\n";

@@ -2,6 +2,16 @@
 
 Núcleo del framework [versaWYS-PHP](https://github.com/kriollo/versaWYS): enrutamiento, middlewares, sesión con JWT, protección CSRF, rate limiting, Twig, CLI (`versaCLI`) e integración con [VersaORM](https://github.com/kriollo/versaORM).
 
+También incluye:
+
+- contenedor de dependencias optativo;
+- validación con Form Requests;
+- autorización (`Gate`, `Tenant`);
+- caché, cola de trabajos y almacenamiento de archivos;
+- un cliente para probar la aplicación sin servidor (`Testing\TestClient`).
+
+La guía de uso está en [`documentacion/`](https://github.com/kriollo/versaWYS/tree/main/documentacion) del esqueleto.
+
 Este paquete no se usa solo: se instala dentro de un proyecto creado a partir del esqueleto [kriollo/versaWYS](https://github.com/kriollo/versaWYS), que aporta `app/`, el panel de administración y el frontend.
 
 ## Requisitos
@@ -55,7 +65,7 @@ La CI hace lo mismo en PHP 8.3, 8.4 y 8.5. Si el cambio también necesita modifi
 ```bash
 composer fixer:all      # corrige y formatea todo, como en los proyectos (ver abajo)
 composer check          # formato (mago fmt) + mago lint + pruebas + phpstan: lo que corre la CI
-composer test           # PHPUnit: Router, Request, archivos, rate limiting, configuración, /up
+composer test           # PHPUnit: Router, Request, contenedor, validación, autorización, cola, caché, archivos, /up…
 composer mago           # linter mago (con mago-baseline.toml)
 composer bench          # línea base de rendimiento (ver BENCHMARK.md)
 composer mago:analyze   # analizador de mago, opcional (el del CI es phpstan)
@@ -87,7 +97,7 @@ La CI también ejecuta `composer audit` y la suite del esqueleto contra este ker
 | [THREAT_MODEL.md](THREAT_MODEL.md) | Activos, límites de confianza y mitigaciones con su prueba |
 | [BENCHMARK.md](BENCHMARK.md) | Línea base de rendimiento |
 | [DECISIONS.md](DECISIONS.md) | Lo que se evaluó y no se implementó, y cuándo revisarlo |
-| [ROADMAP.md](ROADMAP.md) | Trabajo pendiente |
+| [ROADMAP.md](ROADMAP.md) | Plan por pasos, revisión final y límites conocidos |
 | [CHANGELOG.md](CHANGELOG.md) | Cambios de cada versión |
 
 ## Licencia

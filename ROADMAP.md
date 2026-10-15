@@ -24,6 +24,8 @@ Pruebas que ya existen en el esqueleto y cubren al kernel por HTTP (las corre la
 
 Esto inicia la base de pruebas, pero **no completa** el inventario de contratos, la cobertura del kernel ni la revisión de seguridad. El orden siguiente es recomendado; cada etapa debe acabar con sus pruebas y criterios de aceptación antes de ampliar la siguiente.
 
+**Al 2026-10-15 (3.9.0) los siete pasos están completos.** El resultado está en la [revisión final](#revisión-final-de-los-criterios-de-salida), con los límites conocidos. Las listas «Trabajo pendiente» de cada paso se conservan como el plan original con el que se midió cada uno.
+
 ## Principios para todas las etapas
 
 - Mantener pocos requisitos obligatorios y justificar cualquier nueva dependencia de producción.
@@ -94,10 +96,12 @@ Esto inicia la base de pruebas, pero **no completa** el inventario de contratos,
 
 ## Paso 3 — Ordenar fundamentos e interoperabilidad
 
-**Estado: hecho lo que tiene consumidores (3.2.0); el resto, decidido en `DECISIONS.md`.**
+**Estado: completo (3.2.0, 3.5.0 y 3.6.0).**
 1. `LIFECYCLE.md`.
-2. Rutas duplicadas detectadas en `route:check` y `app:check:deploy`; los callbacks inexistentes ya se detectaban.
-3–5. Contenedor de dependencias, PSR-3/11/14 y Request sin superglobales: evaluados y no adoptados, con la señal que haría revisarlos.
+2. Rutas duplicadas detectadas en `route:check` y `app:check:deploy`; los callbacks inexistentes ya se detectaban. Un parámetro `int` que no es número responde 404 (3.6.0).
+3. Contenedor propio y optativo en 3.6.0, cuando apareció la señal prevista: probar con dobles.
+4. Salida por `Output` y estado por petición reiniciable (3.5.0): las pruebas recorren el kernel sin servidor.
+5. PSR-3/11/14: evaluados y no adoptados, con la señal que haría revisarlos (`DECISIONS.md`).
 
 ### Trabajo pendiente
 
@@ -115,9 +119,9 @@ Esto inicia la base de pruebas, pero **no completa** el inventario de contratos,
 
 ## Paso 4 — Completar herramientas de desarrollo y servicios
 
-**Estado: completo para los casos de uso actuales (3.2.0).**
+**Estado: completo (3.2.0, 3.7.0 y 3.8.0).**
 1. CLI: `--no-interaction`; una operación destructiva cancelada sale con código 1.
-2. Validación: `nullable`, `in`, `boolean`; longitudes en caracteres. Mensajes traducibles: ver `DECISIONS.md`.
+2. Validación: `nullable`, `in`, `boolean`; longitudes en caracteres (3.2.0). `Validator` con datos anidados, `*`, closures y mensajes por campo, y `FormRequest` (3.7.0). Catálogo de idiomas: ver `DECISIONS.md`.
 3. Utilidades HTTP: sin capa nueva; `LIFECYCLE.md` documenta las existentes.
 4. Migraciones en transacción, una por migración.
 5. Eventos: ver `DECISIONS.md`.
@@ -160,7 +164,7 @@ Esto inicia la base de pruebas, pero **no completa** el inventario de contratos,
 
 ## Paso 6 — Documentar compatibilidad y publicación
 
-**Estado: al día en 3.2.0; continuo en cada versión.**
+**Estado: al día en 3.9.0; continuo en cada versión. El punto 5 está en la [revisión final](#revisión-final-de-los-criterios-de-salida).**
 1. Documentación del kernel: `README.md` (índice), `API.md`, `LIFECYCLE.md`, `SECURITY.md`, `THREAT_MODEL.md`, `BENCHMARK.md`, `DECISIONS.md`; la del uso del framework vive en `documentacion/` del esqueleto.
 2. Versiones de PHP, SemVer y deprecación en `README.md`.
 3. `UPGRADE.md` por versión; `app:check:deploy` detecta contratos rotos.
@@ -195,6 +199,45 @@ El objetivo de los pasos 1–6 era un kernel robusto sin replicar la amplitud de
 | E | Página de error con contexto, sitio de documentación, toolchain de frontend sin trampas (builds mezclados, importmap) | Hecha (3.9.0): página de error con código; builds mezclados resueltos en versaCompiler. El sitio de documentación espera a tener usuarios externos (GitHub ya muestra `documentacion/`) |
 
 Por qué A primero: los errores que encontró la app de prueba (versaTodo) aparecieron a mano o con un navegador sin interfaz. Con un cliente de pruebas, las suites de cada proyecto los detectan. La primera suite con `TestClient` encontró un 500 en lugar de 422 en el panel base (`EmpresasMiddleware`).
+
+## Revisión final de los criterios de salida
+
+Hecha el 2026-10-15 con el kernel 3.9.0, el esqueleto 3.10.0, los cuatro proyectos en producción y versaTodo, una app creada desde cero para probar el framework.
+
+| Paso | Criterio | Resultado | Evidencia |
+|---|---|---|---|
+| 1 | Pruebas propias del kernel, local y en CI | ✅ | 153 pruebas en PHP 8.3/8.4/8.5; la CI también corre las 132 del esqueleto |
+| 1 | Regresiones en rutas críticas y contratos | ✅ | `AppContractTest`, `RouterTest`, `HttpTest` del esqueleto |
+| 1 | Métricas repetibles | ✅ | `BENCHMARK.md`, `composer bench` |
+| 2 | Superficies y límites documentados | ✅ | `THREAT_MODEL.md` |
+| 2 | Opciones de seguridad críticas probadas, también al fallar | ✅ | Tabla de `THREAT_MODEL.md`, cada fila con su prueba |
+| 2 | Ningún fallo aparenta una protección inactiva | ✅ | `SECURITY.md` «Comportamiento ante fallos»: log `security` + `app:check:deploy` |
+| 3 | Flujo HTTP documentado y probado | ✅ | `LIFECYCLE.md`; `Testing\TestClient` |
+| 3 | Probar sin levantar un servidor | ✅ | `TestClient` (3.5.0): `AppTest` del esqueleto, `TablerosTest` de versaTodo |
+| 3 | La API actual sigue funcionando | ✅ | `global $request` y controladores sin tipos siguen igual; los cuatro proyectos subieron a 3.9.0 sin cambiar código |
+| 4 | Herramientas automatizables con códigos consistentes | ✅ | `-n`, código 1 al cancelar; `app:queue:work --stop-when-empty` para cron |
+| 4 | Validación y errores con API documentada y compatible | ✅ | `Validator`, `FormRequest`; `validateParams` usa `Validator` |
+| 4 | Responsabilidades kernel ↔ VersaORM delimitadas | ✅ | El esquema lo define VersaORM (`Blueprint`); el kernel ejecuta las migraciones, una transacción por migración |
+| 5 | Camino documentado de un nodo a varios | ⚠️ Parcial | Documentado en `DECISIONS.md` y `THREAT_MODEL.md`, sin implementar: ningún proyecto tiene más de un servidor |
+| 5 | Logs útiles y sin secretos | ✅ | `X-Request-Id`, redacción de secretos (`LogTest`) |
+| 5 | Optimizaciones medidas contra la línea base | ✅ | Las cachés de rutas y configuración se descartaron con mediciones |
+| 6 | Instalar, configurar, probar, desplegar y actualizar con documentación vigente | ✅ | `documentacion/` del esqueleto: INSTALL, CONFIGURATION, Pruebas, `app:deploy:finish`; `UPGRADE.md` |
+| 6 | Matriz CI y auditoría en verde | ✅ | CI del kernel, del esqueleto y de los cuatro proyectos |
+| 6 | Sin cambios incompatibles sin documentar | ✅ | `UPGRADE.md` |
+| 7 | Fases A–E | ✅ | 3.5.0 a 3.9.0. El sitio de documentación queda pospuesto (`DECISIONS.md`) |
+
+### Límites conocidos
+
+El kernel no declara equivalencia con Laravel o Symfony por número de funciones. Lo que se sabe que no cubre:
+
+- **Varios servidores.** Rate limiting, revocación de JWT, la caché en archivos y `Storage` son locales a cada servidor. La cola sí sirve con varios, porque vive en la base de datos.
+- **Runtimes persistentes** (RoadRunner, Swoole, FrankenPHP worker). El estado por petición se reinicia, pero el kernel usa superglobales y variables globales y no se probó en uno.
+- **Cola simple.** Un trabajo a la vez por worker, sondeo cada 3 s, sin prioridades, lotes ni encadenamiento. Los datos del trabajo se guardan como JSON.
+- **Almacenamiento solo local.** `Storage` no tiene adaptador S3.
+- **Un idioma.** Mensajes de validación y del panel en español, sin catálogo de traducciones.
+- **Sin interfaces PSR** para logger, contenedor o eventos (`DECISIONS.md`).
+- **`'unsafe-inline'` en `style-src`**, por Tailwind y Vue.
+- **Autorización por acción optativa.** `Gate` y `Tenant` ayudan, pero el kernel no impone permisos por rol dentro de cada controlador; cada proyecto los declara.
 
 ## Dependencias y orden sugerido
 
