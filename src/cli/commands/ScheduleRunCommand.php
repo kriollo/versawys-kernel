@@ -14,7 +14,9 @@ use versaWYS\kernel\Schedule;
  * Lanza las tareas de app/schedule.php que corresponden a este minuto, cada una en su propio
  * proceso: una tarea lenta no atrasa a las demás. Va en el crontab, una sola línea por servidor:
  *
- *   * * * * * php /ruta/del/proyecto/versaCLI app:schedule:run >> /dev/null 2>&1
+ *   * * * * * /usr/bin/php /ruta/del/proyecto/versaCLI app:schedule:run >> /ruta/del/proyecto/versaWYS/logs/cron.log 2>&1
+ *
+ * Con la ruta completa de PHP (cron no la encuentra en su PATH); app:schedule:list muestra la línea exacta.
  */
 class ScheduleRunCommand extends BaseCommand
 {

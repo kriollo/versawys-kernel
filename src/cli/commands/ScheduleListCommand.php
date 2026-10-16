@@ -25,12 +25,12 @@ class ScheduleListCommand extends BaseCommand
             $this->info(
                 'No hay tareas programadas. Se definen en app/schedule.php (ver documentacion/Tareas_Programadas.md).',
             );
-
-            return 0;
         }
 
         $line = "%-14s %-44s %-16s %-17s %s\n";
-        printf($line, 'Id', 'Tarea', 'Frecuencia', 'Próxima', 'Última');
+        if ($report['tasks'] !== []) {
+            printf($line, 'Id', 'Tarea', 'Frecuencia', 'Próxima', 'Última');
+        }
         foreach ($report['tasks'] as $task) {
             $last = $task['last_run'];
             $lastText = $last === null
@@ -51,7 +51,10 @@ class ScheduleListCommand extends BaseCommand
             );
         }
 
-        if (!$report['cron_running']) {
+        // Aunque no haya tareas: así se comprueba el crontab apenas se configura
+        if ($report['cron_running']) {
+            $this->success('El crontab está llamando al programador (última vez: ' . $report['last_tick'] . ').');
+        } else {
             $this->warning(
                 'El crontab no está llamando a app:schedule:run'
                 . ($report['last_tick'] === null ? '' : ' (última vez: ' . $report['last_tick'] . ')')

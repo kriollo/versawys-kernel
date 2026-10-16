@@ -9,7 +9,7 @@ use RuntimeException;
 
 /**
  * Programador de tareas. Las tareas se definen en `app/schedule.php` y el servidor tiene una sola
- * línea en el crontab: `* * * * * php /ruta/del/proyecto/versaCLI app:schedule:run`.
+ * línea en el crontab: `* * * * * /ruta/de/php /ruta/del/proyecto/versaCLI app:schedule:run` (ruta completa de PHP: ver report()).
  *
  *     return static function (Schedule $schedule): void {
  *         $schedule->cron(CompressVideos::class)->everyMinutes(5)->withoutOverlapping();
@@ -109,8 +109,32 @@ final class Schedule
             'last_tick' => $tick === null ? null : date('Y-m-d H:i:s', $tick),
             // app:schedule:run corre cada minuto: más de 2 minutos sin pasar es que el crontab no lo llama
             'cron_running' => $tick !== null && ($now->getTimestamp() - $tick) <= 120,
-            'cron_line' => '* * * * * php ' . getcwd() . '/versaCLI app:schedule:run >> /dev/null 2>&1',
+            // Ruta completa de PHP: cron corre con un PATH mínimo y no encuentra un php instalado
+            // fuera de /usr/bin (mise, cPanel). La salida va a un log: un error no se pierde en /dev/null
+            'cron_line' =>
+                '* * * * * '
+                    . self::phpBinary()
+                    . ' '
+                    . getcwd()
+                    . '/versaCLI app:schedule:run >> '
+                    . getcwd()
+                    . '/versaWYS/logs/cron.log 2>&1',
         ];
+    }
+
+    /**
+     * El PHP de consola de esta instalación. Desde la terminal es el que corre; desde la web (FPM,
+     * Apache) es el `php` de la misma carpeta de binarios.
+     */
+    public static function phpBinary(): string
+    {
+        if (in_array(PHP_SAPI, ['cli', 'cli-server'], true)) {
+            return PHP_BINARY;
+        }
+
+        $cli = PHP_BINDIR . '/php';
+
+        return is_executable($cli) ? $cli : 'php';
     }
 
     /** Lo llama app:schedule:run en cada pasada. */

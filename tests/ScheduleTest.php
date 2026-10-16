@@ -170,6 +170,9 @@ final class ScheduleTest extends TestCase
         self::assertSame('0 3 * * *', $report['tasks'][0]['expression']);
         self::assertFalse($report['cron_running'], 'nunca corrió app:schedule:run');
         self::assertStringContainsString('versaCLI app:schedule:run', $report['cron_line']);
+        // Con la ruta completa de PHP (cron no la encuentra en su PATH) y la salida en un log
+        self::assertStringStartsWith('* * * * * ' . PHP_BINARY . ' ', $report['cron_line']);
+        self::assertStringEndsWith('/versaWYS/logs/cron.log 2>&1', $report['cron_line']);
 
         Schedule::tick();
         self::assertTrue($schedule->report($now)['cron_running']);
