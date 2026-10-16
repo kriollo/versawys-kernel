@@ -46,15 +46,9 @@ class CacheUsers
      */
     public function updateMenuVersion(): void
     {
-        global $session;
-
-        try {
-            // Actualizamos el timestamp en la sesión. Esto invalidará el caché
-            // para todos los usuarios en su próxima petición.
-            $session->set(self::MENU_VERSION_KEY, (string) time());
-        } catch (Exception) {
-            // En caso de error, no hacer nada para no romper la aplicación.
-        }
+        // En la caché compartida, no en la sesión: así la ven todos los usuarios con sesión abierta,
+        // no solo quien hizo el cambio. Un id único: dos cambios en el mismo segundo también cuentan
+        Cache::set(self::MENU_VERSION_KEY, bin2hex(random_bytes(8)));
     }
 
     /**
@@ -275,10 +269,6 @@ class CacheUsers
      */
     private function getMenuVersion(): string
     {
-        global $session;
-
-        // Obtenemos el timestamp de la versión del menú desde la sesión.
-        // Esto es súper rápido y no requiere I/O de disco en cada petición.
-        return (string) $session->get(self::MENU_VERSION_KEY, 'initial');
+        return (string) Cache::get(self::MENU_VERSION_KEY, 'initial');
     }
 }

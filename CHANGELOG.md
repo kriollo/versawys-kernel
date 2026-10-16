@@ -64,6 +64,7 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
 - **Aviso de mantenimiento para el equipo:** la variable de Twig `maintenance` indica si el sitio está en `app:down`.
 
 ### Corregido
+- **Un cambio de menú o de permisos no llegaba a las sesiones abiertas:** la versión del menú se guardaba en la sesión de quien hizo el cambio, así que los demás usuarios seguían con el menú y los permisos anteriores hasta 5 minutos. Ahora vive en `Cache`, que comparten todas las sesiones.
 - **Un parámetro de ruta igual a `0` respondía 405** (`/perfiles/0`): al contar los segmentos de la URL, `array_filter()` descartaba el `"0"`.
 - **Con la contraseña vencida, la API seguía respondiendo:** solo las páginas llevaban al perfil, así que el bloqueo se saltaba llamando a la API. Ahora la API responde 403 con `password_expired: true`, salvo el perfil y el cambio de contraseña.
 - **Cerrar la sesión por el estado de la cuenta no revocaba el JWT:** el login veía la cookie como una sesión abierta y devolvía al panel, que la volvía a cerrar. Ahora revoca el token igual que el logout.
