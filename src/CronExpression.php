@@ -65,6 +65,60 @@ final class CronExpression
         return $this->eitherDay ? $dayMatches || $weekdayMatches : $dayMatches && $weekdayMatches;
     }
 
+    /**
+     * La frecuencia en palabras para las formas comunes («Cada 5 minutos», «Todos los días a las
+     * 03:00»); para cualquier otra, la expresión tal cual.
+     */
+    public function describe(): string
+    {
+        // El constructor ya validó que son 5 campos
+        [$minute, $hour, $day, $month, $weekday] = explode(
+            ' ',
+            (string) preg_replace('/\s+/', ' ', trim($this->expression)),
+        );
+        $at = static fn(): string => sprintf('%02d:%02d', (int) $hour, (int) $minute);
+        $isNumber = static fn(string $v): bool => preg_match('/^\d+$/', $v) === 1;
+        $days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+
+        if ($month !== '*') {
+            return $this->expression;
+        }
+
+        if ($hour === '*' && $day === '*' && $weekday === '*') {
+            if ($minute === '*') {
+                return 'Cada minuto';
+            }
+
+            if (preg_match('#^\*/(\d+)$#', $minute, $m) === 1) {
+                return "Cada {$m[1]} minutos";
+            }
+
+            if ($isNumber($minute)) {
+                return (int) $minute === 0 ? 'Cada hora' : "Cada hora, al minuto {$minute}";
+            }
+        }
+
+        if ($isNumber($minute) && $isNumber($hour)) {
+            if ($day === '*' && $weekday === '*') {
+                return 'Todos los días a las ' . $at();
+            }
+
+            if ($day === '*' && $isNumber($weekday)) {
+                return 'Los ' . $days[(int) $weekday] . ' a las ' . $at();
+            }
+
+            if ($day === '*' && $weekday === '1-5') {
+                return 'De lunes a viernes a las ' . $at();
+            }
+
+            if ($isNumber($day) && $weekday === '*') {
+                return "El día {$day} de cada mes a las " . $at();
+            }
+        }
+
+        return $this->expression;
+    }
+
     /** La próxima vez que corresponde, desde el minuto siguiente a `$from`. Busca hasta un año. */
     public function nextRun(DateTimeInterface $from): ?DateTimeImmutable
     {

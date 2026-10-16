@@ -29,7 +29,12 @@ class ScheduleRunCommand extends BaseCommand
         Schedule::tick();
         $due = Schedule::load()->due(new DateTimeImmutable());
         foreach ($due as $task) {
-            CommandExecutor::runInBackground('schedule:exec', [$task->id()]);
+            // La salida de cada tarea va al mismo log que el crontab: si falla, queda registrado
+            CommandExecutor::runInBackground(
+                'schedule:exec',
+                [$task->id()],
+                outputFile: getcwd() . '/versaWYS/logs/cron.log',
+            );
             $this->info('Lanzada: ' . $task->description());
         }
 

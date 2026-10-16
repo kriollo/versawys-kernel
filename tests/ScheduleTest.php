@@ -75,6 +75,24 @@ final class ScheduleTest extends TestCase
         );
     }
 
+    public function testLaFrecuenciaEnPalabras(): void
+    {
+        $cases = [
+            '* * * * *' => 'Cada minuto',
+            '*/5 * * * *' => 'Cada 5 minutos',
+            '0 * * * *' => 'Cada hora',
+            '15 * * * *' => 'Cada hora, al minuto 15',
+            '30 3 * * *' => 'Todos los días a las 03:30',
+            '0 9 * * 1' => 'Los lunes a las 09:00',
+            '0 8 * * 1-5' => 'De lunes a viernes a las 08:00',
+            '0 3 1 * *' => 'El día 1 de cada mes a las 03:00',
+            '0 0 1 1 *' => '0 0 1 1 *',
+        ];
+        foreach ($cases as $expression => $text) {
+            self::assertSame($text, (new CronExpression($expression))->describe(), $expression);
+        }
+    }
+
     public function testExpresionesInvalidasSeRechazanAlDefinir(): void
     {
         foreach (['* * * *', '60 * * * *', '* 24 * * *', '5-1 * * * *', 'a * * * *'] as $bad) {

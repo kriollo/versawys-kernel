@@ -13,6 +13,7 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
   - `withoutOverlapping()` usa un candado de archivo: si la ejecución anterior sigue corriendo, esa vuelta se omite.
   - Comandos: `app:schedule:run` (una sola línea en el crontab; lanza cada tarea en su propio proceso), `app:schedule:list` (próxima ejecución y resultado de la última) y `app:schedule:exec <id>`.
   - `CronExpression` acepta expresiones cron estándar de 5 campos.
+  - **Frecuencia en palabras** («Cada 5 minutos», «Todos los días a las 03:00»): la da `CronExpression::describe()` y la muestra el panel.
   - **La línea sugerida para el crontab** trae la ruta completa de PHP y escribe la salida en `versaWYS/logs/cron.log`. Cron corre con un `PATH` mínimo: con un PHP fuera de `/usr/bin` (cPanel, mise) el comando fallaba sin avisar, y con `/dev/null` el error se perdía.
   - `Schedule::report()` arma lo que muestran `app:schedule:list` y el panel, incluido si el crontab está llamando a `app:schedule:run`. Si no lo está, `app:schedule:list` lo avisa con la línea exacta para el crontab.
 
@@ -32,6 +33,7 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
   Cada falla dice cómo corregirla en cPanel y en Linux.
 
 ### Corregido
+- **`CommandExecutor` lanzaba los procesos con `php` sin ruta:** en cron y en PHP-FPM, que corren con un `PATH` mínimo, el proceso hijo no arrancaba y nada lo avisaba. Por eso el programador decía «Lanzada», pero la tarea nunca corría. Ahora usa la ruta completa del PHP actual (`CommandExecutor::phpBinary()`). Además, la salida de cada tarea programada va a `versaWYS/logs/cron.log`.
 - **`versaCLI status` pedía `tailwind.config.js`**, que Tailwind 4 ya no usa. Ahora revisa `src/dashboard/css/dashboard.css`. Sus extensiones y requisitos salen de `SystemCheck`.
 - **Una instalación nueva sin `config.json` mostraba un error fatal de PHP con código 200 en cualquier página.** Con la configuración creada pero sin instalar, llevaba al login y `/install` solo era accesible con el token que imprime la terminal.
 - **La barra del profiler no cambiaba al navegar en el SPA.** Ahora cada respuesta lleva `X-Versa-Profiler` y la barra pide `/_profiler/<id>.json`. CARGA mide cada página, y las demás llamadas a la API se cuentan.

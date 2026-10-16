@@ -6,6 +6,7 @@ namespace versaWYS\kernel;
 
 use DateTimeInterface;
 use RuntimeException;
+use versaWYS\kernel\cli\CommandExecutor;
 
 /**
  * Programador de tareas. Las tareas se definen en `app/schedule.php` y el servidor tiene una sola
@@ -81,7 +82,7 @@ final class Schedule
      * y si el crontab está llamando a `app:schedule:run`.
      *
      * @return array{
-     *     tasks: list<array{id: string, task: string, type: string, expression: string, overlaps: bool, next_run: ?string, last_run: ?array{started_at: string, ms: int, exit: int, error: ?string}}>,
+     *     tasks: list<array{id: string, task: string, type: string, expression: string, frequency: string, overlaps: bool, next_run: ?string, last_run: ?array{started_at: string, ms: int, exit: int, error: ?string}}>,
      *     last_tick: ?string,
      *     cron_running: bool,
      *     cron_line: string
@@ -96,6 +97,7 @@ final class Schedule
                 'task' => $task->description(),
                 'type' => $task->type,
                 'expression' => $task->expression(),
+                'frequency' => (new CronExpression($task->expression()))->describe(),
                 'overlaps' => $task->overlaps(),
                 'next_run' => $task->nextRun($now)?->format('Y-m-d H:i'),
                 'last_run' => $task->lastRun(),
@@ -113,28 +115,13 @@ final class Schedule
             // fuera de /usr/bin (mise, cPanel). La salida va a un log: un error no se pierde en /dev/null
             'cron_line' =>
                 '* * * * * '
-                    . self::phpBinary()
+                    . CommandExecutor::phpBinary()
                     . ' '
                     . getcwd()
                     . '/versaCLI app:schedule:run >> '
                     . getcwd()
                     . '/versaWYS/logs/cron.log 2>&1',
         ];
-    }
-
-    /**
-     * El PHP de consola de esta instalación. Desde la terminal es el que corre; desde la web (FPM,
-     * Apache) es el `php` de la misma carpeta de binarios.
-     */
-    public static function phpBinary(): string
-    {
-        if (in_array(PHP_SAPI, ['cli', 'cli-server'], true)) {
-            return PHP_BINARY;
-        }
-
-        $cli = PHP_BINDIR . '/php';
-
-        return is_executable($cli) ? $cli : 'php';
     }
 
     /** Lo llama app:schedule:run en cada pasada. */

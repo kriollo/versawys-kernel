@@ -31,6 +31,7 @@ class ScheduleListCommand extends BaseCommand
         if ($report['tasks'] !== []) {
             printf($line, 'Id', 'Tarea', 'Frecuencia', 'Próxima', 'Última');
         }
+
         foreach ($report['tasks'] as $task) {
             $last = $task['last_run'];
             $lastText = $last === null
