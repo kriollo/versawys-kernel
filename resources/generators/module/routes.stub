@@ -1,0 +1,47 @@
+<?php
+
+declare(strict_types=1);
+
+namespace app\routes;
+
+use app\controllers\{{Name}}Controller;
+use app\middleware\AuthMiddleware;
+use versaWYS\kernel\Router;
+
+// description: Pantalla de {{name}}.
+Router::get('/admin/{{url}}', [{{Name}}Controller::class, 'index'])->middleware([
+    [AuthMiddleware::class, 'checkSession'],
+    // Usuarios sin rol admin: solo si su perfil tiene esta pantalla en el menú
+    [AuthMiddleware::class, 'onlyUserWithAccess'],
+]);
+
+// API de la pantalla. onlyUserWithAccess compara con las URL del menú, por eso no va aquí: cada
+// registro se filtra por la empresa del usuario en el modelo. POST, PUT y DELETE exigen el token
+// CSRF (versaFetch lo envía).
+Router::group(
+    '/admin/{{url}}/api',
+    function (): void {
+        // description: {{Name}} de la empresa del usuario.
+        Router::get('/{{url}}', [{{Name}}Controller::class, 'listar']);
+
+        // description: Un registro de {{name}}.
+        // path-param name:id type:int description:ID del registro
+        Router::get('/{{url}}/{id}', [{{Name}}Controller::class, 'ver']);
+
+        // description: Crea un registro.
+        // request-body name:nombre type:string description:Nombre (máx. 120)
+        Router::post('/{{url}}', [{{Name}}Controller::class, 'crear']);
+
+        // description: Edita un registro.
+        // path-param name:id type:int description:ID del registro
+        // request-body name:nombre type:string description:Nombre (máx. 120)
+        Router::put('/{{url}}/{id}', [{{Name}}Controller::class, 'editar']);
+
+        // description: Elimina un registro.
+        // path-param name:id type:int description:ID del registro
+        Router::delete('/{{url}}/{id}', [{{Name}}Controller::class, 'eliminar']);
+    },
+    [
+        [AuthMiddleware::class, 'checkSession'],
+    ],
+);

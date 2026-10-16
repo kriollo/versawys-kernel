@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+namespace app\requests;
+
+use versaWYS\kernel\FormRequest;
+
+/**
+ * Datos para crear o editar {{name}}. El controlador la recibe ya validada; si no, se responde 422 con
+ * los errores por campo. Reglas: documentacion/Validacion.md
+ */
+final class {{Name}}Request extends FormRequest
+{
+    public function rules(): array
+    {
+        return [
+            'nombre' => 'required|max:120',
+        ];
+    }
+}

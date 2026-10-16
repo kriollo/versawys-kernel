@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+namespace app\requests;
+
+use versaWYS\kernel\FormRequest;
+
+/**
+ * Se pide como parámetro del método del controlador: `public function guardar({{Name}} $datos)`. El
+ * método recibe los datos ya validados ($datos->validated()); si no lo son, se responde 422 con los
+ * errores por campo. Reglas: documentacion/Validacion.md
+ */
+final class {{Name}} extends FormRequest
+{
+    public function rules(): array
+    {
+        return [
+            'nombre' => 'required|max:120',
+        ];
+    }
+
+    // Mensajes propios, por campo o campo.regla:
+    // public function messages(): array
+    // {
+    //     return ['nombre.required' => 'Indica un nombre'];
+    // }
+    // false responde 403 (por ejemplo, con Gate::allows(...))
+    // public function authorize(): bool
+    // {
+    //     return true;
+    // }
+}

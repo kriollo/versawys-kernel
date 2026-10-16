@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+namespace app\cron;
+
+use versaWYS\kernel\Loggin;
+
+/**
+ * Tarea programada: se agrega en app/schedule.php ($schedule->cron({{Name}}::class)->dailyAt('03:00')).
+ * La base de datos ya está conectada; el constructor puede pedir servicios o modelos (contenedor).
+ * Ver documentacion/Tareas_Programadas.md
+ */
+class {{Name}}
+{
+    public function run(): void
+    {
+        // Tu lógica aquí. Lo que imprimas queda en versaWYS/logs/cron.log
+        Loggin::info('{{Name}} ejecutada', 'schedule');
+    }
+}

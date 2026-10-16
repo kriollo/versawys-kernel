@@ -1,0 +1,53 @@
+<?php
+
+declare(strict_types=1);
+
+use versaWYS\kernel\Testing\TestDatabase;
+
+/*
+ * Módulo {{Name}}: la API completa (rutas, middlewares, controlador y base de datos) con TestClient,
+ * sobre una SQLite desechable con las migraciones del proyecto. Cada prueba usa su propia empresa.
+ */
+
+beforeAll(fn() => TestDatabase::boot());
+
+describe('{{Name}}', function (): void {
+    $api = '/admin/{{url}}/api/{{url}}';
+
+    it('crea, lista, edita y elimina registros de la empresa', function () use ($api): void {
+        $admin = TestDatabase::login(TestDatabase::user('admin', TestDatabase::empresa()));
+
+        $id = $admin->postJson($api, ['nombre' => 'Primero'])->assertStatus(201)->json('id');
+        $admin->getJson("{$api}/{$id}")->assertOk()->assertJsonPath('data.nombre', 'Primero');
+
+        $admin->putJson("{$api}/{$id}", ['nombre' => 'Editado'])->assertOk();
+        $admin->getJson($api)->assertOk()->assertJsonPath('data.0.nombre', 'Editado');
+
+        $admin->deleteJson("{$api}/{$id}")->assertOk();
+        $admin->getJson("{$api}/{$id}")->assertStatus(404);
+    });
+
+    it('valida los datos: 422 con el error del campo, no 500', function () use ($api): void {
+        $admin = TestDatabase::login(TestDatabase::user('admin', TestDatabase::empresa()));
+
+        $admin->postJson($api, [])->assertStatus(422)->assertJsonPath('errors.nombre', 'El campo nombre es obligatorio');
+    });
+
+    it('otra empresa no ve ni modifica los registros', function () use ($api): void {
+        $admin = TestDatabase::login(TestDatabase::user('admin', TestDatabase::empresa()));
+        $id = $admin->postJson($api, ['nombre' => 'Privado'])->json('id');
+
+        $otra = TestDatabase::login(TestDatabase::user('admin', TestDatabase::empresa()));
+        expect($otra->getJson($api)->json('data'))->toBe([]);
+        $otra->getJson("{$api}/{$id}")->assertStatus(404);
+        $otra->putJson("{$api}/{$id}", ['nombre' => 'Ajeno'])->assertStatus(404);
+        $otra->deleteJson("{$api}/{$id}")->assertStatus(404);
+
+        // Y nada cambió
+        $admin->getJson("{$api}/{$id}")->assertOk()->assertJsonPath('data.nombre', 'Privado');
+    });
+
+    it('un id que no es número responde 404', function () use ($api): void {
+        TestDatabase::login(TestDatabase::user())->getJson("{$api}/abc")->assertStatus(404);
+    });
+});

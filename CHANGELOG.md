@@ -32,6 +32,17 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
 
   Cada falla dice cómo corregirla en cPanel y en Linux.
 
+- **Generadores modernos:**
+  - `versaMODULE` y `RCMD` crean un módulo **aislado por empresa desde el inicio**: migración con `id_empresa`, un modelo que filtra cada consulta por empresa, una FormRequest, un controlador con el modelo inyectado y `Tenant::id()`, rutas REST documentadas y una prueba con `TestClient` que pasa recién generada.
+  - Antes, el módulo listaba los registros de todas las empresas, validaba en un middleware comentado y no tenía pruebas.
+  - Comandos nuevos: `request:make`, `job:make` y `test:make`. `cron:make` ya no abre otra conexión a la base de datos.
+  - Las plantillas viven en `resources/generators`.
+- **`Testing\TestDatabase`:**
+  - una SQLite desechable con las migraciones y los seeders del proyecto, compartida por toda la suite;
+  - `user()`, `empresa()` y `login()` crean datos de prueba con correos y RUT únicos;
+  - si otra prueba ya arrancó `TestClient`, usa esa misma base.
+- **`TestClient::booted()`.**
+
 ### Corregido
 - **`CommandExecutor` lanzaba los procesos con `php` sin ruta:** en cron y en PHP-FPM, que corren con un `PATH` mínimo, el proceso hijo no arrancaba y nada lo avisaba. Por eso el programador decía «Lanzada», pero la tarea nunca corría. Ahora usa la ruta completa del PHP actual (`CommandExecutor::phpBinary()`). Además, la salida de cada tarea programada va a `versaWYS/logs/cron.log`.
 - **`versaCLI status` pedía `tailwind.config.js`**, que Tailwind 4 ya no usa. Ahora revisa `src/dashboard/css/dashboard.css`. Sus extensiones y requisitos salen de `SystemCheck`.

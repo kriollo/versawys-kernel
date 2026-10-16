@@ -1,0 +1,66 @@
+<?php
+
+declare(strict_types=1);
+
+namespace app\models;
+
+use versaWYS\kernel\model\VersaORMModel;
+
+/**
+ * {{Name}} de cada empresa. Toda consulta filtra por id_empresa: un registro de otra empresa se trata
+ * como inexistente.
+ */
+class {{Name}} extends VersaORMModel
+{
+    protected string $table = '{{table}}';
+
+    /** @return list<array<string, mixed>> */
+    public function listar(int $idEmpresa): array
+    {
+        return $this
+            ->qb('{{table}}')
+            ->select(['id', 'nombre', 'created_at', 'updated_at'])
+            ->where('id_empresa', '=', $idEmpresa)
+            ->orderBy('id', 'desc')
+            ->getAll();
+    }
+
+    /** @return array<string, mixed>|null */
+    public function buscar(int $id, int $idEmpresa): ?array
+    {
+        $registro = $this
+            ->qb('{{table}}')
+            ->select(['id', 'nombre', 'created_at', 'updated_at'])
+            ->where('id', '=', $id)
+            ->where('id_empresa', '=', $idEmpresa)
+            ->firstArray();
+
+        return is_array($registro) && $registro !== [] ? $registro : null;
+    }
+
+    /** @param array<string, mixed> $datos los validados por {{Name}}Request */
+    public function crear(int $idEmpresa, array $datos): int
+    {
+        return (int) $this->qb('{{table}}')->insertGetId([
+            'id_empresa' => $idEmpresa,
+            'nombre' => $datos['nombre'],
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /** @param array<string, mixed> $datos los validados por {{Name}}Request */
+    public function actualizar(int $id, int $idEmpresa, array $datos): void
+    {
+        $this
+            ->qb('{{table}}')
+            ->where('id', '=', $id)
+            ->where('id_empresa', '=', $idEmpresa)
+            ->update(['nombre' => $datos['nombre'], 'updated_at' => date('Y-m-d H:i:s')]);
+    }
+
+    public function eliminar(int $id, int $idEmpresa): bool
+    {
+        return $this->qb('{{table}}')->where('id', '=', $id)->where('id_empresa', '=', $idEmpresa)->delete() > 0;
+    }
+}

@@ -66,8 +66,9 @@ final class GeneratorsTest extends TestCase
         $controlador = (string) file_get_contents('app/controllers/NotasRapidasController.php');
         self::assertStringContainsString("'m' => 'dashboard/js/notasrapidas/dashNotasRapidas'", $controlador);
         self::assertFileExists('src/dashboard/js/notasrapidas/dashNotasRapidas.vue');
+        // El componente llama a la API que genera versaMODULE (Scaffold::module): GET .../api/notasrapidas
         self::assertStringContainsString(
-            '/notasrapidas/api/list',
+            '/notasrapidas/api/notasrapidas',
             (string) file_get_contents('src/dashboard/js/notasrapidas/dashNotasRapidas.vue'),
         );
 

@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+use versaWYS\kernel\Testing\TestDatabase;
+
+/*
+ * Pruebas de {{Name}} con TestClient: la petición recorre la aplicación completa sobre una SQLite
+ * desechable con las migraciones del proyecto. Ver documentacion/Pruebas.md
+ */
+
+beforeAll(fn() => TestDatabase::boot());
+
+describe('{{Name}}', function (): void {
+    it('un administrador entra al panel', function (): void {
+        $admin = TestDatabase::login(TestDatabase::user());
+
+        $admin->get('/admin/dashboard')->assertOk();
+    });
+});

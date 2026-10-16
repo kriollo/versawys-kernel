@@ -49,6 +49,12 @@ final class TestClient
      * @param string $root raíz del proyecto (la carpeta de index.php)
      * @param string|null $configFile otro config.json, p. ej. uno con la base de datos de pruebas
      */
+    /** ¿Ya arrancó la aplicación en este proceso? (arranca una sola vez) */
+    public static function booted(): bool
+    {
+        return self::$root !== null;
+    }
+
     public static function boot(string $root, ?string $configFile = null): self
     {
         if (self::$root === null) {

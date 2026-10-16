@@ -1,0 +1,68 @@
+<?php
+
+declare(strict_types=1);
+
+namespace app\controllers;
+
+use app\models\{{Name}};
+use app\requests\{{Name}}Request;
+use versaWYS\kernel\GlobalControllers;
+use versaWYS\kernel\Tenant;
+
+class {{Name}}Controller extends GlobalControllers
+{
+    private const array NO_ENCONTRADO = ['success' => 0, 'message' => 'No encontrado', 'code' => 404];
+
+    // El contenedor crea el modelo: en una prueba se puede reemplazar por otro
+    public function __construct(
+        private readonly {{Name}} $modelo,
+    ) {
+        global $twig, $session;
+        parent::__construct($twig, $session);
+    }
+
+{{index}}
+
+    // API: un arreglo se responde como JSON; la clave `code` fija el estado HTTP.
+    // Tenant::id() es la empresa del usuario en sesión: nunca un id de empresa que mande el cliente.
+
+    public function listar(): array
+    {
+        return ['success' => 1, 'data' => $this->modelo->listar(Tenant::id())];
+    }
+
+    public function ver(int $id): array
+    {
+        $registro = $this->modelo->buscar($id, Tenant::id());
+
+        return $registro === null ? self::NO_ENCONTRADO : ['success' => 1, 'data' => $registro];
+    }
+
+    // Los datos llegan validados: si no, {{Name}}Request ya respondió 422
+    public function crear({{Name}}Request $datos): array
+    {
+        $id = $this->modelo->crear(Tenant::id(), $datos->validated());
+
+        return ['success' => 1, 'message' => 'Registro creado', 'id' => $id, 'code' => 201];
+    }
+
+    public function editar({{Name}}Request $datos, int $id): array
+    {
+        if ($this->modelo->buscar($id, Tenant::id()) === null) {
+            return self::NO_ENCONTRADO;
+        }
+
+        $this->modelo->actualizar($id, Tenant::id(), $datos->validated());
+
+        return ['success' => 1, 'message' => 'Registro actualizado'];
+    }
+
+    public function eliminar(int $id): array
+    {
+        return (
+            $this->modelo->eliminar($id, Tenant::id())
+                ? ['success' => 1, 'message' => 'Registro eliminado']
+                : self::NO_ENCONTRADO
+        );
+    }
+}
