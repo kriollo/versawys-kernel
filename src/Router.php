@@ -258,7 +258,15 @@ class Router
                     return $this->respondNotFound($request, $config, 'Página no encontrada');
                 }
 
-                echo Profiler::panel($url === '/_profiler' ? null : substr($url, strlen('/_profiler/')));
+                $id = $url === '/_profiler' ? null : substr($url, strlen('/_profiler/'));
+                // La barra pide el resumen de cada navegación del SPA
+                if ($id !== null && str_ends_with($id, '.json')) {
+                    $summary = Profiler::summaryFor(substr($id, 0, -5));
+
+                    return Response::json($summary ?? ['success' => 0], $summary === null ? 404 : 200);
+                }
+
+                echo Profiler::panel($id);
 
                 return true;
             }

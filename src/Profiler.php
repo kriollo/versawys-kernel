@@ -58,6 +58,8 @@ final class Profiler
         }
 
         self::begin();
+        // Las respuestas que no muestran la barra (navegación del SPA, API) la actualizan con este id
+        Output::header('X-Versa-Profiler: ' . Request::id());
         ob_start(static fn(string $html): string => self::injectToolbar($html, self::summary()));
         register_shutdown_function(self::finish(...));
     }
@@ -242,6 +244,18 @@ final class Profiler
             : self::page($data['method'] . ' ' . $data['path'], self::detailHtml($data));
     }
 
+    /**
+     * El resumen de un registro (lo que muestra la barra), para /_profiler/<id>.json.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function summaryFor(string $id): ?array
+    {
+        $data = self::load($id);
+
+        return $data === null ? null : self::summaryOf($data);
+    }
+
     /** @internal Solo para pruebas. */
     public static function reset(): void
     {
@@ -279,7 +293,8 @@ final class Profiler
             'db_ms' => $data['db_ms'],
             'n_plus_one' => count($data['n_plus_one']),
             'memory_mb' => $data['memory_mb'],
-            'controller' => $data['controller'],
+            // Sin el namespace: es lo que cabe en la barra
+            'controller' => $data['controller'] === null ? null : self::shortName((string) $data['controller']),
             'exceptions' => count($data['exceptions']),
         ];
     }
@@ -379,35 +394,64 @@ final class Profiler
         return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
-    /** @param array<string, mixed> $s */
+    /**
+     * La barra: el resumen inicial va en JSON y el mismo script la dibuja y la actualiza. En cada
+     * navegación del SPA (fetch con X-SPA) lee el id de X-Versa-Profiler y pide su resumen a
+     * /_profiler/<id>.json; las demás llamadas a la API solo se cuentan.
+     *
+     * @param array<string, mixed> $s
+     */
     private static function toolbar(array $s): string
     {
-        $alerts = $s['n_plus_one'] > 0 ? " <b class=\"vp-warn\">⚠ N+1 ×{$s['n_plus_one']}</b>" : '';
-        $alerts .= $s['exceptions'] > 0 ? " <b class=\"vp-warn\">⚠ {$s['exceptions']} excepción(es)</b>" : '';
+        global $config;
 
+        $nonce = self::h(SecurityUtils::cspNonce());
+        $initial = json_encode(
+            $s,
+            JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE,
+        );
+        $framework = json_encode(
+            (string) ($config['framework'] ?? 'versaWYS-PHP'),
+            JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT,
+        );
+
+        // La misma franja roja de modo debug que dibujaba versaTwig, ahora con las métricas del profiler
         return (
             '<style nonce="'
-            . self::h(SecurityUtils::cspNonce())
+            . $nonce
             . '">'
-            . '#versa-profiler{position:fixed;right:12px;bottom:12px;z-index:2147483647;font:12px/1.4 ui-monospace,monospace;'
-            . 'background:#0f172a;color:#e2e8f0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:6px 10px}'
-            . '#versa-profiler a{color:inherit;text-decoration:none}#versa-profiler .vp-warn{color:#fbbf24}'
-            . '</style><div id="versa-profiler"><a href="/_profiler/'
-            . self::h($s['id'])
-            . '" target="_blank" rel="noopener">'
-            . self::h($s['status'])
-            . ' · '
-            . self::h($s['ms'])
-            . ' ms · '
-            . self::h($s['queries'])
-            . ' SQL ('
-            . self::h($s['db_ms'])
-            . ' ms) · '
-            . self::h($s['memory_mb'])
-            . ' MB'
-            . ($s['controller'] !== null ? ' · ' . self::h(self::shortName((string) $s['controller'])) : '')
-            . $alerts
-            . '</a></div>'
+            . '#versa-profiler{position:fixed;left:0;right:0;bottom:0;z-index:2147483647;display:flex;align-items:center;'
+            . 'justify-content:space-between;gap:12px;flex-wrap:wrap;padding:6px 12px;background:#7f1d1d;color:#fff;'
+            . 'font:12px/1.4 system-ui,sans-serif;box-shadow:0 -2px 8px rgba(0,0,0,.25)}'
+            . '#versa-profiler a{color:inherit;text-decoration:none;font-family:ui-monospace,monospace}#versa-profiler a:hover{text-decoration:underline}'
+            . '#versa-profiler .vp-warn{color:#fde68a}#versa-profiler .vp-api{opacity:.8}'
+            . '#versa-profiler .vp-brand{display:flex;align-items:center;gap:6px}#versa-profiler img{width:20px;height:20px}'
+            . '</style><div id="versa-profiler"><span>Modo Debug: Activado</span><span id="vp-metrics"></span>'
+            . '<span class="vp-brand"><img src="/public/dashboard/img/favicon.webp" alt="">VersaWYS Framework <span id="vp-load"></span></span></div>'
+            . '<script nonce="'
+            . $nonce
+            . '">(function(){'
+            . 'var bar=document.getElementById("vp-metrics"),current='
+            . $initial
+            . ',api=0;'
+            . 'console.log("%c"+'
+            . $framework
+            . ',"color:#fff;background:#f00;padding:5px;border-radius:5px");'
+            . 'function add(parent,tag,text,cls){var e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;parent.appendChild(e);return e;}'
+            . 'function render(s){bar.textContent="";var a=add(bar,"a","");a.href="/_profiler/"+encodeURIComponent(s.id);a.target="_blank";a.rel="noopener";'
+            . 'a.textContent=s.status+" · "+s.ms+" ms · "+s.queries+" SQL ("+s.db_ms+" ms) · "+s.memory_mb+" MB"+(s.controller?" · "+s.controller:"");'
+            . 'if(s.n_plus_one>0)add(a,"b"," ⚠ N+1 ×"+s.n_plus_one,"vp-warn");if(s.exceptions>0)add(a,"b"," ⚠ "+s.exceptions+" excepción(es)","vp-warn");'
+            . 'if(api>0){var l=add(bar,"a"," · +"+api+" API","vp-api");l.href="/_profiler";l.target="_blank";l.rel="noopener";}}'
+            . 'function load(id,retry){fetch("/_profiler/"+encodeURIComponent(id)+".json").then(function(r){if(r.ok)return r.json();'
+            . 'if(retry)setTimeout(function(){load(id,false);},300);return null;}).then(function(s){if(s){current=s;render(s);}}).catch(function(){});}'
+            . 'function loadTime(seconds){document.getElementById("vp-load").textContent="· CARGA: "+seconds.toFixed(2)+"s";}'
+            . 'var original=window.fetch;window.fetch=function(input,init){var t0=performance.now();return original.apply(this,arguments).then(function(res){'
+            . 'var id=res.headers.get("X-Versa-Profiler");if(id){var h=new Headers(init&&init.headers?init.headers:(input instanceof Request?input.headers:undefined));'
+            // En una navegación del SPA, CARGA es lo que tardó esa página
+            . 'if(h.get("X-SPA")){api=0;loadTime((performance.now()-t0)/1000);load(id,true);}else{api++;render(current);}}return res;});};'
+            // Tiempo de carga en el navegador, desde el inicio de la navegación
+            . 'window.addEventListener("load",function(){loadTime(performance.now()/1000);});'
+            . 'render(current);})();</script>'
         );
     }
 

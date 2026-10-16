@@ -402,7 +402,8 @@ class versaTwig extends Environment
     private function debug(): string
     {
         global $config;
-        if (!$config['build']['debug']) {
+        // Con el profiler activo, su barra ya muestra el modo debug, las métricas y el tiempo de carga
+        if (!$config['build']['debug'] || Profiler::active()) {
             return '';
         }
 
