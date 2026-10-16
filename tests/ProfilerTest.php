@@ -83,6 +83,138 @@ final class ProfilerTest extends TestCase
         }
     }
 
+    public function testGuardaLaPeticionYLaRespuestaParaRepetirlaSinSecretos(): void
+    {
+        // @mago-expect lint:no-literal-password
+        $_SERVER = [
+            'REQUEST_METHOD' => 'POST',
+            'REQUEST_URI' => '/admin/clientes?page=2&api_key=k-secreta',
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_COOKIE' => 'PHPSESSID=sesion-secreta',
+            'HTTP_AUTHORIZATION' => 'Bearer jwt-secreto',
+            'HTTP_X_CSRF_TOKEN' => 'csrf-secreto',
+            'HTTP_X_CLIENTE' => 'app-movil',
+            'HTTP_HOST' => 'localhost',
+            'HTTP_SEC_FETCH_MODE' => 'cors',
+            'HTTP_REFERER' => 'http://localhost/admin',
+            'HTTP_USER_AGENT' => 'Chrome',
+        ];
+        // @mago-expect lint:no-literal-password
+        $_GET = ['page' => '2', 'api_key' => 'k-secreta'];
+        // @mago-expect lint:no-literal-password
+        Request::setInput('{"nombre":"Ana","password":"Clave-secreta","datos":{"token":"t-secreto"}}');
+        $GLOBALS['request'] = new Request();
+
+        Profiler::begin();
+        $data = Profiler::finish();
+        Profiler::attachResponse('{"success":1,"access_token":"r-secreto","id":7}', [
+            'Content-Type: application/json',
+            'Set-Cookie: tknHash=jwt-de-respuesta; HttpOnly',
+        ]);
+        Request::setInput(null);
+        unset($GLOBALS['request']);
+
+        $stored = (string) file_get_contents($this->dir . '/' . $data['id'] . '.json');
+        foreach ([
+            'sesion-secreta',
+            'jwt-secreto',
+            'csrf-secreto',
+            'Clave-secreta',
+            't-secreto',
+            'k-secreta',
+            'r-secreto',
+            'jwt-de-respuesta',
+        ] as $secret) {
+            self::assertStringNotContainsString($secret, $stored, "{$secret} no debe quedar en disco");
+        }
+
+        $replay = Profiler::replayFor((string) $data['id']);
+        self::assertNotNull($replay);
+        self::assertSame('POST', $replay['method']);
+        self::assertSame('/admin/clientes?page=2&api_key=%5Boculto%5D', $replay['url']);
+        self::assertSame(['X-Cliente' => 'app-movil'], $replay['headers'], 'sin las ocultas ni las de la conexión');
+        // @mago-expect lint:no-literal-password
+        self::assertSame(
+            ['nombre' => 'Ana', 'password' => '[oculto]', 'datos' => ['token' => '[oculto]']],
+            json_decode($replay['body'], true),
+        );
+
+        $detalle = Profiler::panel((string) $data['id']);
+        self::assertStringContainsString('Repetir en el probador', $detalle);
+        self::assertStringContainsString('/doc?route=all&amp;replay=' . $data['id'], $detalle);
+        self::assertStringContainsString('&quot;id&quot;: 7', $detalle, 'el cuerpo de la respuesta');
+        self::assertStringContainsString('tknHash=[oculto]', $detalle);
+    }
+
+    public function testFormulariosArchivosYCuerposGrandesOBinarios(): void
+    {
+        $_SERVER = [
+            'REQUEST_METHOD' => 'POST',
+            'REQUEST_URI' => '/subir',
+            'CONTENT_TYPE' => 'multipart/form-data; boundary=x',
+        ];
+        // @mago-expect lint:no-literal-password
+        $_POST = ['titulo' => 'Informe', 'password' => 'no-guardar'];
+        $_FILES = ['adjunto' => [
+            'name' => 'informe.pdf',
+            'type' => 'application/pdf',
+            'tmp_name' => '/tmp/x',
+            'error' => 0,
+            'size' => 1234,
+        ]];
+
+        Profiler::begin();
+        $data = Profiler::finish();
+        $_POST = [];
+        $_FILES = [];
+
+        // @mago-expect lint:no-literal-password
+        self::assertSame(
+            ['titulo' => 'Informe', 'password' => '[oculto]'],
+            json_decode($data['request']['body'], true),
+        );
+        self::assertSame(
+            [['field' => 'adjunto', 'name' => 'informe.pdf', 'type' => 'application/pdf', 'size' => 1234]],
+            $data['request']['files'],
+        );
+        self::assertStringContainsString('elegirlos de nuevo', Profiler::panel((string) $data['id']));
+
+        // Un formulario urlencoded queda en su formato, para reenviarlo
+        $_SERVER = [
+            'REQUEST_METHOD' => 'POST',
+            'REQUEST_URI' => '/login',
+            'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
+        ];
+        Request::setInput('email=ana%40x.cl&password=secreta');
+        $GLOBALS['request'] = new Request();
+        Profiler::begin();
+        $form = Profiler::finish();
+        self::assertSame('email=ana%40x.cl&password=%5Boculto%5D', $form['request']['body']);
+
+        // Un binario no se guarda; un texto enorme, recortado
+        Profiler::attachResponse("\x89PNG\x00\xff\xfe", ['Content-Type: image/png']);
+        $png = Profiler::replayFor((string) $form['id']);
+        self::assertNotNull($png);
+        $stored = json_decode((string) file_get_contents($this->dir . '/' . $form['id'] . '.json'), true);
+        self::assertStringStartsWith('[contenido binario', $stored['response']['body']);
+
+        Request::setInput(str_repeat('a', 70_000));
+        $_SERVER['CONTENT_TYPE'] = 'text/plain';
+        $GLOBALS['request'] = new Request();
+        Profiler::begin();
+        $grande = Profiler::finish();
+        self::assertStringContainsString('[recortado: 70000 bytes en total]', $grande['request']['body']);
+        self::assertLessThan(66_000, strlen($grande['request']['body']));
+
+        Request::setInput(null);
+        unset($GLOBALS['request']);
+    }
+
+    public function testUnRegistroInexistenteNoSeRepite(): void
+    {
+        self::assertNull(Profiler::replayFor('no-existe'));
+    }
+
     public function testDetectaLaMismaConsultaRepetidaComoPosibleNMasUno(): void
     {
         $queries = [];

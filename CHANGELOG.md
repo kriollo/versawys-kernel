@@ -57,6 +57,10 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
 - **Modo mantenimiento** (`Maintenance`): `app:down` hace que todo responda 503, con `Retry-After`; la API responde en JSON. `app:up` lo termina.
   - Quien abre `/<clave>` una vez queda con una cookie firmada (no es la clave) y sigue entrando. `--secret` la elige; si no, se genera una.
   - El estado vive en `down.json`, junto a `config.json`: sobrevive a `cache:clear`.
+- **El profiler guarda la petición y la respuesta, y las repite en el probador de `/doc`**, como el inspector de ngrok:
+  - método, URL con su query, cabeceras y cuerpo de la petición; estado, cabeceras y cuerpo de la respuesta, hasta 64 KB cada cuerpo;
+  - sin secretos: `Cookie`, `Authorization`, el token CSRF y todo campo con nombre de secreto quedan como `[oculto]`; de los archivos, solo nombre, tipo y tamaño;
+  - «Repetir en el probador» abre `/doc?route=all&replay=<id>`, que pide `/_profiler/<id>.request.json` y precarga el probador. La plantilla `versaRoute.twig` del proyecto debe actualizarse para tener el botón.
 - **`TestClient::postFile(uri, datos, [campo => ruta])`**: un formulario con archivos, para probar subidas (avatares, documentos).
 - **`TestClient::withConfig(cambios, fn)`**: corre una prueba con otras claves de `config.json` y después deja la configuración como estaba.
 - **Empresa suspendida** (`empresas.estado = 0`): `checkSession` cierra la sesión de sus usuarios, salvo la del superadministrador. Requiere que `Users::findWithCompany()` entregue `empresa_estado` (el esqueleto ya lo hace); sin esa clave, no se revisa.

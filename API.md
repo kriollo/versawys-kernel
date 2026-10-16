@@ -48,7 +48,7 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`RouteParameterMismatch`** — un parámetro de la ruta no calza con el tipo del método (`int $id`): el Router responde 404
 - **`RequestHalted`** — en pruebas reemplaza al `exit()` de una petición (extiende `Error`)
 - **`Maintenance`** — `down`, `up`, `status`, `file`, `COOKIE`; *interno*: `handle`
-- **`Profiler`** — `enabled`, `active`, `span`, `query`, `exception`, `cache`, `job`, `nPlusOne`, `allowed`, `panel`; *interno*: `start`, `begin`, `finish`, `injectToolbar`, `reset`, `dir`. Solo actúa con `build.debug`
+- **`Profiler`** — `enabled`, `active`, `span`, `query`, `exception`, `cache`, `job`, `nPlusOne`, `allowed`, `panel`, `replayFor`; *interno*: `start`, `begin`, `finish`, `injectToolbar`, `attachResponse`, `reset`, `dir`. Solo actúa con `build.debug`
 - **`Schedule`** — `load`, `cron`, `command`, `tasks`, `due`, `find`; *interno*: `dir`
 - **`ScheduledTask`** — `id`, `expression`, `overlaps`, `cron`, `everyMinute`, `everyMinutes`, `hourly`, `hourlyAt`, `daily`, `dailyAt`, `weeklyOn`, `monthlyOn`, `withoutOverlapping`, `isDue`, `nextRun`, `description`, `execute`, `lastRun`
 - **`CronExpression`** — `isDue`, `nextRun`

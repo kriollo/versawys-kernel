@@ -284,6 +284,13 @@ class Router
                 }
 
                 $id = $url === '/_profiler' ? null : substr($url, strlen('/_profiler/'));
+                // El probador de /doc pide la petición para repetirla
+                if ($id !== null && str_ends_with($id, '.request.json')) {
+                    $replay = Profiler::replayFor(substr($id, 0, -13));
+
+                    return Response::json($replay ?? ['success' => 0], $replay === null ? 404 : 200);
+                }
+
                 // La barra pide el resumen de cada navegación del SPA
                 if ($id !== null && str_ends_with($id, '.json')) {
                     $summary = Profiler::summaryFor(substr($id, 0, -5));
