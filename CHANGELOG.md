@@ -54,6 +54,9 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
 - **`SignedUrl`**: enlaces que vencen, para descargas o confirmaciones por correo.
   - `SignedUrl::make('/ruta', segundos, [params])` firma la ruta, los parámetros y el vencimiento.
   - El middleware `[SignedUrl::class, 'check']` responde 403 si el enlace venció o fue alterado.
+- **Modo mantenimiento** (`Maintenance`): `app:down` hace que todo responda 503, con `Retry-After`; la API responde en JSON. `app:up` lo termina.
+  - Quien abre `/<clave>` una vez queda con una cookie firmada (no es la clave) y sigue entrando. `--secret` la elige; si no, se genera una.
+  - El estado vive en `down.json`, junto a `config.json`: sobrevive a `cache:clear`.
 
 ### Corregido
 - **`CommandExecutor` lanzaba los procesos con `php` sin ruta:** en cron y en PHP-FPM, que corren con un `PATH` mínimo, el proceso hijo no arrancaba y nada lo avisaba. Por eso el programador decía «Lanzada», pero la tarea nunca corría. Ahora usa la ruta completa del PHP actual (`CommandExecutor::phpBinary()`). Además, la salida de cada tarea programada va a `versaWYS/logs/cron.log`.

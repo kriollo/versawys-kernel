@@ -47,6 +47,7 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`Output`** — `header`, `removeHeader`, `status`, `cookie`, `halt`, `capturing`; *interno*: `capture`, `release`. El kernel escribe la respuesta solo por aquí: en producción equivale a `header()`, `http_response_code()`, `setcookie()` y `exit()`
 - **`RouteParameterMismatch`** — un parámetro de la ruta no calza con el tipo del método (`int $id`): el Router responde 404
 - **`RequestHalted`** — en pruebas reemplaza al `exit()` de una petición (extiende `Error`)
+- **`Maintenance`** — `down`, `up`, `status`, `file`, `COOKIE`; *interno*: `handle`
 - **`Profiler`** — `enabled`, `active`, `span`, `query`, `exception`, `cache`, `job`, `nPlusOne`, `allowed`, `panel`; *interno*: `start`, `begin`, `finish`, `injectToolbar`, `reset`, `dir`. Solo actúa con `build.debug`
 - **`Schedule`** — `load`, `cron`, `command`, `tasks`, `due`, `find`; *interno*: `dir`
 - **`ScheduledTask`** — `id`, `expression`, `overlaps`, `cron`, `everyMinute`, `everyMinutes`, `hourly`, `hourlyAt`, `daily`, `dailyAt`, `weeklyOn`, `monthlyOn`, `withoutOverlapping`, `isDue`, `nextRun`, `description`, `execute`, `lastRun`
@@ -86,7 +87,7 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 
 La maquinaria del CLI y sus generadores. Se usan a través de `php versaCLI`, no desde el código de la aplicación.
 
-`cli\ApplicationCommandManager`, `cli\CacheManager`, `cli\CommandLineInterface`, `cli\CommandMakeCommand`, `cli\CommandRegistry`, `cli\ControllerManager`, `cli\CronManager`, `cli\FrontManager`, `cli\HelpView`, `cli\LogManager`, `cli\MiddlewareManager`, `cli\MigrationManager`, `cli\ModelManager`, `cli\RouteManager`, `cli\SeederManager`, `cli\ServerManager`, `cli\StatusManager`, `cli\VersionManager`, `cli\commands\CheckDeployCommand`, `cli\commands\CheckPsr4Command`, `cli\commands\DeployFinishCommand`, `cli\commands\KernelPublishCommand`, `cli\commands\MailSendCommand`, `helpers\FilesFunction`.
+`cli\ApplicationCommandManager`, `cli\CacheManager`, `cli\CommandLineInterface`, `cli\CommandMakeCommand`, `cli\CommandRegistry`, `cli\ControllerManager`, `cli\CronManager`, `cli\FrontManager`, `cli\HelpView`, `cli\LogManager`, `cli\MiddlewareManager`, `cli\MigrationManager`, `cli\ModelManager`, `cli\RouteManager`, `cli\SeederManager`, `cli\ServerManager`, `cli\StatusManager`, `cli\VersionManager`, `cli\commands\CheckDeployCommand`, `cli\commands\CheckPsr4Command`, `cli\commands\DownCommand`, `cli\commands\UpCommand`, `cli\commands\DeployFinishCommand`, `cli\commands\KernelPublishCommand`, `cli\commands\MailSendCommand`, `helpers\FilesFunction`.
 
 ## Cómo se mantiene
 

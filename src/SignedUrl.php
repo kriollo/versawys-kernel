@@ -49,7 +49,7 @@ final class SignedUrl
     /**
      * Middleware: la petición actual debe venir con una firma válida y vigente; si no, 403.
      *
-     * @return true|array{success: int, message: string, code: int}
+     * @return array{success: int, message: string, code: int}|true
      */
     public function check(): true|array
     {

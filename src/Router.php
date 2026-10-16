@@ -248,6 +248,11 @@ class Router
 
             $url = self::normalize_url($request->getUrl());
 
+            // app:down: 503 para todos, salvo quien entró con la clave
+            if (Maintenance::handle($request, $url)) {
+                return true;
+            }
+
             if ($url === '/up' && in_array($method, ['get', 'head'], true)) {
                 return Response::json(self::health(), 200);
             }
