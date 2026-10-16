@@ -46,6 +46,7 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`Output`** — `header`, `removeHeader`, `status`, `cookie`, `halt`, `capturing`; *interno*: `capture`, `release`. El kernel escribe la respuesta solo por aquí: en producción equivale a `header()`, `http_response_code()`, `setcookie()` y `exit()`
 - **`RouteParameterMismatch`** — un parámetro de la ruta no calza con el tipo del método (`int $id`): el Router responde 404
 - **`RequestHalted`** — en pruebas reemplaza al `exit()` de una petición (extiende `Error`)
+- **`Profiler`** — `enabled`, `active`, `span`, `query`, `exception`, `cache`, `job`, `nPlusOne`, `allowed`, `panel`; *interno*: `start`, `begin`, `finish`, `injectToolbar`, `reset`, `dir`. Solo actúa con `build.debug`
 - **`Queue`** — `push`, `work`, `failed`, `retry`, `createTable` (la llama la migración del proyecto)
 - **`RateLimitMiddleware`** — `checkApiLimit`, `checkLoginLimit`, `checkUploadLimit`, `checkSensitiveLimit`
 - **`Request`** — `setParam`, `get`, `file`, `getAllParams`, `getRawParams`, `getAllFiles`, `getContentType`, `getMethod`, `getUrl`, `getFiles`, `getIp`, `getClientIp`, `getRawBody`, `getBaseUrl`, `clientIp`, `isTrustedProxy`, `getHeader`, `isApiCall`, `id`; *interno*: `setInput`, `resetRequestState`, `procesaFormData`, `parseProxyRange`, `isSPARequest`, `isSPARequestStatic`, `isApiRequest`

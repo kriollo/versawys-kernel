@@ -4,52 +4,15 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\Tests;
 
-use Override;
 use PHPUnit\Framework\TestCase;
 use versaWYS\kernel\Container;
-use versaWYS\kernel\FormRequest;
 use versaWYS\kernel\Gate;
 use versaWYS\kernel\Output;
 use versaWYS\kernel\Request;
 use versaWYS\kernel\RequestHalted;
-
-final class GuardarCosa extends FormRequest
-{
-    public static bool $permitir = true;
-
-    #[Override]
-    public function rules(): array
-    {
-        return ['nombre' => 'required|max:10', 'tags.*' => 'string'];
-    }
-
-    #[Override]
-    public function authorize(): bool
-    {
-        return self::$permitir;
-    }
-}
-
-final class ControladorCosas
-{
-    public static int $llamadas = 0;
-
-    public function guardar(GuardarCosa $datos): array
-    {
-        self::$llamadas++;
-
-        return $datos->validated();
-    }
-}
-
-final class PoliticaFacturas
-{
-    /** @param array<string, mixed> $usuario */
-    public function anular(array $usuario, array $factura): bool
-    {
-        return $factura['autor'] === $usuario['id'];
-    }
-}
+use versaWYS\kernel\Tests\Fixtures\ControladorCosas;
+use versaWYS\kernel\Tests\Fixtures\GuardarCosa;
+use versaWYS\kernel\Tests\Fixtures\PoliticaFacturas;
 
 final class AuthorizationTest extends TestCase
 {

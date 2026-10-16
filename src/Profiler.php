@@ -1,0 +1,585 @@
+<?php
+
+declare(strict_types=1);
+
+namespace versaWYS\kernel;
+
+use Throwable;
+use VersaORM\VersaORM;
+
+/**
+ * Profiler de desarrollo: qué hizo cada petición (tiempos, consultas, caché, cola, excepciones).
+ *
+ * - Solo con `build.debug` (y `profiler.enabled`, activo por defecto). En producción no corre.
+ * - El panel (`/_profiler`) solo responde desde la propia máquina o desde `profiler.allowed_ips`.
+ * - Nunca guarda valores sensibles: el SQL va con sus `?` y sin los valores, de la URL solo la ruta
+ *   y los nombres de los parámetros, de la sesión solo los nombres de las claves, de la cola solo
+ *   la clase del trabajo. Ni cookies ni cabeceras.
+ *
+ * Cada petición queda en `versaWYS/cache/profiler/<id>.json`; se guardan las últimas 100.
+ */
+final class Profiler
+{
+    /** La misma consulta (mismo SQL) este número de veces o más en una petición: posible N+1 */
+    public const int N_PLUS_ONE = 5;
+
+    private const int KEEP = 100;
+
+    private const int MAX_QUERIES = 500;
+
+    /** @var array<string, mixed>|null null = no se está midiendo esta petición */
+    private static ?array $data = null;
+
+    private static int|float $start = 0;
+
+    /** @var array<string, mixed>|null resumen de la petición recién cerrada, para la barra */
+    private static ?array $summary = null;
+
+    public static function enabled(): bool
+    {
+        global $config;
+
+        return ($config['build']['debug'] ?? false) === true && ($config['profiler']['enabled'] ?? true) !== false;
+    }
+
+    public static function active(): bool
+    {
+        return self::$data !== null;
+    }
+
+    /**
+     * Lo llama App::run: empieza a medir y, al terminar la petición, guarda el registro y agrega la
+     * barra a las páginas HTML.
+     */
+    public static function start(): void
+    {
+        if (!self::enabled() || str_starts_with(self::path(), '/_profiler')) {
+            return;
+        }
+
+        self::begin();
+        ob_start(static fn(string $html): string => self::injectToolbar($html, self::summary()));
+        register_shutdown_function(self::finish(...));
+    }
+
+    /** @internal Empieza el registro de la petición actual (sin búfer ni cierre automático). */
+    public static function begin(): void
+    {
+        self::$start = hrtime(true);
+        self::$data = [
+            'id' => Request::id(),
+            'time' => date('Y-m-d H:i:s'),
+            // Para ordenar: varias peticiones caen en el mismo segundo
+            'started' => microtime(true),
+            'method' => strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET'),
+            'path' => self::path(),
+            // Solo los nombres: los valores pueden ser tokens o datos personales
+            'query_keys' => array_keys($_GET),
+            'controller' => null,
+            'spans' => [],
+            'queries' => [],
+            'exceptions' => [],
+            'cache' => ['hits' => 0, 'misses' => 0, 'writes' => 0],
+            'jobs' => [],
+        ];
+
+        VersaORM::onQuery(self::query(...));
+    }
+
+    /** Tiempo de un middleware o del controlador. */
+    public static function span(string $type, string $name, float $ms): void
+    {
+        if (self::$data === null) {
+            return;
+        }
+
+        self::$data['spans'][] = ['type' => $type, 'name' => $name, 'ms' => round($ms, 2)];
+        if ($type === 'controller') {
+            self::$data['controller'] = $name;
+        }
+    }
+
+    /**
+     * Una consulta de VersaORM. Los bindings no se guardan: solo cuántos eran.
+     *
+     * @param array<int|string, mixed> $bindings
+     */
+    public static function query(string $sql, array $bindings, float $ms, ?Throwable $error = null): void
+    {
+        if (self::$data === null || count(self::$data['queries']) >= self::MAX_QUERIES) {
+            return;
+        }
+
+        self::$data['queries'][] = [
+            'sql' => $sql,
+            'params' => count($bindings),
+            'ms' => round($ms, 2),
+            'error' => $error?->getMessage(),
+        ];
+    }
+
+    public static function exception(Throwable $e): void
+    {
+        if (self::$data === null) {
+            return;
+        }
+
+        self::$data['exceptions'][] = [
+            'class' => $e::class,
+            'message' => $e->getMessage(),
+            'file' => str_replace(getcwd() . '/', '', $e->getFile()),
+            'line' => $e->getLine(),
+        ];
+    }
+
+    /** @param 'hits'|'misses'|'writes' $event */
+    public static function cache(string $event): void
+    {
+        if (self::$data !== null) {
+            self::$data['cache'][$event]++;
+        }
+    }
+
+    public static function job(string $job, string $queue): void
+    {
+        if (self::$data !== null) {
+            self::$data['jobs'][] = ['job' => $job, 'queue' => $queue];
+        }
+    }
+
+    /**
+     * Cierra el registro: totales, N+1, sesión (solo nombres de claves) y lo guarda en disco.
+     *
+     * @return array<string, mixed>|null el registro guardado
+     */
+    public static function finish(): ?array
+    {
+        if (self::$data === null) {
+            return null;
+        }
+
+        VersaORM::onQuery(null);
+
+        $data = self::$data;
+        $status = http_response_code();
+        $data['status'] = is_int($status) && $status > 0 ? $status : 200;
+        $data['ms'] = round((hrtime(true) - self::$start) / 1e6, 2);
+        $data['memory_mb'] = round(memory_get_peak_usage(true) / 1_048_576, 1);
+        $data['session_keys'] = session_status() === PHP_SESSION_ACTIVE ? array_keys($_SESSION) : [];
+        $data['db_ms'] = round(array_sum(array_column($data['queries'], 'ms')), 2);
+        $data['n_plus_one'] = self::nPlusOne($data['queries']);
+        self::$data = null;
+        self::$summary = self::summaryOf($data);
+
+        try {
+            self::store($data);
+        } catch (Throwable) { // @mago-expect lint:no-empty-catch-clause
+            // El profiler nunca puede romper la petición
+        }
+
+        return $data;
+    }
+
+    /**
+     * Consultas con el mismo SQL repetidas N_PLUS_ONE veces o más.
+     *
+     * @param list<array{sql: string}> $queries
+     *
+     * @return array<string, int> sql => veces
+     */
+    public static function nPlusOne(array $queries): array
+    {
+        $counts = array_count_values(array_column($queries, 'sql'));
+        arsort($counts);
+
+        return array_filter($counts, static fn(int $times): bool => $times >= self::N_PLUS_ONE);
+    }
+
+    /**
+     * Agrega la barra antes de `</body>` si la respuesta es HTML. JSON, archivos y fragmentos del SPA
+     * quedan intactos.
+     *
+     * @param array<string, mixed>|null $summary
+     */
+    public static function injectToolbar(string $html, ?array $summary): string
+    {
+        $position = strripos($html, '</body>');
+        if ($summary === null || $position === false || !self::isHtmlResponse()) {
+            return $html;
+        }
+
+        return substr($html, 0, $position) . self::toolbar($summary) . substr($html, $position);
+    }
+
+    /**
+     * ¿Puede ver el panel quien hace la petición? Solo desde la propia máquina o desde profiler.allowed_ips.
+     */
+    public static function allowed(string $ip): bool
+    {
+        global $config;
+
+        $allowed = ['127.0.0.1', '::1', ...array_map(strval(...), (array) ($config['profiler']['allowed_ips'] ?? []))];
+
+        return self::enabled() && in_array($ip, $allowed, true);
+    }
+
+    /**
+     * El panel: la lista de peticiones, o el detalle de una.
+     */
+    public static function panel(?string $id): string
+    {
+        if ($id === null) {
+            return self::page('Profiler', self::listHtml(self::recent()));
+        }
+
+        $data = self::load($id);
+
+        return $data === null
+            ? self::page(
+                'Profiler',
+                '<p>No existe el registro ' . self::h($id) . '.</p><p><a href="/_profiler">Volver</a></p>',
+            )
+            : self::page($data['method'] . ' ' . $data['path'], self::detailHtml($data));
+    }
+
+    /** @internal Solo para pruebas. */
+    public static function reset(): void
+    {
+        self::$data = null;
+        self::$summary = null;
+    }
+
+    /** @internal */
+    public static function dir(): string
+    {
+        global $config;
+
+        return rtrim((string) ($config['profiler']['dir'] ?? 'versaWYS/cache/profiler'), '/') . '/';
+    }
+
+    /** @return array<string, mixed>|null */
+    private static function summary(): ?array
+    {
+        // El búfer se cierra después de las funciones de cierre: finish() ya armó el resumen
+        return self::$summary;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return array<string, mixed>
+     */
+    private static function summaryOf(array $data): array
+    {
+        return [
+            'id' => $data['id'],
+            'status' => $data['status'],
+            'ms' => $data['ms'],
+            'queries' => count($data['queries']),
+            'db_ms' => $data['db_ms'],
+            'n_plus_one' => count($data['n_plus_one']),
+            'memory_mb' => $data['memory_mb'],
+            'controller' => $data['controller'],
+            'exceptions' => count($data['exceptions']),
+        ];
+    }
+
+    private static function path(): string
+    {
+        $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+
+        return is_string($path) && $path !== '' ? $path : '/';
+    }
+
+    private static function isHtmlResponse(): bool
+    {
+        foreach (headers_list() as $header) {
+            if (stripos($header, 'content-type:') === 0) {
+                return stripos($header, 'text/html') !== false;
+            }
+        }
+
+        // Sin Content-Type, PHP envía text/html
+        return true;
+    }
+
+    /** @param array<string, mixed> $data */
+    private static function store(array $data): void
+    {
+        $dir = self::dir();
+        if (!is_dir($dir) && !mkdir($dir, 0o775, true) && !is_dir($dir)) {
+            return;
+        }
+
+        file_put_contents(
+            $dir . self::safeId((string) $data['id']) . '.json',
+            json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE),
+        );
+
+        $files = self::glob($dir . '*.json');
+        if (count($files) <= self::KEEP) {
+            return;
+        }
+
+        usort($files, static fn(string $a, string $b): int => filemtime($b) <=> filemtime($a));
+        foreach (array_slice($files, self::KEEP) as $old) {
+            unlink($old);
+        }
+    }
+
+    /** @return array<string, mixed>|null */
+    private static function load(string $id): ?array
+    {
+        $file = self::dir() . self::safeId($id) . '.json';
+        $data = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+
+        return is_array($data) ? $data : null;
+    }
+
+    /** @return list<array<string, mixed>> las peticiones guardadas, de la más nueva a la más vieja */
+    private static function recent(): array
+    {
+        $out = [];
+        foreach (self::glob(self::dir() . '*.json') as $file) {
+            $data = json_decode((string) file_get_contents($file), true);
+            if (is_array($data)) {
+                $out[] = $data;
+            }
+        }
+
+        // Los registros anteriores a `started` se ordenan por su hora
+        $order = static fn(array $r): float => (float) ($r['started'] ?? strtotime((string) ($r['time'] ?? '')));
+        usort($out, static fn(array $a, array $b): int => $order($b) <=> $order($a));
+
+        return $out;
+    }
+
+    /** El id viene de la URL del panel: solo letras, números, punto, guion y guion bajo */
+    private static function safeId(string $id): string
+    {
+        return (string) preg_replace('/[^A-Za-z0-9._-]/', '', $id);
+    }
+
+    /** @return list<string> */
+    private static function glob(string $pattern): array
+    {
+        $files = glob($pattern);
+
+        return $files === false ? [] : $files;
+    }
+
+    /** @param array<array-key, mixed> $names */
+    private static function names(array $names): string
+    {
+        return $names === [] ? '—' : self::h(implode(', ', array_map(strval(...), $names)));
+    }
+
+    private static function h(mixed $value): string
+    {
+        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    /** @param array<string, mixed> $s */
+    private static function toolbar(array $s): string
+    {
+        $alerts = $s['n_plus_one'] > 0 ? " <b class=\"vp-warn\">⚠ N+1 ×{$s['n_plus_one']}</b>" : '';
+        $alerts .= $s['exceptions'] > 0 ? " <b class=\"vp-warn\">⚠ {$s['exceptions']} excepción(es)</b>" : '';
+
+        return (
+            '<style nonce="'
+            . self::h(SecurityUtils::cspNonce())
+            . '">'
+            . '#versa-profiler{position:fixed;right:12px;bottom:12px;z-index:2147483647;font:12px/1.4 ui-monospace,monospace;'
+            . 'background:#0f172a;color:#e2e8f0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:6px 10px}'
+            . '#versa-profiler a{color:inherit;text-decoration:none}#versa-profiler .vp-warn{color:#fbbf24}'
+            . '</style><div id="versa-profiler"><a href="/_profiler/'
+            . self::h($s['id'])
+            . '" target="_blank" rel="noopener">'
+            . self::h($s['status'])
+            . ' · '
+            . self::h($s['ms'])
+            . ' ms · '
+            . self::h($s['queries'])
+            . ' SQL ('
+            . self::h($s['db_ms'])
+            . ' ms) · '
+            . self::h($s['memory_mb'])
+            . ' MB'
+            . ($s['controller'] !== null ? ' · ' . self::h(self::shortName((string) $s['controller'])) : '')
+            . $alerts
+            . '</a></div>'
+        );
+    }
+
+    private static function shortName(string $callable): string
+    {
+        $pos = strrpos($callable, '\\');
+
+        return $pos === false ? $callable : substr($callable, $pos + 1);
+    }
+
+    /** @param list<array<string, mixed>> $rows */
+    private static function listHtml(array $rows): string
+    {
+        if ($rows === []) {
+            return '<p>Todavía no hay peticiones registradas. Navega por la aplicación con <code>build.debug</code> activo.</p>';
+        }
+
+        $html =
+            '<table><thead><tr><th>Hora</th><th>Método</th><th>Ruta</th><th>Estado</th><th>ms</th>'
+            . '<th>SQL</th><th>Memoria</th><th></th></tr></thead><tbody>';
+        foreach ($rows as $r) {
+            $warn = count((array) ($r['n_plus_one'] ?? [])) > 0 || count((array) ($r['exceptions'] ?? [])) > 0;
+            $html .= sprintf(
+                '<tr%s><td>%s</td><td>%s</td><td><a href="/_profiler/%s">%s</a></td><td>%s</td><td>%s</td><td>%d</td><td>%s MB</td><td>%s</td></tr>',
+                (int) ($r['status'] ?? 200) >= 400 ? ' class="err"' : '',
+                self::h(substr((string) $r['time'], 11)),
+                self::h($r['method']),
+                self::h($r['id']),
+                self::h($r['path']),
+                self::h($r['status'] ?? ''),
+                self::h($r['ms'] ?? ''),
+                count((array) ($r['queries'] ?? [])),
+                self::h($r['memory_mb'] ?? ''),
+                $warn ? '⚠' : '',
+            );
+        }
+
+        return $html . '</tbody></table>';
+    }
+
+    /** @param array<string, mixed> $d */
+    private static function detailHtml(array $d): string
+    {
+        $html =
+            '<p><a href="/_profiler">← Todas las peticiones</a></p><dl>'
+            . '<dt>Estado</dt><dd>'
+            . self::h($d['status'])
+            . '</dd>'
+            . '<dt>Tiempo total</dt><dd>'
+            . self::h($d['ms'])
+            . ' ms (base de datos '
+            . self::h($d['db_ms'])
+            . ' ms)</dd>'
+            . '<dt>Memoria máxima</dt><dd>'
+            . self::h($d['memory_mb'])
+            . ' MB</dd>'
+            . '<dt>Controlador</dt><dd>'
+            . self::h($d['controller'] ?? '—')
+            . '</dd>'
+            . '<dt>Parámetros de la URL</dt><dd>'
+            . self::names((array) $d['query_keys'])
+            . '</dd>'
+            . '<dt>Sesión (claves)</dt><dd>'
+            . self::names((array) $d['session_keys'])
+            . '</dd>'
+            . '<dt>Caché</dt><dd>'
+            . (int) $d['cache']['hits']
+            . ' aciertos, '
+            . (int) $d['cache']['misses']
+            . ' fallos, '
+            . (int) $d['cache']['writes']
+            . ' escrituras</dd>'
+            . '<dt>Id</dt><dd>'
+            . self::h($d['id'])
+            . '</dd></dl>';
+
+        if ($d['exceptions'] !== []) {
+            $html .= '<h2>Excepciones</h2><ul>';
+            foreach ($d['exceptions'] as $e) {
+                $html .=
+                    '<li class="err"><b>'
+                    . self::h($e['class'])
+                    . '</b>: '
+                    . self::h($e['message'])
+                    . ' <small>'
+                    . self::h($e['file'] . ':' . $e['line'])
+                    . '</small></li>';
+            }
+
+            $html .= '</ul>';
+        }
+
+        $html .= '<h2>Tiempos</h2><table><tr><th>Tipo</th><th>Nombre</th><th>ms</th></tr>';
+        foreach ($d['spans'] as $s) {
+            $html .=
+                '<tr><td>'
+                . self::h($s['type'])
+                . '</td><td>'
+                . self::h($s['name'])
+                . '</td><td>'
+                . self::h($s['ms'])
+                . '</td></tr>';
+        }
+
+        $html .= '</table>';
+
+        if ($d['n_plus_one'] !== []) {
+            $html .= '<h2 class="warn">Posible N+1</h2><p>La misma consulta se ejecutó muchas veces: suele resolverse con un JOIN, un <code>WHERE id IN (...)</code> o cargando la relación una vez.</p><ul>';
+            foreach ($d['n_plus_one'] as $sql => $times) {
+                $html .= '<li><b>×' . self::h($times) . '</b> <code>' . self::h($sql) . '</code></li>';
+            }
+
+            $html .= '</ul>';
+        }
+
+        $html .=
+            '<h2>Consultas ('
+            . count($d['queries'])
+            . ')</h2><table><tr><th>#</th><th>SQL</th><th>Parámetros</th><th>ms</th></tr>';
+        foreach ($d['queries'] as $i => $q) {
+            $html .=
+                '<tr'
+                . ($q['error'] !== null ? ' class="err"' : '')
+                . '><td>'
+                . ($i + 1)
+                . '</td><td><code>'
+                . self::h($q['sql'])
+                . '</code>'
+                . ($q['error'] !== null ? '<br><small>' . self::h($q['error']) . '</small>' : '')
+                . '</td><td>'
+                . self::h($q['params'])
+                . '</td><td>'
+                . self::h($q['ms'])
+                . '</td></tr>';
+        }
+
+        $html .= '</table>';
+
+        if ($d['jobs'] !== []) {
+            $html .= '<h2>Trabajos encolados</h2><ul>';
+            foreach ($d['jobs'] as $j) {
+                $html .= '<li>' . self::h($j['job']) . ' <small>(' . self::h($j['queue']) . ')</small></li>';
+            }
+
+            $html .= '</ul>';
+        }
+
+        return $html;
+    }
+
+    private static function page(string $title, string $body): string
+    {
+        $nonce = self::h(SecurityUtils::cspNonce());
+
+        return (
+            '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+            . '<title>'
+            . self::h($title)
+            . ' · Profiler</title><style nonce="'
+            . $nonce
+            . '">'
+            . 'body{margin:0;font:14px/1.5 system-ui,sans-serif;background:#f8fafc;color:#0f172a}header{background:#0f172a;color:#e2e8f0;padding:16px 24px}'
+            . 'h1{margin:0;font-size:18px;word-break:break-all}main{padding:16px 24px;max-width:1200px}h2{font-size:16px;margin-top:24px}'
+            . 'table{border-collapse:collapse;width:100%;background:#fff}th,td{border-bottom:1px solid #e2e8f0;padding:6px 8px;text-align:left;vertical-align:top}'
+            . 'code{font:12px/1.5 ui-monospace,monospace;word-break:break-all}.err{background:#fee2e2}.warn{color:#b45309}'
+            . 'dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px}dt{color:#64748b}dd{margin:0}a{color:#2563eb}'
+            . '@media (prefers-color-scheme:dark){body{background:#0f172a;color:#e2e8f0}table{background:#1e293b}th,td{border-color:#334155}.err{background:#7f1d1d}a{color:#93c5fd}}'
+            . '</style></head><body><header><h1>'
+            . self::h($title)
+            . '</h1><small>Profiler · solo en modo debug</small></header><main>'
+            . $body
+            . '</main></body></html>'
+        );
+    }
+}

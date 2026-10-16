@@ -22,6 +22,7 @@ final class Cache
     public static function get(string $key, mixed $default = null): mixed
     {
         $entry = self::read($key);
+        Profiler::cache($entry === null ? 'misses' : 'hits');
 
         return $entry === null ? $default : $entry['v'];
     }
@@ -35,6 +36,7 @@ final class Cache
     public static function set(string $key, mixed $value, int $ttl = 0): void
     {
         $raw = json_encode(['e' => $ttl !== 0 ? time() + $ttl : 0, 'v' => $value], JSON_THROW_ON_ERROR);
+        Profiler::cache('writes');
         if (self::redis()) {
             RedisModel::set(self::PREFIX . $key, $raw, $ttl > 0 ? $ttl : null);
 
@@ -60,6 +62,7 @@ final class Cache
     public static function remember(string $key, int $ttl, Closure $callback): mixed
     {
         $entry = self::read($key);
+        Profiler::cache($entry === null ? 'misses' : 'hits');
         if ($entry !== null) {
             return $entry['v'];
         }

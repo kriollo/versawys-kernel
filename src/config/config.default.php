@@ -124,6 +124,8 @@ return [
     'cache' => ['driver' => 'file', 'dir' => 'versaWYS/cache/data/'],
     // Cola de trabajos (Queue): 'database' (tabla versa_jobs + queue:work) o 'sync' (en el acto)
     'queue' => ['driver' => 'database'],
+    // Profiler de desarrollo (/_profiler): solo con build.debug; el panel responde desde la propia máquina y estas IPs
+    'profiler' => ['enabled' => true, 'allowed_ips' => []],
     // Archivos de la aplicación (Storage), fuera de lo que sirve el servidor web
     'storage' => ['root' => 'versaWYS/storage'],
     'rate_limiting' => [

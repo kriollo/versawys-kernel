@@ -1,0 +1,14 @@
+#!/bin/sh
+# versaCLI global: `versaCLI <comando>` desde cualquier carpeta de un proyecto versaWYS, sin escribir
+# `php`. Busca hacia arriba la carpeta que tiene `versaCLI` y `versaWYS/` y ejecuta ese versaCLI.
+# Se instala una vez por máquina:  cp versaWYS/vendor/bin/versaCLI ~/.local/bin/versaCLI
+dir=$PWD
+while :; do
+    if [ -f "$dir/versaCLI" ] && [ -d "$dir/versaWYS" ]; then
+        exec php "$dir/versaCLI" "$@"
+    fi
+    [ "$dir" = "/" ] && break
+    dir=$(dirname "$dir")
+done
+echo "versaCLI: no hay un proyecto versaWYS en $PWD ni en sus carpetas superiores" >&2
+exit 1

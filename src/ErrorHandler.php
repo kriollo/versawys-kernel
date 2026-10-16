@@ -43,6 +43,8 @@ class ErrorHandler
     {
         global $debug, $versawys_error_handling_in_progress, $request;
 
+        Profiler::exception($e);
+
         // Si RedBeanCnn ya está manejando un error, no interferir
         if ($versawys_error_handling_in_progress) {
             return;

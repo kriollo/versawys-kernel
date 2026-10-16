@@ -13,6 +13,12 @@ El panel base (`app/models`, `app/services`) se copia en cada proyecto y el kern
 
 **Agregar algo a esta lista o cambiar una firma es un cambio de versión mayor.** `php versaCLI app:check:deploy` falla si al proyecto le falta alguno.
 
+## 3.9 → 3.10 (sin cambios incompatibles)
+
+- `composer update versawys/kernel versaorm/versaorm-php`: el kernel pide VersaORM `^2.1`.
+- El `versaCLI` del kernel ahora empieza con `#!/usr/bin/env php` y es ejecutable. `php versaCLI` funciona igual. Para usar `./versaCLI`, copia el del kernel (`php versaCLI app:kernel:publish --force` también reemplaza los otros archivos base: revisa antes su diff) y corre `chmod +x versaCLI`.
+- En desarrollo (`build.debug`), las páginas muestran la barra del profiler. Para apagarla: `"profiler": {"enabled": false}`.
+
 ## 3.2 → 3.9 (sin cambios incompatibles)
 
 `composer update versawys/kernel` basta; el código de los proyectos no cambia. Revisar:
