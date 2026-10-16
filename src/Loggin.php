@@ -431,7 +431,7 @@ class Loggin
     ): void {
         $level = $statusCode >= 500 ? self::ERROR : ($statusCode >= 400 ? self::WARNING : self::INFO);
 
-        self::log(sprintf('HTTP Request: %s %s', $method, $url), $level, $module ?? 'http', [
+        self::log($level, sprintf('HTTP Request: %s %s', $method, $url), $module ?? 'http', [
             'method' => $method,
             'url' => $url,
             'status_code' => $statusCode,
@@ -484,8 +484,8 @@ class Loggin
         $level = $duration > 1.0 ? self::WARNING : self::DEBUG;
 
         self::log(
-            sprintf('Performance: %s took ', $operation) . round($duration, 4) . 's',
             $level,
+            sprintf('Performance: %s took ', $operation) . round($duration, 4) . 's',
             $module ?? 'performance',
             $context,
         );

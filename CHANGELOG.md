@@ -59,6 +59,8 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
   - El estado vive en `down.json`, junto a `config.json`: sobrevive a `cache:clear`.
 
 ### Corregido
+- **Un Redis caído fallaba en silencio:** `RedisModel` atrapa los errores de conexión y devuelve `false` o el valor por defecto, pero solo los registraba con `enableLogging`, que estaba apagado. Ahora quedan en el log `RedisModel`.
+- **`Loggin::request()` y `Loggin::performance()` guardaban el nivel en el lugar del mensaje:** el nivel quedaba en INFO y el texto era solo «ERROR» o «WARNING».
 - **`CommandExecutor` lanzaba los procesos con `php` sin ruta:** en cron y en PHP-FPM, que corren con un `PATH` mínimo, el proceso hijo no arrancaba y nada lo avisaba. Por eso el programador decía «Lanzada», pero la tarea nunca corría. Ahora usa la ruta completa del PHP actual (`CommandExecutor::phpBinary()`). Además, la salida de cada tarea programada va a `versaWYS/logs/cron.log`.
 - **`versaCLI status` pedía `tailwind.config.js`**, que Tailwind 4 ya no usa. Ahora revisa `src/dashboard/css/dashboard.css`. Sus extensiones y requisitos salen de `SystemCheck`.
 - **Una instalación nueva sin `config.json` mostraba un error fatal de PHP con código 200 en cualquier página.** Con la configuración creada pero sin instalar, llevaba al login y `/install` solo era accesible con el token que imprime la terminal.

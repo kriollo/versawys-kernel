@@ -40,7 +40,7 @@ class RedisModel
     /**
      * Habilitar logging de errores.
      */
-    private static bool $enableLogging = false;
+    private static bool $enableLogging = true;
 
     /**
      * Tiempo de expiración por defecto (en segundos).
@@ -71,7 +71,7 @@ class RedisModel
      * @param array $config Configuración de Redis
      * @param string $keyPrefix Prefijo opcional para las claves
      * @param string $serializationMode Modo de serialización ('serialize' o 'json')
-     * @param bool $enableLogging Habilitar logging de errores
+     * @param bool $enableLogging Registrar los errores en el log RedisModel (por defecto sí)
      *
      * @return void
      */
@@ -79,7 +79,7 @@ class RedisModel
         array $config,
         string $keyPrefix = '',
         string $serializationMode = 'json',
-        bool $enableLogging = false,
+        bool $enableLogging = true,
     ): void {
         self::$config = $config;
         self::$keyPrefix = $keyPrefix;
