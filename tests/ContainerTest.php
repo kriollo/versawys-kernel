@@ -9,63 +9,12 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use versaWYS\kernel\Container;
 use versaWYS\kernel\RouteParameterMismatch;
-
-interface Reloj
-{
-    public function ahora(): string;
-}
-
-final class RelojFijo implements Reloj
-{
-    #[Override]
-    public function ahora(): string
-    {
-        return '2026-10-15';
-    }
-}
-
-final class Repositorio
-{
-    public function __construct(
-        public readonly Reloj $reloj,
-    ) {}
-}
-
-final class Servicio
-{
-    public function __construct(
-        public readonly Repositorio $repo,
-        public readonly int $limite = 10,
-    ) {}
-}
-
-final class CicloA
-{
-    public function __construct(CicloB $b) {}
-}
-
-final class CicloB
-{
-    public function __construct(CicloA $a) {}
-}
-
-final class ControladorDePrueba
-{
-    public function ver(Servicio $servicio, int $id): string
-    {
-        return $servicio->repo->reloj->ahora() . '#' . $id;
-    }
-
-    public function texto(string $slug, ?string $extra = null): string
-    {
-        return $slug . '|' . ($extra ?? '-');
-    }
-
-    public function sinParametros(): int
-    {
-        return func_num_args();
-    }
-}
+use versaWYS\kernel\Tests\Fixtures\CicloA;
+use versaWYS\kernel\Tests\Fixtures\ControladorDePrueba;
+use versaWYS\kernel\Tests\Fixtures\Reloj;
+use versaWYS\kernel\Tests\Fixtures\RelojFijo;
+use versaWYS\kernel\Tests\Fixtures\Repositorio;
+use versaWYS\kernel\Tests\Fixtures\Servicio;
 
 final class ContainerTest extends TestCase
 {

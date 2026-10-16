@@ -21,6 +21,9 @@ final class App
         require __DIR__ . '/init_error_handling.php';
         require __DIR__ . '/init_headers.php';
 
+        // Solo con build.debug: mide la petición para /_profiler
+        Profiler::start();
+
         (new Router())->resolve();
     }
 }

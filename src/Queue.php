@@ -67,6 +67,8 @@ final class Queue
             throw new InvalidArgumentException("{$job} no implementa " . Job::class);
         }
 
+        Profiler::job($job, $queue);
+
         global $config;
         if (($config['queue']['driver'] ?? 'database') === 'sync') {
             self::run($job, $data);

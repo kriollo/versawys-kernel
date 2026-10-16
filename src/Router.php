@@ -252,6 +252,17 @@ class Router
                 return Response::json(self::health(), 200);
             }
 
+            // Panel del profiler: solo en modo debug y desde la propia máquina (o profiler.allowed_ips)
+            if (($url === '/_profiler' || str_starts_with($url, '/_profiler/')) && Profiler::enabled()) {
+                if (!Profiler::allowed($request->getIp())) {
+                    return $this->respondNotFound($request, $config, 'Página no encontrada');
+                }
+
+                echo Profiler::panel($url === '/_profiler' ? null : substr($url, strlen('/_profiler/')));
+
+                return true;
+            }
+
             $customAdminUrl = $config['admin']['custom_url'] ?? 'admin';
             $hideDefault = $config['admin']['hide_default'] ?? false;
 
@@ -620,7 +631,18 @@ class Router
                     throw new Exception($errorMsg);
                 }
 
-                $response = Container::getInstance()->call($middlewareClassTemp, $middlewareMethodName, $slug);
+                $startedAt = hrtime(true);
+
+                try {
+                    $response = Container::getInstance()->call($middlewareClassTemp, $middlewareMethodName, $slug);
+                } finally {
+                    Profiler::span(
+                        'middleware',
+                        $middlewareClass . '::' . $middlewareMethodName,
+                        (hrtime(true) - $startedAt) / 1e6,
+                    );
+                }
+
                 if (is_array($response) || is_object($response)) {
                     $status = is_array($response) ? (int) ($response['code'] ?? 200) : 200;
 
@@ -678,7 +700,18 @@ class Router
                 ));
             }
 
-            $response = Container::getInstance()->call($controllerClassTemp, $controllerMethodName, $slug);
+            $startedAt = hrtime(true);
+
+            try {
+                $response = Container::getInstance()->call($controllerClassTemp, $controllerMethodName, $slug);
+            } finally {
+                Profiler::span(
+                    'controller',
+                    $controllerClass . '::' . $controllerMethodName,
+                    (hrtime(true) - $startedAt) / 1e6,
+                );
+            }
+
             if (is_array($response) || is_object($response)) {
                 // Igual que en los middlewares: la clave `code` define el estado HTTP
                 // Solo si es un estado HTTP válido: hay respuestas con code 0 o con el código de una excepción

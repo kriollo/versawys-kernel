@@ -31,7 +31,7 @@
     "symfony/mailer": "^7.3 || ^8.1",
     "twig/cssinliner-extra": "^3.26",
     "twig/twig": "^3.28",
-    "versaorm/versaorm-php": "^1.9 || ^2.0"
+    "versaorm/versaorm-php": "^2.1"
   },
   "require-dev": {
     "laravel/pint": "^1.32.1",
@@ -42,9 +42,17 @@
     "friendsofphp/php-cs-fixer": "^3.95.27",
     "rector/rector": "^2.7"
   },
+  "bin": [
+    "bin/versaCLI"
+  ],
   "autoload": {
     "psr-4": {
       "versaWYS\\kernel\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "versaWYS\\kernel\\Tests\\": "tests/"
     }
   },
   "minimum-stability": "stable",

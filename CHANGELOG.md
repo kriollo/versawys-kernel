@@ -2,7 +2,24 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
-## [3.9.1] - 2026-10-15
+## [3.10.0] - 2026-10-15
+
+Paso 8 del ROADMAP, ítem 1: panel de depuración y profiler.
+
+### Añadido
+- **Profiler** (solo con `build.debug`):
+  - Cada página HTML muestra una barra con estado, tiempo, número y tiempo de las consultas, memoria y controlador, con aviso de N+1 y de excepciones.
+  - `/_profiler` lista las últimas 100 peticiones y `/_profiler/<id>` muestra el detalle: tiempo de cada middleware y del controlador, cada consulta SQL con su duración y su error, posibles N+1 (la misma consulta 5 veces o más), excepciones, caché, claves de sesión y trabajos encolados.
+  - **Acceso:** solo desde la propia máquina o desde `profiler.allowed_ips`; a cualquier otro le responde 404.
+  - **Privacidad:** nunca guarda valores de consultas, de la URL ni de la sesión, ni datos de trabajos, cookies o cabeceras.
+- **`versaCLI <comando>` sin `php`:**
+  - El paquete trae el lanzador `bin/versaCLI`. Se instala una vez por máquina copiándolo a `~/.local/bin`, y busca el proyecto desde la carpeta actual hacia arriba.
+  - El `versaCLI` del proyecto (`stubs/versaCLI`) es ejecutable, así que también funciona `./versaCLI <comando>`.
+
+### Cambiado
+- Requiere `versaorm/versaorm-php` `^2.1`, que entrega cada consulta al profiler (`VersaORM::onQuery`).
+
+
 
 Cierre del ROADMAP: revisión final de los criterios de salida de los siete pasos, con los límites conocidos.
 

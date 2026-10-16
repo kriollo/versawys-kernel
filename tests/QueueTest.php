@@ -4,32 +4,10 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\Tests;
 
-use Override;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 use VersaORM\VersaORM;
-use versaWYS\kernel\Job;
 use versaWYS\kernel\Queue;
-
-final class TrabajoDePrueba implements Job
-{
-    /** @var list<array<array-key, mixed>> */
-    public static array $hechos = [];
-
-    public static int $fallarVeces = 0;
-
-    #[Override]
-    public function handle(array $data): void
-    {
-        if (self::$fallarVeces > 0) {
-            self::$fallarVeces--;
-
-            throw new RuntimeException('servicio caído');
-        }
-
-        self::$hechos[] = $data;
-    }
-}
+use versaWYS\kernel\Tests\Fixtures\TrabajoDePrueba;
 
 final class QueueTest extends TestCase
 {

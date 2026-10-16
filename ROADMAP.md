@@ -24,7 +24,7 @@ Pruebas que ya existen en el esqueleto y cubren al kernel por HTTP (las corre la
 
 Esto inicia la base de pruebas, pero **no completa** el inventario de contratos, la cobertura del kernel ni la revisión de seguridad. El orden siguiente es recomendado; cada etapa debe acabar con sus pruebas y criterios de aceptación antes de ampliar la siguiente.
 
-**Al 2026-10-15 (3.9.0) los siete pasos están completos.** El resultado está en la [revisión final](#revisión-final-de-los-criterios-de-salida), con los límites conocidos. Las listas «Trabajo pendiente» de cada paso se conservan como el plan original con el que se midió cada uno.
+**Al 2026-10-15 (3.9.0) los siete primeros pasos están completos; el paso 8 está en curso.** El resultado está en la [revisión final](#revisión-final-de-los-criterios-de-salida), con los límites conocidos. Las listas «Trabajo pendiente» de cada paso se conservan como el plan original con el que se midió cada uno.
 
 ## Principios para todas las etapas
 
@@ -199,6 +199,23 @@ El objetivo de los pasos 1–6 era un kernel robusto sin replicar la amplitud de
 | E | Página de error con contexto, sitio de documentación, toolchain de frontend sin trampas (builds mezclados, importmap) | Hecha (3.9.0): página de error con código; builds mezclados resueltos en versaCompiler. El sitio de documentación espera a tener usuarios externos (GitHub ya muestra `documentacion/`) |
 
 Por qué A primero: los errores que encontró la app de prueba (versaTodo) aparecieron a mano o con un navegador sin interfaz. Con un cliente de pruebas, las suites de cada proyecto los detectan. La primera suite con `TestClient` encontró un 500 en lugar de 422 en el panel base (`EmpresasMiddleware`).
+
+## Paso 8 — Herramientas de trabajo diario
+
+**Estado: en curso (desde 2026-10-15).**
+
+El paso 7 dejó el kernel al nivel de Laravel y Symfony en lo esencial. Este paso suma las herramientas que más tiempo ahorran en el día a día. Cada una sale de un uso medido en los cuatro proyectos o de un pedido explícito; no hay ninguna "por si acaso". El orden es el de ejecución.
+
+| # | Qué | Por qué | Criterio de salida |
+|---|---|---|---|
+| 1 | ✅ (3.10.0) **Panel de depuración y profiler** | Prioridad crítica: hoy no se ve qué hace una petición. La "barra de depuración" que citaba la documentación no existía. | Muestra el tiempo total y por middleware, el controlador, la ruta y el código HTTP, la memoria, las consultas SQL con su duración y aviso de N+1, las excepciones, la caché, la sesión y los trabajos encolados. Solo funciona con `build.debug`, con acceso protegido y sin guardar credenciales, cookies ni datos sensibles. Requiere en VersaORM un escuchador de consultas. |
+| 2 | **Programador de tareas** | Hay 7 crons sueltos en el crontab de cada servidor (anima 4, versaBOT 2, vserv 1), sin protección contra ejecuciones solapadas. | Las tareas se definen en código, con `withoutOverlapping()`. En el servidor queda una sola línea: `app:schedule:run` cada minuto. |
+| 3 | **Usar la cola en los proyectos** | Hay 9 `runInBackground` sin reintentos y una cola casera en versaBOT. | Correos y tareas pesadas pasan por `Queue::push`; `app:queue:work` corre como tarea programada. |
+| 4 | **Generadores modernos** | `RCMD`/`versaMODULE` generan validación en middleware y nada de lo nuevo. | Hay `request:make`, `job:make`, `test:make` y `factory:make`. Un módulo nuevo sale con FormRequests, `Tenant`, inyección por constructor y su prueba con `TestClient`, y esa prueba pasa recién generada. |
+| 5 | **Factories para pruebas** | Las pruebas insertan filas a mano con PDO. | Con `Factory` se crean datos de prueba en una línea, respetando la empresa y las relaciones. |
+| 6 | **Cifrado y URLs firmadas** | versaSTORE cifra a mano; `Storage` necesita enlaces que venzan. | `Crypt::encrypt`/`decrypt` con sodium y una clave propia; `Url::signed(..., expira)` y un middleware que la valida. |
+| 7 | **Modo mantenimiento** | Para migraciones largas y restauraciones. | `app:down` / `app:up` responden 503, con una clave para que el equipo siga entrando. |
+| 8 | **Documentación completa** | Ya pasó que la documentación prometía algo inexistente (la barra de depuración). | Cada guía se contrasta con el código y tiene ejemplos que se ejecutan. Hay una ruta de aprendizaje de la instalación al despliegue. |
 
 ## Revisión final de los criterios de salida
 

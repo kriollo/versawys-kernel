@@ -33,6 +33,16 @@ require_once __DIR__ . '/versaWYS/vendor/autoload.php';
 versaWYS\kernel\App::run(__DIR__);
 ```
 
+## Usar `versaCLI` sin escribir `php`
+
+Una vez por máquina, desde cualquier proyecto:
+
+```bash
+cp versaWYS/vendor/bin/versaCLI ~/.local/bin/versaCLI
+```
+
+Desde ese momento, `versaCLI <comando>` funciona en cualquier carpeta de un proyecto versaWYS y usa el `versaCLI` de ese proyecto.
+
 ## Actualizar
 
 ```bash
