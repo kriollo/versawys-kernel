@@ -33,6 +33,7 @@ final class Scaffold
             "app/controllers/{$vars['{{Name}}']}Controller.php" => 'module/controller',
             "app/routes/{$vars['{{Name}}']}Routes.php" => 'module/routes',
             "versaWYS/tests/{$vars['{{Name}}']}Test.php" => 'module/test',
+            "versaWYS/tests/factories/{$vars['{{Name}}']}.php" => 'factory',
         ];
 
         $created = [];
@@ -67,6 +68,13 @@ final class Scaffold
         $file = str_ends_with($vars['{{Name}}'], 'Test') ? $vars['{{Name}}'] : $vars['{{Name}}'] . 'Test';
 
         return self::write("versaWYS/tests/{$file}.php", self::render('test', $vars));
+    }
+
+    public static function factory(string $name): bool
+    {
+        $vars = self::vars($name);
+
+        return self::write("versaWYS/tests/factories/{$vars['{{Name}}']}.php", self::render('factory', $vars));
     }
 
     public static function cron(string $name): bool

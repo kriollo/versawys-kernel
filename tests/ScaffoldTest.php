@@ -34,7 +34,7 @@ final class ScaffoldTest extends TestCase
         $files = Scaffold::module('OrdenesCompra', 'vue');
         ob_end_clean();
 
-        self::assertCount(6, $files);
+        self::assertCount(7, $files);
         foreach ($files as $file) {
             self::assertValidPhp($file);
         }
@@ -62,6 +62,7 @@ final class ScaffoldTest extends TestCase
         $routes = $read('OrdenesCompraRoutes.php');
         self::assertSame(3, substr_count($routes, '// path-param name:id type:int'));
         self::assertStringContainsString("'/admin/ordenescompra/api/ordenescompra'", $read('OrdenesCompraTest.php'));
+        self::assertStringContainsString("Factory::define('ordenes_compra'", $read('factories/OrdenesCompra.php'));
     }
 
     public function testLosArchivosSueltosSonPhpValido(): void

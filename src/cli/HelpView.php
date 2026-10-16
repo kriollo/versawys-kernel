@@ -57,6 +57,8 @@ class HelpView
         echo "  {$yellow}request:make:[nombre]{$reset}      Crear FormRequest (validación de una acción)\n";
         echo "  {$yellow}job:make:[nombre]{$reset}          Crear trabajo para la cola (Queue::push)\n";
         echo "  {$yellow}test:make:[nombre]{$reset}         Crear prueba con TestClient y TestDatabase\n";
+        echo
+            "  {$yellow}factory:make:[nombre]{$reset}      Crear factory de datos de prueba (versaWYS/tests/factories)\n";
         echo "\n";
         echo sprintf('%s%sComandos disponibles:%s%s', $bold, $blue, $reset, PHP_EOL);
         echo "\n";
@@ -254,6 +256,8 @@ class HelpView
         echo "  {$color}request:make:[nombre]{$reset}      Crear FormRequest (validación de una acción)\n";
         echo "  {$color}job:make:[nombre]{$reset}          Crear trabajo para la cola (Queue::push)\n";
         echo "  {$color}test:make:[nombre]{$reset}         Crear prueba con TestClient y TestDatabase\n";
+        echo
+            "  {$color}factory:make:[nombre]{$reset}      Crear factory de datos de prueba (versaWYS/tests/factories)\n";
     }
 
     private static function printRCMDHelp(string $color, string $reset): void

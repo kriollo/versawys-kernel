@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use versaWYS\kernel\Testing\Factory;
 use versaWYS\kernel\Testing\TestDatabase;
 
 /*
@@ -34,8 +35,10 @@ describe('{{Name}}', function (): void {
     });
 
     it('otra empresa no ve ni modifica los registros', function () use ($api): void {
-        $admin = TestDatabase::login(TestDatabase::user('admin', TestDatabase::empresa()));
-        $id = $admin->postJson($api, ['nombre' => 'Privado'])->json('id');
+        $empresa = TestDatabase::empresa();
+        $admin = TestDatabase::login(TestDatabase::user('admin', $empresa));
+        // Datos de prueba directo en la base (versaWYS/tests/factories/{{Name}}.php)
+        $id = Factory::create('{{table}}', ['id_empresa' => $empresa, 'nombre' => 'Privado']);
 
         $otra = TestDatabase::login(TestDatabase::user('admin', TestDatabase::empresa()));
         expect($otra->getJson($api)->json('data'))->toBe([]);

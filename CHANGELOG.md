@@ -42,6 +42,11 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
   - `user()`, `empresa()` y `login()` crean datos de prueba con correos y RUT únicos;
   - si otra prueba ya arrancó `TestClient`, usa esa misma base.
 - **`TestClient::booted()`.**
+- **`Testing\Factory`:**
+  - `define(tabla, fn(int $n) => [...])` define los datos por defecto de una tabla;
+  - `create` y `createMany` guardan registros, con `created_at` y `updated_at` automáticos;
+  - las definiciones se cargan solas desde `versaWYS/tests/factories`;
+  - `factory:make` crea una definición, y versaMODULE crea la del módulo.
 
 ### Corregido
 - **`CommandExecutor` lanzaba los procesos con `php` sin ruta:** en cron y en PHP-FPM, que corren con un `PATH` mínimo, el proceso hijo no arrancaba y nada lo avisaba. Por eso el programador decía «Lanzada», pero la tarea nunca corría. Ahora usa la ruta completa del PHP actual (`CommandExecutor::phpBinary()`). Además, la salida de cada tarea programada va a `versaWYS/logs/cron.log`.

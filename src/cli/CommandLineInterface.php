@@ -126,6 +126,7 @@ class CommandLineInterface
             'request',
             'job',
             'test',
+            'factory',
         ];
         if (in_array($modulo, $generators, strict: true)) {
             foreach ($params as $param) {
@@ -170,7 +171,7 @@ class CommandLineInterface
                 'logs' => LogManager::handleLogs($params, $this->verbose),
                 'cache' => CacheManager::handleCacheCommands($params, $this->verbose),
                 'cron' => $this->handleCron($params),
-                'request', 'job', 'test' => $this->handleScaffold($modulo, $params),
+                'request', 'job', 'test', 'factory' => $this->handleScaffold($modulo, $params),
                 'command' => $this->handleCommand($params),
                 'app' => $this->handleAppCommand($params),
                 'help' => HelpView::printHelp(),
@@ -330,6 +331,7 @@ class CommandLineInterface
         $created = match ($module) {
             'request' => Scaffold::request($params[1]),
             'job' => Scaffold::job($params[1]),
+            'factory' => Scaffold::factory($params[1]),
             default => Scaffold::test($params[1]),
         };
         if (!$created) {
