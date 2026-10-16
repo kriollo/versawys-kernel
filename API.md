@@ -75,7 +75,7 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`cli\ConfigManager`** — `dir`, `path`, `defaults`, `getConfig`, `saveConfig`, `setDebug`, `merge`, `align`, `clearCache`; *interno*: `setTemplateCache`, `mergeArrays`, `initConfig`
 - **`helpers\FechasFunction`** — `formatFechaLargaES`; *interno*: `formaFechaFullES`, `formatFecha`, `setTwigFilters`, `setTwigFunctions`
 - **`helpers\Functions`** — `dump`, `cleanString`, `validateParams`, `e`, `validarRut`, `hash`, `needsRehash`, `verifyHash`, `generateCSRFToken`, `validateCSRFToken`, `assets_url`, `csrf_field`, `getAssets`, `removeScape`, `sanitizeSvgContent`, `formatRut`, `getPanelUrl`, `httpRequest`, `httpGet`, `httpPostJson`, `httpUploadFile`; *interno*: `validateJson`, `replace_spaces_with_underscore`, `method_field`, `setTwigFilters`, `cspNonce`, `setTwigFunctions`
-- **`Testing\TestClient`** — `boot`, `booted`, `withHeaders`, `withoutCsrfToken`, `login`, `get`, `getJson`, `post`, `postJson`, `putJson`, `patchJson`, `deleteJson`, `json`, `request`, `container`, `cookies`
+- **`Testing\TestClient`** — `boot`, `booted`, `withConfig`, `withHeaders`, `withoutCsrfToken`, `login`, `get`, `getJson`, `post`, `postJson`, `putJson`, `patchJson`, `deleteJson`, `json`, `request`, `container`, `cookies`
 - **`Testing\Factory`** — `define`, `make`, `create`, `createMany`; *interno*: `reset`
 - **`Testing\TestDatabase`** — `boot`, `user`, `empresa`, `login`, `pdo`, `configPath`, `PASSWORD`
 - **`Testing\TestResponse`** — `header`, `json`, `assertStatus`, `assertOk`, `assertRedirect`, `assertHeader`, `assertSee`, `assertDontSee`, `assertJson`, `assertJsonPath`

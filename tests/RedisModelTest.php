@@ -25,6 +25,7 @@ final class RedisModelTest extends TestCase
 
         // Un puerto donde no escucha nadie
         RedisModel::initialize(['host' => '127.0.0.1', 'port' => 1, 'timeout' => 0.2, 'persistent' => false]);
+        RedisModel::close(); // otra prueba pudo dejar una conexión abierta
         $saved = RedisModel::set('clave', 'valor');
         $read = RedisModel::get('clave', 'por defecto');
 

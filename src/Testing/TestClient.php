@@ -88,6 +88,38 @@ final class TestClient
         return new self();
     }
 
+    /**
+     * Corre `$fn` con esas claves de config.json cambiadas y después deja la configuración como estaba,
+     * aunque la prueba falle. Para probar combinaciones sin otro config.json:
+     *
+     *     TestClient::withConfig(['admin' => ['hide_default' => true]], function () use ($client): void {
+     *         $client->get('/admin/login')->assertStatus(404);
+     *     });
+     *
+     * Las claves se fusionan como en config.json; una lista reemplaza la original posición por
+     * posición. Lo que el kernel lee al arrancar (la conexión a la base, Twig) no cambia.
+     *
+     * @template T
+     *
+     * @param array<string, mixed> $overrides
+     * @param callable(): T $fn
+     *
+     * @return T
+     */
+    public static function withConfig(array $overrides, callable $fn): mixed
+    {
+        global $config;
+
+        $original = $config;
+        $config = array_replace_recursive($config, $overrides);
+
+        try {
+            return $fn();
+        } finally {
+            $config = $original;
+        }
+    }
+
     /** @param array<string, string> $headers */
     public function withHeaders(array $headers): self
     {

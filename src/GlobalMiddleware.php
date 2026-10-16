@@ -125,19 +125,17 @@ class GlobalMiddleware
                     );
                 }
 
-                $session->destroy();
+                return $this->endSession('cuenta_desactivada', 'Cuenta de usuario desactivada');
+            }
 
-                if (!$request->isApiCall()) {
-                    Response::redirect('/' . $config['admin']['custom_url'] . '/login');
-                    Output::halt();
-                }
-
-                return [
-                    'success' => 0,
-                    'valid' => false,
-                    'message' => 'Cuenta de usuario desactivada',
-                    'code' => 403,
-                ];
+            // 5b. Empresa suspendida: sus usuarios quedan fuera, salvo el superadministrador, que es
+            // quien administra las empresas. `empresa_estado` lo entrega Users::findWithCompany()
+            if (
+                ($userData['role'] ?? '') !== 'superadmin'
+                && array_key_exists('empresa_estado', $userData)
+                && !(bool) $userData['empresa_estado']
+            ) {
+                return $this->endSession('empresa_suspendida', 'La empresa está suspendida');
             }
 
             // 6. Comprobar la expiración de la contraseña
@@ -145,18 +143,25 @@ class GlobalMiddleware
                 dateExpiration: self::$currentUserData['user']['expiration_pass'] ?? null,
             );
 
-            // 7. Manejar redirección por contraseña expirada (solo para navegador)
+            // 7. Contraseña vencida: solo el perfil y el cambio de contraseña. Las páginas llevan al
+            // perfil y la API responde 403, para que el bloqueo no se salte llamando a la API
             $adminUrl = '/' . $config['admin']['custom_url'];
+            $path = (string) parse_url($request->getUrl(), PHP_URL_PATH);
             if (
-                !$request->isApiCall()
-                && (
-                    $passwordExpired
-                    && $request->getUrl() !== $adminUrl . '/perfiluser'
-                    && $request->getUrl() !== $adminUrl . '/login/resetPassByUser'
-                )
+                $passwordExpired
+                && !in_array($path, [$adminUrl . '/perfiluser', $adminUrl . '/login/resetPassByUser'], true)
             ) {
-                Response::redirect($adminUrl . '/perfiluser');
-                Output::halt();
+                if (!$request->isApiCall()) {
+                    Response::redirect($adminUrl . '/perfiluser');
+                    Output::halt();
+                }
+
+                return [
+                    'success' => 0,
+                    'password_expired' => true,
+                    'message' => 'Tu contraseña venció: cámbiala en tu perfil para continuar',
+                    'code' => 403,
+                ];
             }
 
             // 8. Guardar el estado de expiración para que esté disponible en el controlador y la vista
@@ -425,6 +430,29 @@ class GlobalMiddleware
     }
 
     /**
+     * Cierra la sesión por el estado de la cuenta. Una página vuelve al login con el motivo
+     * (`?motivo=`), para que el usuario sepa por qué; la API responde 403.
+     *
+     * @return array{success: int, valid: false, message: string, code: int}
+     */
+    private function endSession(string $motivo, string $message): array
+    {
+        global $session, $request, $config, $cookie;
+
+        // Como el logout: el JWT de la cookie queda revocado. Sin esto, el login lo vería como una
+        // sesión abierta y devolvería al panel, que volvería a cerrarla: un bucle de redirecciones
+        $session->revokeToken($cookie?->get('tknHash'));
+        $cookie?->delete('tknHash');
+        $session->destroy();
+        if (!$request->isApiCall()) {
+            Response::redirect('/' . $config['admin']['custom_url'] . '/login?motivo=' . $motivo);
+            Output::halt();
+        }
+
+        return ['success' => 0, 'valid' => false, 'message' => $message, 'code' => 403];
+    }
+
+    /**
      * Usuario de la petición: el que ya cargó checkSession o, si no se ejecutó antes, desde la BD.
      *
      * @return array<string, mixed>
@@ -445,7 +473,9 @@ class GlobalMiddleware
     {
         global $request, $config;
 
-        if (strtoupper((string) $request->getMethod()) !== 'GET') {
+        // Una llamada de la API (también un GET con fetch) recibe 403: una redirección la haría
+        // terminar en el HTML del dashboard con 200. Solo una página se redirige
+        if ($request->isApiCall() || strtoupper((string) $request->getMethod()) !== 'GET') {
             Response::json(['success' => 0, 'message' => 'No tiene permisos para realizar esta acción'], 403);
             Output::halt();
         }

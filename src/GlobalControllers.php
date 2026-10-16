@@ -78,6 +78,8 @@ class GlobalControllers
         $this->template->addGlobal('hasActiveSession', $hasActiveSession);
         $this->template->addGlobal('ws_url', $config['websocket_service']['ws_url'] ?? '');
         $this->template->addGlobal('config', $config);
+        // Quien entró con la clave de app:down ve el sitio normal: el layout le avisa que está cerrado
+        $this->template->addGlobal('maintenance', Maintenance::status() !== null);
     }
 
     /**
