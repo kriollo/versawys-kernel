@@ -20,8 +20,18 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
   - **Instalación pendiente** (existe el token y no existe `installed.lock`): toda página lleva a `/install` y la API responde 503 en JSON.
   - **Proyectos ya instalados:** no tienen token, así que no se ven afectados.
   - `ConfigManager::createConfig()` lo comparten `config:init` y el primer arranque.
+- **`SystemCheck`**: una sola revisión del servidor para el asistente de instalación y `versaCLI status`. Revisa:
+  - la versión de PHP;
+  - las extensiones del proyecto y las que piden las dependencias de producción, según `installed.json`, sin herramientas de desarrollo y considerando los polyfills;
+  - el driver de la base de datos;
+  - las carpetas con permiso de escritura;
+  - el frontend compilado;
+  - HTTPS, en la web.
+
+  Cada falla dice cómo corregirla en cPanel y en Linux.
 
 ### Corregido
+- **`versaCLI status` pedía `tailwind.config.js`**, que Tailwind 4 ya no usa. Ahora revisa `src/dashboard/css/dashboard.css`. Sus extensiones y requisitos salen de `SystemCheck`.
 - **Una instalación nueva sin `config.json` mostraba un error fatal de PHP con código 200 en cualquier página.** Con la configuración creada pero sin instalar, llevaba al login y `/install` solo era accesible con el token que imprime la terminal.
 - **La barra del profiler no cambiaba al navegar en el SPA.** Ahora cada respuesta lleva `X-Versa-Profiler` y la barra pide `/_profiler/<id>.json`. CARGA mide cada página, y las demás llamadas a la API se cuentan.
 - **Una sola barra de debug:** la franja roja que dibujaba `versaTwig` ahora es la del profiler. Si el profiler está apagado, `versaTwig` vuelve a dibujar la suya.

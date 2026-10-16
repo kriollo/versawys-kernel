@@ -50,6 +50,7 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`Schedule`** — `load`, `cron`, `command`, `tasks`, `due`, `find`; *interno*: `dir`
 - **`ScheduledTask`** — `id`, `expression`, `overlaps`, `cron`, `everyMinute`, `everyMinutes`, `hourly`, `hourlyAt`, `daily`, `dailyAt`, `weeklyOn`, `monthlyOn`, `withoutOverlapping`, `isDue`, `nextRun`, `description`, `execute`, `lastRun`
 - **`CronExpression`** — `isDue`, `nextRun`
+- **`SystemCheck`** — `run`, `passes`, `extensions`
 - **`Installation`** — `isPending`, `requirements`, `lockFile`, `tokenFile`, `PATH`; *interno*: `bootstrap`, `requirementsPage`
 - **`Queue`** — `push`, `work`, `failed`, `retry`, `createTable` (la llama la migración del proyecto)
 - **`RateLimitMiddleware`** — `checkApiLimit`, `checkLoginLimit`, `checkUploadLimit`, `checkSensitiveLimit`

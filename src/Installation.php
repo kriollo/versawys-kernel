@@ -39,63 +39,21 @@ final class Installation
     }
 
     /**
-     * Lo que el servidor necesita para correr la aplicación.
+     * Lo que el servidor necesita (ver SystemCheck): lo mismo que muestra `versaCLI status`.
      *
-     * @return list<array{label: string, ok: bool, fix: string}>
+     * @return list<array{group: string, label: string, ok: bool, fix: string}>
      */
     public static function requirements(): array
     {
-        $checks = [
-            [
-                'label' => 'PHP 8.3 o superior (actual: ' . PHP_VERSION . ')',
-                'ok' => PHP_VERSION_ID >= 80_300,
-                'fix' => 'En cPanel: «Seleccionar versión de PHP» o «MultiPHP Manager».',
-            ],
-        ];
+        global $config;
 
-        foreach (['intl', 'mbstring', 'pdo', 'json', 'openssl', 'fileinfo'] as $extension) {
-            $checks[] = [
-                'label' => "Extensión PHP «{$extension}»",
-                'ok' => extension_loaded($extension),
-                'fix' => 'Actívala en cPanel («Seleccionar versión de PHP» → Extensiones) o pídela al hosting.',
-            ];
-        }
-
-        $checks[] = [
-            'label' => 'Driver de base de datos (pdo_mysql o pdo_pgsql)',
-            'ok' => extension_loaded('pdo_mysql') || extension_loaded('pdo_pgsql'),
-            'fix' => 'Activa pdo_mysql (MySQL/MariaDB) o pdo_pgsql (PostgreSQL) en las extensiones de PHP.',
-        ];
-
-        foreach ([ConfigManager::dir(), 'versaWYS/cache', 'versaWYS/logs'] as $dir) {
-            $checks[] = [
-                'label' => "Carpeta «{$dir}» con permiso de escritura",
-                'ok' => self::writable($dir),
-                'fix' => 'Crea la carpeta si falta y dale permisos 775 (Administrador de archivos → Permisos).',
-            ];
-        }
-
-        // Con la cookie de sesión `secure`, por http el navegador no la guarda: el instalador y el login
-        // fallarían con «los datos enviados no son correctos» sin decir por qué
-        if (PHP_SAPI !== 'cli') {
-            global $config;
-
-            $secure = (bool) ($config['session']['user_cookie']['secure'] ?? true);
-            $checks[] = [
-                'label' => 'El sitio se abre con HTTPS',
-                'ok' => !$secure || self::https() || self::local(),
-                'fix' =>
-                    'Activa SSL (en cPanel: «SSL/TLS Status» → AutoSSL) y abre el sitio con https://. '
-                        . 'Solo para una prueba sin SSL: "session": {"user_cookie": {"secure": false}} en config.json.',
-            ];
-        }
-
-        return $checks;
+        return SystemCheck::run(is_array($config) ? $config : []);
     }
 
     /**
-     * Primer arranque web sin config.json: lo crea, o si el servidor no cumple los requisitos,
-     * responde con la página que explica qué corregir y termina la petición.
+     * Primer arranque web sin config.json: lo crea y deja que el asistente (/install) muestre los
+     * requisitos. Si falta PHP o una extensión, o no se puede crear el archivo, responde con una página
+     * propia que explica qué corregir y termina la petición.
      */
     public static function bootstrap(): void
     {
@@ -103,10 +61,15 @@ final class Installation
             return;
         }
 
-        $failing = array_values(array_filter(self::requirements(), static fn(array $c): bool => !$c['ok']));
+        // Sin el PHP o las extensiones que pide, el asistente mismo no podría funcionar: esto no usa nada
+        $critical = array_filter(
+            self::requirements(),
+            static fn(array $c): bool => !$c['ok'] && in_array($c['group'], ['PHP', 'Extensiones de PHP'], true),
+        );
         $error = null;
-        if ($failing === []) {
+        if ($critical === []) {
             try {
+                // Lo demás (carpetas, frontend, HTTPS) lo muestra el paso 1 del asistente
                 ConfigManager::createConfig();
 
                 return;
@@ -124,13 +87,19 @@ final class Installation
     /**
      * Página de requisitos, sin Twig ni base de datos (puede que todavía no existan).
      *
-     * @param list<array{label: string, ok: bool, fix: string}> $checks
+     * @param list<array{group?: string, label: string, ok: bool, fix: string}> $checks
      */
     public static function requirementsPage(array $checks, ?string $error = null): string
     {
         $h = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $rows = '';
+        $group = '';
         foreach ($checks as $c) {
+            if (($c['group'] ?? '') !== $group) {
+                $group = $c['group'] ?? '';
+                $rows .= '<li class="group">' . $h($group) . '</li>';
+            }
+
             $rows .=
                 '<li class="'
                 . ($c['ok'] ? 'ok' : 'no')
@@ -149,7 +118,7 @@ final class Installation
             . 'main{background:#fff;max-width:640px;width:100%;border-radius:12px;padding:28px;box-shadow:0 8px 24px rgba(0,0,0,.08)}'
             . 'h1{font-size:20px;margin:0 0 8px}ul{list-style:none;padding:0}li{padding:8px 0;border-bottom:1px solid #e2e8f0}'
             . '.ok b{color:#16a34a}.no b{color:#dc2626}small{display:block;color:#64748b;margin-left:22px}'
-            . '.err{background:#fee2e2;border-radius:8px;padding:10px 12px}'
+            . '.err{background:#fee2e2;border-radius:8px;padding:10px 12px}li.group{border:0;padding:16px 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#64748b}'
             . '@media (prefers-color-scheme:dark){body{background:#0f172a;color:#e2e8f0}main{background:#1e293b}li{border-color:#334155}.err{background:#7f1d1d}}'
             . '</style></head><body><main><h1>Antes de instalar</h1>'
             . '<p>El servidor necesita lo siguiente. Corrige lo marcado con ✗ y recarga esta página.</p>'
@@ -158,41 +127,5 @@ final class Installation
             . $rows
             . '</ul></main></body></html>'
         );
-    }
-
-    private static function https(): bool
-    {
-        if (in_array(strtolower($_SERVER['HTTPS'] ?? ''), ['on', '1'], true)) {
-            return true;
-        }
-
-        // Detrás de un proxy propio (trusted_proxies), el esquema lo dice X-Forwarded-Proto
-        return (
-            Request::isTrustedProxy($_SERVER['REMOTE_ADDR'] ?? '')
-            && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
-        );
-    }
-
-    /** Los navegadores tratan localhost como seguro: ahí la cookie `secure` funciona por http */
-    private static function local(): bool
-    {
-        $host = strtolower((string) preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
-
-        return in_array($host, ['localhost', '127.0.0.1', '[::1]'], true) || str_ends_with($host, '.localhost');
-    }
-
-    private static function writable(string $dir): bool
-    {
-        if (is_dir($dir)) {
-            return is_writable($dir);
-        }
-
-        // Si no existe, basta con poder crearla dentro de su carpeta padre
-        $parent = dirname($dir);
-        while (!is_dir($parent) && $parent !== dirname($parent)) {
-            $parent = dirname($parent);
-        }
-
-        return is_writable($parent);
     }
 }

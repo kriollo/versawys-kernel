@@ -24,6 +24,11 @@ final class InstallationTest extends TestCase
         $this->cwd = (string) getcwd();
         $this->dir = sys_get_temp_dir() . '/versawys_install_' . bin2hex(random_bytes(6));
         mkdir($this->dir . '/versaWYS/config', 0o775, true);
+        // Un proyecto subido con su frontend compilado: si no, el primer arranque se detiene en los requisitos
+        mkdir($this->dir . '/public/dashboard/css', 0o775, true);
+        mkdir($this->dir . '/public/dashboard/js', 0o775, true);
+        touch($this->dir . '/public/dashboard/css/dashboard.css');
+        touch($this->dir . '/public/dashboard/js/app.js');
         chdir($this->dir);
         putenv('VERSAWYS_CONFIG');
     }
@@ -74,8 +79,9 @@ final class InstallationTest extends TestCase
         $labels = array_column(Installation::requirements(), 'label');
 
         self::assertStringContainsString('PHP 8.3', $labels[0]);
-        self::assertContains('Extensión PHP «intl»', $labels);
-        self::assertContains('Carpeta «versaWYS/config» con permiso de escritura', $labels);
+        self::assertContains('intl (Fechas, números e idioma)', $labels);
+        self::assertContains('versaWYS/config con permiso de escritura', $labels);
+        self::assertContains('Frontend compilado (public/dashboard)', $labels);
     }
 
     public function testLaPaginaDeRequisitosEscapaLoQueMuestra(): void
