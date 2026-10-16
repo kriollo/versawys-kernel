@@ -426,7 +426,13 @@ final class Profiler
             . '#versa-profiler a{color:inherit;text-decoration:none;font-family:ui-monospace,monospace}#versa-profiler a:hover{text-decoration:underline}'
             . '#versa-profiler .vp-warn{color:#fde68a}#versa-profiler .vp-api{opacity:.8}'
             . '#versa-profiler .vp-brand{display:flex;align-items:center;gap:6px}#versa-profiler img{width:20px;height:20px}'
-            . '</style><div id="versa-profiler"><span>Modo Debug: Activado</span><span id="vp-metrics"></span>'
+            // En pantallas angostas, una sola línea con las métricas: tres líneas tapaban el contenido
+            . '@media (max-width:640px){#versa-profiler{flex-wrap:nowrap;padding:4px 8px;font-size:11px}'
+            . '#versa-profiler .vp-label,#versa-profiler .vp-brand{display:none}'
+            . '#vp-metrics{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}}'
+            // Espacio al final de la página para que la barra fija no tape lo último
+            . '#versa-profiler-spacer{height:44px}'
+            . '</style><div id="versa-profiler-spacer"></div><div id="versa-profiler"><span class="vp-label">Modo Debug: Activado</span><span id="vp-metrics"></span>'
             . '<span class="vp-brand"><img src="/public/dashboard/img/favicon.webp" alt="">VersaWYS Framework <span id="vp-load"></span></span></div>'
             . '<script nonce="'
             . $nonce

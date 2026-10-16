@@ -115,7 +115,7 @@ final class ProfilerTest extends TestCase
 
         $html = Profiler::injectToolbar('<html><body><p>hola</p></body></html>', $summary);
         self::assertMatchesRegularExpression(
-            '#<p>hola</p><style nonce="[^"]+">.*</style><div id="versa-profiler"><span>Modo Debug: Activado</span><span id="vp-metrics"></span>.*</div><script nonce="[^"]+">.*</script></body>#s',
+            '#<p>hola</p><style nonce="[^"]+">.*</style><div id="versa-profiler-spacer"></div><div id="versa-profiler"><span class="vp-label">Modo Debug: Activado</span><span id="vp-metrics"></span>.*</div><script nonce="[^"]+">.*</script></body>#s',
             $html,
         );
         self::assertStringContainsString('"id":"abc"', $html);
