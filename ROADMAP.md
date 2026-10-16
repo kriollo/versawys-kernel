@@ -213,7 +213,7 @@ El paso 7 dejó el kernel al nivel de Laravel y Symfony en lo esencial. Este pas
 | 3 | **Usar la cola en los proyectos** | Hay 9 `runInBackground` sin reintentos y una cola casera en versaBOT. | Correos y tareas pesadas pasan por `Queue::push`; `app:queue:work` corre como tarea programada. |
 | 4 | ✅ **Generadores modernos** | `RCMD`/`versaMODULE` generan validación en middleware y nada de lo nuevo. | Hay `request:make`, `job:make`, `test:make` y `factory:make`. Un módulo nuevo sale con FormRequests, `Tenant`, inyección por constructor y su prueba con `TestClient`, y esa prueba pasa recién generada. |
 | 5 | ✅ **Factories para pruebas** | Las pruebas insertan filas a mano con PDO. | Con `Factory` se crean datos de prueba en una línea, respetando la empresa y las relaciones. |
-| 6 | **Cifrado y URLs firmadas** | versaSTORE cifra a mano; `Storage` necesita enlaces que venzan. | `Crypt::encrypt`/`decrypt` con sodium y una clave propia; `Url::signed(..., expira)` y un middleware que la valida. |
+| 6 | ✅ **Cifrado y URLs firmadas** | versaSTORE cifra a mano; `Storage` necesita enlaces que venzan. | `Crypt::encrypt`/`decrypt` con AES-256-GCM (openssl, ya presente en todo hosting; sodium no siempre) y una clave propia; `SignedUrl::make(..., segundos)` y un middleware que la valida. |
 | 7 | **Modo mantenimiento** | Para migraciones largas y restauraciones. | `app:down` / `app:up` responden 503, con una clave para que el equipo siga entrando. |
 | 8 | **Documentación completa** | Ya pasó que la documentación prometía algo inexistente (la barra de depuración). | Cada guía se contrasta con el código y tiene ejemplos que se ejecutan. Hay una ruta de aprendizaje de la instalación al despliegue. |
 

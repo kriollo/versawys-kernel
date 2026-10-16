@@ -33,6 +33,7 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`CacheUsers`** — `updateMenuVersion`, `invalidateUserCache`, `invalidateAllUserCache`; *interno*: `getUserData`
 - **`Container`** — `getInstance`, `bind`, `singleton`, `instance`, `forget`, `has`, `get`, `make`, `call`; *interno*: `resetGlobal`
 - **`ContentType`** — enum del tipo de contenido de un correo (`HTML`, `TEXT`, `TWIG`)
+- **`Crypt`** — `encrypt`, `decrypt`, `isEncrypted`; *interno*: `key`
 - **`Cookie`** — `set`, `has`, `get`, `delete`, `getAll`, `clear`
 - **`FormRequest`** — `rules`, `messages`, `authorize`, `validated`, `input`; *interno*: `validateResolved`. Clase base: el contenedor la valida antes de llamar al controlador (422 con `errors`, 403 si `authorize()` es false)
 - **`ErrorHandler`** — `initialize`, `handleError`; *interno*: `handleException`, `handleShutdown`, `debugPage`
@@ -59,6 +60,7 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`Router`** — `health`, `normalize_url`, `group`, `get`, `post`, `put`, `patch`, `delete`, `query`, `withoutCsrf`, `middleware`, `resolve`; *interno*: `loadRoutes`, `healthToken`
 - **`SecurityUtils`** — `validateAndCleanUrl`; *interno*: `sanitizeUrl`, `cspNonce`, `resetRequestState`, `checkRateLimit`, `checkGlobalRateLimit`, `cleanExpiredLimits`; *deprecado*: `validateCsrfToken`
 - **`Session`** — `revokeToken`, `regenerate`, `setCSRFToken`, `getCSRFToken`, `set`, `has`, `get`, `getAll`, `delete`, `clear`, `getAttempts`, `getAllAttempts`, `setAttempts`, `restoreAttempts`, `setAttemptsSession`, `maximumAttempts`, `generateJWT`, `decodeJWT`, `setUserSession`, `refreshUserSession`, `checkUserSession`, `touchSessionActivity`, `destroy`; *interno*: `checkExistSession`, `checkUserSessionCached`, `resetRequestState`
+- **`SignedUrl`** — `make`, `isValid`, `check` (middleware)
 - **`Storage`** — `put`, `get`, `exists`, `delete`, `files`, `path`
 - **`Tenant`** — `id`, `owns`, `ensure` (404 si la fila no existe o es de otra empresa)
 - **`Validator`** — `make`, `fails`, `errors`, `validated`

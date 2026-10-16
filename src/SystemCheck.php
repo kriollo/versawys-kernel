@@ -22,7 +22,7 @@ final class SystemCheck
         'json' => 'Intercambio de datos JSON',
         'mbstring' => 'Textos UTF-8',
         'intl' => 'Fechas, números e idioma',
-        'openssl' => 'Cifrado y conexiones seguras',
+        'openssl' => 'Cifrado (Crypt, AES-256-GCM) y conexiones seguras',
         'fileinfo' => 'Tipo real de los archivos subidos',
         'curl' => 'Llamadas a otros servicios',
         'zip' => 'Archivos Office y zip',

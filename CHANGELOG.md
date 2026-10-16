@@ -47,6 +47,13 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
   - `create` y `createMany` guardan registros, con `created_at` y `updated_at` automáticos;
   - las definiciones se cargan solas desde `versaWYS/tests/factories`;
   - `factory:make` crea una definición, y versaMODULE crea la del módulo.
+- **`Crypt`**: cifrado autenticado (AES-256-GCM con openssl) para guardar secretos en la base de datos.
+  - `encrypt` acepta textos, números y arreglos; `decrypt` lanza una excepción si el valor fue alterado o se cifró con otra clave.
+  - `isEncrypted` sirve para migrar valores guardados en texto plano.
+  - La clave sale de `crypt.key` (32 bytes en base64) o, si falta, de `session.key`. Cada uso tiene una clave derivada distinta.
+- **`SignedUrl`**: enlaces que vencen, para descargas o confirmaciones por correo.
+  - `SignedUrl::make('/ruta', segundos, [params])` firma la ruta, los parámetros y el vencimiento.
+  - El middleware `[SignedUrl::class, 'check']` responde 403 si el enlace venció o fue alterado.
 
 ### Corregido
 - **`CommandExecutor` lanzaba los procesos con `php` sin ruta:** en cron y en PHP-FPM, que corren con un `PATH` mínimo, el proceso hijo no arrancaba y nada lo avisaba. Por eso el programador decía «Lanzada», pero la tarea nunca corría. Ahora usa la ruta completa del PHP actual (`CommandExecutor::phpBinary()`). Además, la salida de cada tarea programada va a `versaWYS/logs/cron.log`.
