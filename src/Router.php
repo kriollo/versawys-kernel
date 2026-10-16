@@ -380,7 +380,12 @@ class Router
 
             // Si no hay coincidencia exacta, buscar rutas con parámetros
             // Precalcular cantidad de segmentos de la URL solicitada
-            $urlSegmentCount = count(array_filter(explode('/', trim($url, '/'))));
+            // Sin callback, array_filter() descartaría el segmento "0" (/usuarios/0): se cuentan los no vacíos
+            $segments = static fn(string $path): int => count(array_filter(
+                explode('/', trim($path, '/')),
+                static fn(string $segment): bool => $segment !== '',
+            ));
+            $urlSegmentCount = $segments($url);
             foreach ($routes as $route => $callback) {
                 // Verificar tiempo de ejecución excesivo
                 if ((microtime(true) - $startTime) > $maxExecutionTime) {
@@ -396,7 +401,7 @@ class Router
                 }
 
                 // Optimización: solo intentar match si el número de segmentos coincide
-                $routeSegmentCount = count(array_filter(explode('/', trim($route, '/'))));
+                $routeSegmentCount = $segments($route);
                 if ($routeSegmentCount !== $urlSegmentCount) {
                     continue;
                 }

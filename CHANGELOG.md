@@ -57,12 +57,14 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
 - **Modo mantenimiento** (`Maintenance`): `app:down` hace que todo responda 503, con `Retry-After`; la API responde en JSON. `app:up` lo termina.
   - Quien abre `/<clave>` una vez queda con una cookie firmada (no es la clave) y sigue entrando. `--secret` la elige; si no, se genera una.
   - El estado vive en `down.json`, junto a `config.json`: sobrevive a `cache:clear`.
+- **`TestClient::postFile(uri, datos, [campo => ruta])`**: un formulario con archivos, para probar subidas (avatares, documentos).
 - **`TestClient::withConfig(cambios, fn)`**: corre una prueba con otras claves de `config.json` y después deja la configuración como estaba.
 - **Empresa suspendida** (`empresas.estado = 0`): `checkSession` cierra la sesión de sus usuarios, salvo la del superadministrador. Requiere que `Users::findWithCompany()` entregue `empresa_estado` (el esqueleto ya lo hace); sin esa clave, no se revisa.
 - **El login explica por qué se cerró la sesión:** `checkSession` vuelve a `/login?motivo=cuenta_desactivada` o `?motivo=empresa_suspendida`.
 - **Aviso de mantenimiento para el equipo:** la variable de Twig `maintenance` indica si el sitio está en `app:down`.
 
 ### Corregido
+- **Un parámetro de ruta igual a `0` respondía 405** (`/perfiles/0`): al contar los segmentos de la URL, `array_filter()` descartaba el `"0"`.
 - **Con la contraseña vencida, la API seguía respondiendo:** solo las páginas llevaban al perfil, así que el bloqueo se saltaba llamando a la API. Ahora la API responde 403 con `password_expired: true`, salvo el perfil y el cambio de contraseña.
 - **Cerrar la sesión por el estado de la cuenta no revocaba el JWT:** el login veía la cookie como una sesión abierta y devolvía al panel, que la volvía a cerrar. Ahora revoca el token igual que el logout.
 - **Un GET de API sin permiso (`onlyAdmin`, `onlySuperAdmin`) respondía 302 al dashboard:** un `fetch` sigue la redirección y recibía HTML con 200. Ahora responde 403 en JSON; las páginas siguen redirigiendo.

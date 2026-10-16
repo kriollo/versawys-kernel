@@ -120,6 +120,14 @@ final class RouterTest extends TestCase
         self::assertSame('id=42', $this->dispatch('GET', str_replace('{id}', '42', $path)));
     }
 
+    public function testUnParametroCeroTambienLlegaAlControlador(): void
+    {
+        // array_filter() sin callback descartaba el segmento "0": la ruta no calzaba y respondía 405
+        $path = $this->route('get', '/{id}', [RouterTestController::class, 'echo']);
+
+        self::assertSame('id=0', $this->dispatch('GET', str_replace('{id}', '0', $path)));
+    }
+
     public function testHeadUsesTheGetRouteWithoutBody(): void
     {
         $path = $this->route('get', '/', [RouterTestController::class, 'unauthorized']);

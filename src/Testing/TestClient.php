@@ -166,6 +166,36 @@ final class TestClient
         return $this->request('POST', $uri, $data);
     }
 
+    /**
+     * Un formulario con archivos (multipart), como un `<input type="file">`. Cada archivo se copia a un
+     * temporal: la prueba puede usar el mismo varias veces.
+     *
+     *     $client->postFile('/admin/usuarios/updateAvatar', [], ['fileAvatar' => __DIR__ . '/fixtures/foto.png']);
+     *
+     * @param array<string, mixed> $data
+     * @param array<string, string> $files campo => ruta del archivo
+     */
+    public function postFile(string $uri, array $data, array $files): TestResponse
+    {
+        $uploads = [];
+        foreach ($files as $field => $path) {
+            $tmp = (string) tempnam(sys_get_temp_dir(), 'versa_upload_');
+            copy($path, $tmp);
+            $uploads[$field] = [
+                'name' => basename($path),
+                'type' => (string) mime_content_type($path),
+                'tmp_name' => $tmp,
+                'error' => UPLOAD_ERR_OK,
+                'size' => (int) filesize($tmp),
+                // move_uploaded_file() solo acepta subidas HTTP reales: File copia el contenido, como
+                // con los archivos de un PUT multipart
+                'from' => 'formData',
+            ];
+        }
+
+        return $this->request('POST', $uri, $data, ['Content-Type' => 'multipart/form-data'], files: $uploads);
+    }
+
     /** @param array<string, mixed> $data */
     public function postJson(string $uri, array $data = []): TestResponse
     {
@@ -207,6 +237,7 @@ final class TestClient
      *
      * @param array<string, mixed> $data parámetros de la URL (GET) o del formulario (POST)
      * @param array<string, string> $headers
+     * @param array<string, array<string, mixed>> $files como $_FILES (ver postFile())
      */
     public function request(
         string $method,
@@ -214,6 +245,7 @@ final class TestClient
         array $data = [],
         array $headers = [],
         ?string $body = null,
+        array $files = [],
     ): TestResponse {
         global $config;
 
@@ -236,7 +268,7 @@ final class TestClient
 
         self::prepareServer($method, $uri, $headers);
         $_COOKIE = $this->cookies;
-        $_FILES = [];
+        $_FILES = $files;
         if ($method === 'GET' || $method === 'HEAD') {
             $_GET = $data + $_GET;
             $_POST = [];
