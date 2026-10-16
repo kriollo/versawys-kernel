@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace versaWYS\kernel\Tests;
 
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
+use versaWYS\kernel\Profiler;
 use versaWYS\kernel\versaTwig;
 
 final class TwigTest extends TestCase
@@ -67,20 +69,20 @@ final class TwigTest extends TestCase
         $twig = $this->twig(false);
         $config['build']['debug'] = true;
         $config['framework'] = 'versaWYS-PHP';
-        $debug = new \ReflectionMethod($twig, 'debug');
+        $debug = new ReflectionMethod($twig, 'debug');
 
         // Sin profiler (apagado o en consola), versaTwig sigue dibujando su barra
-        \versaWYS\kernel\Profiler::reset();
+        Profiler::reset();
         self::assertStringContainsString('Modo Debug: Activado', (string) $debug->invoke($twig));
 
         // Con el profiler midiendo la petición, la barra es la suya: versaTwig no agrega otra
         $config['profiler']['dir'] = $this->dir . '/profiler';
-        \versaWYS\kernel\Profiler::begin();
+        Profiler::begin();
 
         try {
             self::assertSame('', $debug->invoke($twig));
         } finally {
-            \versaWYS\kernel\Profiler::reset();
+            Profiler::reset();
         }
     }
 

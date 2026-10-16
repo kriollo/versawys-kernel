@@ -46,7 +46,7 @@ final class CliLauncherTest extends TestCase
     /** @return array{int, string} */
     private function launch(string $cwd, string $args): array
     {
-        $launcher = escapeshellarg(dirname(__DIR__) . '/bin/versaCLI');
+        $launcher = escapeshellarg(__DIR__ . '/../bin/versaCLI');
         exec('cd ' . escapeshellarg($this->dir . $cwd) . " && {$launcher} {$args} 2>&1", $output, $code);
 
         return [$code, implode("\n", $output)];

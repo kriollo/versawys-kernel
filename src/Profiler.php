@@ -301,7 +301,7 @@ final class Profiler
 
     private static function path(): string
     {
-        $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
         return is_string($path) && $path !== '' ? $path : '/';
     }

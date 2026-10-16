@@ -2,6 +2,22 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar]
+
+Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
+
+### Añadido
+- **Programador de tareas:**
+  - Las tareas se definen en `app/schedule.php` con `Schedule::cron(Clase::class)` (una clase de `app/cron`) o `Schedule::command('...')`.
+  - Frecuencias: `everyMinute`, `everyMinutes(n)`, `hourly(At)`, `daily(At)`, `weeklyOn`, `monthlyOn` o `cron('expresión')`.
+  - `withoutOverlapping()` usa un candado de archivo: si la ejecución anterior sigue corriendo, esa vuelta se omite.
+  - Comandos: `app:schedule:run` (una sola línea en el crontab; lanza cada tarea en su propio proceso), `app:schedule:list` (próxima ejecución y resultado de la última) y `app:schedule:exec <id>`.
+  - `CronExpression` acepta expresiones cron estándar de 5 campos.
+
+### Corregido
+- **La barra del profiler no cambiaba al navegar en el SPA.** Ahora cada respuesta lleva `X-Versa-Profiler` y la barra pide `/_profiler/<id>.json`. CARGA mide cada página, y las demás llamadas a la API se cuentan.
+- **Una sola barra de debug:** la franja roja que dibujaba `versaTwig` ahora es la del profiler. Si el profiler está apagado, `versaTwig` vuelve a dibujar la suya.
+
 ## [3.10.0] - 2026-10-15
 
 Paso 8 del ROADMAP, ítem 1: panel de depuración y profiler.
