@@ -13,6 +13,7 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
   - `withoutOverlapping()` usa un candado de archivo: si la ejecución anterior sigue corriendo, esa vuelta se omite.
   - Comandos: `app:schedule:run` (una sola línea en el crontab; lanza cada tarea en su propio proceso), `app:schedule:list` (próxima ejecución y resultado de la última) y `app:schedule:exec <id>`.
   - `CronExpression` acepta expresiones cron estándar de 5 campos.
+  - `Schedule::report()` arma lo que muestran `app:schedule:list` y el panel, incluido si el crontab está llamando a `app:schedule:run`. Si no lo está, `app:schedule:list` lo avisa con la línea exacta para el crontab.
 
 - **Instalación a prueba de un hosting sin terminal** (`Installation`):
   - **Primer arranque sin `config.json`:** se crea solo, con clave de sesión propia y token de instalación. Si el servidor no cumple los requisitos, se muestra una página con qué corregir: PHP, extensiones, carpetas con permiso de escritura y HTTPS.

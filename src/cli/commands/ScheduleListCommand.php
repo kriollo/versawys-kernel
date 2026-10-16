@@ -20,8 +20,8 @@ class ScheduleListCommand extends BaseCommand
     #[Override]
     public function execute(array $params = []): int
     {
-        $tasks = Schedule::load()->tasks();
-        if ($tasks === []) {
+        $report = Schedule::load()->report(new DateTimeImmutable());
+        if ($report['tasks'] === []) {
             $this->info(
                 'No hay tareas programadas. Se definen en app/schedule.php (ver documentacion/Tareas_Programadas.md).',
             );
@@ -29,11 +29,10 @@ class ScheduleListCommand extends BaseCommand
             return 0;
         }
 
-        $now = new DateTimeImmutable();
         $line = "%-14s %-44s %-16s %-17s %s\n";
         printf($line, 'Id', 'Tarea', 'Frecuencia', 'Próxima', 'Última');
-        foreach ($tasks as $task) {
-            $last = $task->lastRun();
+        foreach ($report['tasks'] as $task) {
+            $last = $task['last_run'];
             $lastText = $last === null
                 ? '—'
                 : sprintf(
@@ -44,12 +43,21 @@ class ScheduleListCommand extends BaseCommand
                 );
             printf(
                 $line,
-                $task->id(),
-                mb_strimwidth($task->description() . ($task->overlaps() ? '' : ' [sin solapar]'), 0, 44, '…'),
-                $task->expression(),
-                $task->nextRun($now)?->format('Y-m-d H:i') ?? '—',
+                $task['id'],
+                mb_strimwidth($task['task'] . ($task['overlaps'] ? '' : ' [sin solapar]'), 0, 44, '…'),
+                $task['expression'],
+                $task['next_run'] ?? '—',
                 $lastText,
             );
+        }
+
+        if (!$report['cron_running']) {
+            $this->warning(
+                'El crontab no está llamando a app:schedule:run'
+                . ($report['last_tick'] === null ? '' : ' (última vez: ' . $report['last_tick'] . ')')
+                . '. Agrega esta línea:',
+            );
+            echo '  ' . $report['cron_line'] . "\n";
         }
 
         return 0;

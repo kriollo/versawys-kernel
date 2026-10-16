@@ -158,4 +158,24 @@ final class ScheduleTest extends TestCase
         self::assertSame(0, $task->execute(), 'liberado el candado, corre');
         self::assertSame(1, TareaDePrueba::$corridas);
     }
+
+    public function testElReporteDiceSiElCrontabEstaLlamandoAlProgramador(): void
+    {
+        $schedule = new Schedule();
+        $schedule->cron(TareaDePrueba::class)->dailyAt('03:00');
+        $now = new DateTimeImmutable();
+
+        $report = $schedule->report($now);
+        self::assertCount(1, $report['tasks']);
+        self::assertSame('0 3 * * *', $report['tasks'][0]['expression']);
+        self::assertFalse($report['cron_running'], 'nunca corrió app:schedule:run');
+        self::assertStringContainsString('versaCLI app:schedule:run', $report['cron_line']);
+
+        Schedule::tick();
+        self::assertTrue($schedule->report($now)['cron_running']);
+        self::assertFalse(
+            $schedule->report($now->modify('+10 minutes'))['cron_running'],
+            'hace más de 2 minutos que no pasa',
+        );
+    }
 }

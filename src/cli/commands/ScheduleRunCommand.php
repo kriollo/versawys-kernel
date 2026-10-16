@@ -24,6 +24,7 @@ class ScheduleRunCommand extends BaseCommand
     #[Override]
     public function execute(array $params = []): int
     {
+        Schedule::tick();
         $due = Schedule::load()->due(new DateTimeImmutable());
         foreach ($due as $task) {
             CommandExecutor::runInBackground('schedule:exec', [$task->id()]);

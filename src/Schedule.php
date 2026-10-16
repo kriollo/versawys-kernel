@@ -76,6 +76,60 @@ final class Schedule
         return null;
     }
 
+    /**
+     * Lo que muestran `app:schedule:list` y el panel: cada tarea con su próxima y su última ejecución,
+     * y si el crontab está llamando a `app:schedule:run`.
+     *
+     * @return array{
+     *     tasks: list<array{id: string, task: string, type: string, expression: string, overlaps: bool, next_run: ?string, last_run: ?array{started_at: string, ms: int, exit: int, error: ?string}}>,
+     *     last_tick: ?string,
+     *     cron_running: bool,
+     *     cron_line: string
+     * }
+     */
+    public function report(DateTimeInterface $now): array
+    {
+        $tasks = [];
+        foreach ($this->tasks as $task) {
+            $tasks[] = [
+                'id' => $task->id(),
+                'task' => $task->description(),
+                'type' => $task->type,
+                'expression' => $task->expression(),
+                'overlaps' => $task->overlaps(),
+                'next_run' => $task->nextRun($now)?->format('Y-m-d H:i'),
+                'last_run' => $task->lastRun(),
+            ];
+        }
+
+        $tick = self::lastTick();
+
+        return [
+            'tasks' => $tasks,
+            'last_tick' => $tick === null ? null : date('Y-m-d H:i:s', $tick),
+            // app:schedule:run corre cada minuto: más de 2 minutos sin pasar es que el crontab no lo llama
+            'cron_running' => $tick !== null && ($now->getTimestamp() - $tick) <= 120,
+            'cron_line' => '* * * * * php ' . getcwd() . '/versaCLI app:schedule:run >> /dev/null 2>&1',
+        ];
+    }
+
+    /** Lo llama app:schedule:run en cada pasada. */
+    public static function tick(): void
+    {
+        $dir = self::dir();
+        if (is_dir($dir) || mkdir($dir, 0o775, true) || is_dir($dir)) {
+            file_put_contents($dir . 'last-tick', (string) time());
+        }
+    }
+
+    /** @return int|null la última vez que corrió app:schedule:run (timestamp) */
+    public static function lastTick(): ?int
+    {
+        $file = self::dir() . 'last-tick';
+
+        return is_file($file) ? (int) file_get_contents($file) : null;
+    }
+
     /** @internal Carpeta de candados y estado de las tareas. */
     public static function dir(): string
     {
