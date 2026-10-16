@@ -14,7 +14,14 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
   - Comandos: `app:schedule:run` (una sola línea en el crontab; lanza cada tarea en su propio proceso), `app:schedule:list` (próxima ejecución y resultado de la última) y `app:schedule:exec <id>`.
   - `CronExpression` acepta expresiones cron estándar de 5 campos.
 
+- **Instalación a prueba de un hosting sin terminal** (`Installation`):
+  - **Primer arranque sin `config.json`:** se crea solo, con clave de sesión propia y token de instalación. Si el servidor no cumple los requisitos, se muestra una página con qué corregir: PHP, extensiones, carpetas con permiso de escritura y HTTPS.
+  - **Instalación pendiente** (existe el token y no existe `installed.lock`): toda página lleva a `/install` y la API responde 503 en JSON.
+  - **Proyectos ya instalados:** no tienen token, así que no se ven afectados.
+  - `ConfigManager::createConfig()` lo comparten `config:init` y el primer arranque.
+
 ### Corregido
+- **Una instalación nueva sin `config.json` mostraba un error fatal de PHP con código 200 en cualquier página.** Con la configuración creada pero sin instalar, llevaba al login y `/install` solo era accesible con el token que imprime la terminal.
 - **La barra del profiler no cambiaba al navegar en el SPA.** Ahora cada respuesta lleva `X-Versa-Profiler` y la barra pide `/_profiler/<id>.json`. CARGA mide cada página, y las demás llamadas a la API se cuentan.
 - **Una sola barra de debug:** la franja roja que dibujaba `versaTwig` ahora es la del profiler. Si el profiler está apagado, `versaTwig` vuelve a dibujar la suya.
 

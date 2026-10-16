@@ -252,6 +252,26 @@ class Router
                 return Response::json(self::health(), 200);
             }
 
+            // Instalación sin terminar: todo lleva al asistente, nada cae en el login
+            if (
+                Installation::isPending()
+                && $url !== Installation::PATH
+                && !str_starts_with($url, Installation::PATH . '/')
+                && !str_starts_with($url, '/_profiler')
+            ) {
+                if ($request->isApiCall()) {
+                    return Response::json([
+                        'success' => 0,
+                        'message' => 'La aplicación aún no está instalada.',
+                        'redirect' => Installation::PATH,
+                    ], 503);
+                }
+
+                Response::redirect(Installation::PATH);
+
+                return true;
+            }
+
             // Panel del profiler: solo en modo debug y desde la propia máquina (o profiler.allowed_ips)
             if (($url === '/_profiler' || str_starts_with($url, '/_profiler/')) && Profiler::enabled()) {
                 if (!Profiler::allowed($request->getIp())) {
