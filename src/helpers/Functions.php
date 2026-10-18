@@ -375,7 +375,8 @@ class Functions
      */
     public static function method_field(string $method): string
     {
-        $method = strtoupper(trim($method));
+        // Solo letras: el valor va dentro de un atributo HTML
+        $method = strtoupper((string) preg_replace('/[^A-Za-z]/', '', $method));
 
         return sprintf('<input type="hidden" name="_method" value="%s">', $method);
     }
@@ -484,11 +485,10 @@ class Functions
      */
     public static function formatRut(string $rut): string
     {
-        $rut = str_replace('.', '', $rut);
-        $rut = str_replace('-', '', $rut);
-
-        $rut = explode('-', $rut);
-        $rut = $rut[0];
+        $rut = str_replace(['.', '-', ' '], '', $rut);
+        if (strlen($rut) < 2) {
+            return $rut;
+        }
 
         $dv = strtoupper($rut[strlen($rut) - 1]);
         $rut = substr($rut, 0, -1);
