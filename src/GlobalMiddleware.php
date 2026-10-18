@@ -12,6 +12,11 @@ use versaWYS\kernel\helpers\Functions;
 
 class GlobalMiddleware
 {
+    private const array BLOCKED_MESSAGES = [
+        'cuenta_desactivada' => 'Cuenta de usuario desactivada',
+        'empresa_suspendida' => 'La empresa está suspendida',
+    ];
+
     // Propiedad estática para almacenar los datos del usuario durante una única petición.
     // Esto evita tener que pasar el objeto de usuario entre funciones.
     private static ?array $currentUserData = null;
@@ -115,27 +120,11 @@ class GlobalMiddleware
                 ];
             }
 
-            // 5. Validar estado del usuario
+            // 5. Cuenta desactivada o empresa suspendida: la sesión termina
             $userData = self::$currentUserData['user'];
-            if (!isset($userData['status']) || (int) $userData['status'] !== 1) {
-                if ($debug) {
-                    Loggin::error(
-                        '[GlobalMiddleware::checkSession] Usuario inactivo ID: ' . $userId,
-                        'GlobalMiddleware',
-                    );
-                }
-
-                return $this->endSession('cuenta_desactivada', 'Cuenta de usuario desactivada');
-            }
-
-            // 5b. Empresa suspendida: sus usuarios quedan fuera, salvo el superadministrador, que es
-            // quien administra las empresas. `empresa_estado` lo entrega Users::findWithCompany()
-            if (
-                ($userData['role'] ?? '') !== 'superadmin'
-                && array_key_exists('empresa_estado', $userData)
-                && !(bool) $userData['empresa_estado']
-            ) {
-                return $this->endSession('empresa_suspendida', 'La empresa está suspendida');
+            $blocked = self::blockedReason($userData);
+            if ($blocked !== null) {
+                return $this->endSession($blocked, self::BLOCKED_MESSAGES[$blocked]);
             }
 
             // 6. Comprobar la expiración de la contraseña
@@ -439,6 +428,25 @@ class GlobalMiddleware
     public static function resetRequestState(): void
     {
         self::$currentUserData = null;
+    }
+
+    /**
+     * Por qué esta cuenta ya no puede usar el panel: 'cuenta_desactivada', 'empresa_suspendida' o null.
+     * Una empresa suspendida no afecta al superadministrador, que es quien administra las empresas.
+     * `empresa_estado` lo entrega Users::findWithCompany(); sin esa clave, no se revisa.
+     *
+     * @param array<string, mixed> $user
+     */
+    public static function blockedReason(array $user): ?string
+    {
+        return match (true) {
+            (int) ($user['status'] ?? 0) !== 1 => 'cuenta_desactivada',
+            ($user['role'] ?? '') !== 'superadmin'
+                && array_key_exists('empresa_estado', $user)
+                && !(bool) $user['empresa_estado']
+                => 'empresa_suspendida',
+            default => null,
+        };
     }
 
     /**
