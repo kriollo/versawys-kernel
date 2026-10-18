@@ -70,6 +70,7 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
 - **Aviso de mantenimiento para el equipo:** la variable de Twig `maintenance` indica si el sitio está en `app:down`.
 
 ### Corregido
+- **`Functions::sanitizeSvgContent()` dejaba pasar código ejecutable:** era una lista negra con expresiones regulares (las listas blancas declaradas no se usaban). Pasaban `<SCRIPT src=…>` sin cierre, `java&#9;script:`, `<foreignObject>` y `<style>`; los íconos del menú se imprimen con `|raw`, así que era un XSS almacenado. Ahora analiza el SVG como XML y conserva solo una lista blanca de elementos y atributos: `href` y `url()` solo a `#anclas`, sin DOCTYPE (XXE). Los íconos guardados con entidades (`&lt;svg`) de proyectos 2.x se siguen aceptando.
 - **Type juggling en la entrada:**
   - un `_csrf_token` que no era texto (`0`) respondía 500 en vez de 403; ahora solo cuenta un token de texto, y un campo con otro tipo no tapa el de la cabecera;
   - la paginación (`getParamsPaginate`) respondía 500 con `page[]=1` o un filtro como arreglo;

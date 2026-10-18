@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace versaWYS\kernel\helpers;
 
 use CURLFile;
+use DOMCdataSection;
+use DOMDocument;
+use DOMElement;
+use DOMText;
 use Exception;
 use Random\RandomException;
 use SensitiveParameter;
@@ -13,6 +17,88 @@ use versaWYS\kernel\Validator;
 
 class Functions
 {
+    private const array SVG_ELEMENTS = [
+        'svg',
+        'g',
+        'path',
+        'circle',
+        'ellipse',
+        'line',
+        'polyline',
+        'polygon',
+        'rect',
+        'text',
+        'tspan',
+        'title',
+        'desc',
+        'defs',
+        'linearGradient',
+        'radialGradient',
+        'stop',
+        'clipPath',
+        'mask',
+        'pattern',
+        'symbol',
+        'use',
+    ];
+
+    private const array SVG_ATTRIBUTES = [
+        'class',
+        'id',
+        'role',
+        'aria-hidden',
+        'aria-label',
+        'version',
+        'width',
+        'height',
+        'viewBox',
+        'preserveAspectRatio',
+        'fill',
+        'fill-rule',
+        'fill-opacity',
+        'stroke',
+        'stroke-width',
+        'stroke-linecap',
+        'stroke-linejoin',
+        'stroke-dasharray',
+        'stroke-dashoffset',
+        'stroke-miterlimit',
+        'stroke-opacity',
+        'opacity',
+        'clip-rule',
+        'clip-path',
+        'mask',
+        'transform',
+        'd',
+        'cx',
+        'cy',
+        'r',
+        'rx',
+        'ry',
+        'x',
+        'y',
+        'x1',
+        'y1',
+        'x2',
+        'y2',
+        'dx',
+        'dy',
+        'points',
+        'offset',
+        'stop-color',
+        'stop-opacity',
+        'gradientUnits',
+        'gradientTransform',
+        'patternUnits',
+        'patternTransform',
+        'font-size',
+        'font-family',
+        'font-weight',
+        'text-anchor',
+        'dominant-baseline',
+        'href',
+    ];
+
     // =========================================================================
     // HTTP REQUEST (cURL centralizado)
     // =========================================================================
@@ -356,76 +442,36 @@ class Functions
     }
 
     /**
-     * Sanitiza contenido SVG permitiendo solo elementos seguros.
-     * Decodifica entidades HTML y filtra elementos peligrosos.
-     *
-     * @param string $svgContent el contenido SVG a sanitizar
-     *
-     * @return string el contenido SVG sanitizado y seguro
+     * Un SVG sin nada que pueda ejecutarse, para imprimirlo en la página (íconos del menú) o servirlo
+     * desde el sitio (archivos subidos). Se analiza como XML y se conserva solo lo de una lista blanca:
+     * nada de script, foreignObject, animaciones, enlaces, estilos ni atributos de evento; `href` solo a
+     * un `#ancla` del mismo SVG y `url(...)` solo a `url(#ancla)`. Un documento con DOCTYPE (entidades
+     * externas, XXE) o que no es un SVG válido devuelve ''.
      */
     public static function sanitizeSvgContent(string $svgContent): string
     {
-        // Primero decodificar entidades HTML
-        $decoded = self::removeScape($svgContent);
-
-        // Elementos SVG permitidos (lista blanca)
-        $allowedElements = [
-            'path',
-            'circle',
-            'rect',
-            'line',
-            'polyline',
-            'polygon',
-            'ellipse',
-            'g',
-            'defs',
-            'use',
-            'clipPath',
-            'mask',
-        ];
-
-        // Atributos SVG seguros permitidos
-        $allowedAttributes = [
-            'd',
-            'cx',
-            'cy',
-            'r',
-            'x',
-            'y',
-            'width',
-            'height',
-            'rx',
-            'ry',
-            'fill',
-            'stroke',
-            'stroke-width',
-            'stroke-linecap',
-            'stroke-linejoin',
-            'fill-rule',
-            'clip-rule',
-            'opacity',
-            'transform',
-            'viewBox',
-            'points',
-            'x1',
-            'y1',
-            'x2',
-            'y2',
-        ];
-
-        // Eliminar cualquier elemento script, iframe, object, embed, etc.
-        $dangerous = ['script', 'iframe', 'object', 'embed', 'form', 'input', 'textarea', 'button'];
-        foreach ($dangerous as $tag) {
-            $decoded = preg_replace('/<' . $tag . '[^>]*>.*?<\/' . $tag . '>/is', '', $decoded);
-            $decoded = preg_replace('/<' . $tag . '[^>]*\/?>/', '', $decoded);
+        // Íconos guardados en la época en que la entrada se escapaba: &lt;svg …&gt;
+        $svg = trim($svgContent);
+        $svg = str_starts_with($svg, '&lt;') ? html_entity_decode($svg, ENT_QUOTES | ENT_HTML5, 'UTF-8') : $svg;
+        if ($svg === '' || stripos($svg, '<!DOCTYPE') !== false || stripos($svg, '<!ENTITY') !== false) {
+            return '';
         }
 
-        // Eliminar eventos JavaScript (onclick, onload, etc.)
-        $decoded = preg_replace('/\s*on\w+\s*=\s*["\'][^"\']*["\']/', '', $decoded);
-        $decoded = preg_replace('/\s*on\w+\s*=\s*[^>\s]+/', '', $decoded);
+        $doc = new DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        // Sin LIBXML_NOENT: las entidades no se expanden; LIBXML_NONET: nada se pide a la red
+        $loaded = $doc->loadXML($svg, LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
 
-        // Eliminar javascript: en atributos
-        return preg_replace('/javascript\s*:/i', '', $decoded);
+        $root = $doc->documentElement;
+        if (!$loaded || !$root instanceof DOMElement || $root->localName !== 'svg') {
+            return '';
+        }
+
+        self::cleanSvgNode($root);
+
+        return (string) $doc->saveXML($root);
     }
 
     /**
@@ -782,5 +828,35 @@ class Functions
         ]);
 
         return self::httpRequest($url, 'POST', $headers, $postData, $options);
+    }
+
+    private static function cleanSvgNode(DOMElement $element): void
+    {
+        foreach (iterator_to_array($element->childNodes) as $child) {
+            if ($child instanceof DOMElement && in_array($child->localName, self::SVG_ELEMENTS, true)) {
+                self::cleanSvgNode($child);
+
+                continue;
+            }
+
+            // Texto (de <text> o <title>) sí; elementos fuera de la lista, comentarios e instrucciones, no
+            if (!$child instanceof DOMText || $child instanceof DOMCdataSection) {
+                $element->removeChild($child);
+            }
+        }
+
+        foreach (iterator_to_array($element->attributes) as $attribute) {
+            // Sin espacios ni caracteres de control: java&#9;script: es javascript: para el navegador
+            $value = strtolower((string) preg_replace('/[\x00-\x20]+/', '', $attribute->value));
+            $allowed =
+                in_array($attribute->localName, self::SVG_ATTRIBUTES, true)
+                && ($attribute->localName !== 'href' || str_starts_with($value, '#'))
+                && (!str_contains($value, 'url(') || preg_match('/^url\([\'"]?#[^)]*\)$/', $value) === 1)
+                && !str_contains($value, 'javascript:');
+
+            if (!$allowed) {
+                $element->removeAttributeNode($attribute);
+            }
+        }
     }
 }
