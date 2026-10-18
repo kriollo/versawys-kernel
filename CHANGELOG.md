@@ -69,6 +69,9 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
 - **El login explica por qué se cerró la sesión:** `checkSession` vuelve a `/login?motivo=cuenta_desactivada` o `?motivo=empresa_suspendida`.
 - **Aviso de mantenimiento para el equipo:** la variable de Twig `maintenance` indica si el sitio está en `app:down`.
 
+### Cambiado
+- **`app:check:psr4` pasa de 2.612 a ~430 líneas** y queda probado (`CheckPsr4Test`). Sigue revisando lo que funciona en Windows y falla en Linux (estructura PSR-4, mayúsculas de las clases del proyecto en `use`/`new`/`::`/`extends`/`implements`, rutas de `require`/`include`); ya no revisa que los métodos existan, que es trabajo de phpstan y mago. Una importación de namespace (`use app\models as Models;`) ya no se informa como clase inexistente. Los baselines de mago y phpstan bajan (2.809 → 2.443 líneas en phpstan).
+
 ### Corregido
 - **`Functions::sanitizeSvgContent()` dejaba pasar código ejecutable:** era una lista negra con expresiones regulares (las listas blancas declaradas no se usaban). Pasaban `<SCRIPT src=…>` sin cierre, `java&#9;script:`, `<foreignObject>` y `<style>`; los íconos del menú se imprimen con `|raw`, así que era un XSS almacenado. Ahora analiza el SVG como XML y conserva solo una lista blanca de elementos y atributos: `href` y `url()` solo a `#anclas`, sin DOCTYPE (XXE). Los íconos guardados con entidades (`&lt;svg`) de proyectos 2.x se siguen aceptando.
 - **Type juggling en la entrada:**
