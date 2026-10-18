@@ -239,7 +239,8 @@ final class Validator
 
         $int = static function (string $field, mixed $value, ?string $param): ?string {
             $param = (string) $param;
-            if (filter_var($value, FILTER_VALIDATE_INT) === false) {
+            // Solo un entero o un texto con un entero: true o 1.0 no son "1" (type juggling)
+            if (!is_int($value) && !is_string($value) || filter_var($value, FILTER_VALIDATE_INT) === false) {
                 return sprintf('El campo %s debe ser un número entero', $field);
             }
 
@@ -333,7 +334,7 @@ final class Validator
                 }
             },
             'array' => static fn(string $field, mixed $value): ?string => is_array($value)
-                || is_array(json_decode($value, true)) && json_last_error() === JSON_ERROR_NONE
+                || is_string($value) && is_array(json_decode($value, true)) && json_last_error() === JSON_ERROR_NONE
                     ? null
                     : sprintf('El campo %s debe ser un arreglo', $field),
             'url' => static fn(string $field, mixed $value): ?string => filter_var($value, FILTER_VALIDATE_URL)

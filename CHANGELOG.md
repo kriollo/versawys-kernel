@@ -75,6 +75,7 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
   - la paginación (`getParamsPaginate`) respondía 500 con `page[]=1` o un filtro como arreglo;
   - las reglas `min` y `max` medían un arreglo como el texto `"Array"`;
   - el límite de intentos de login por cuenta juntaba en un solo contador todos los correos enviados como arreglo.
+  - la regla `int` aceptaba `true` y `1.0` como 1, y la regla `array` respondía 500 con un número o un booleano.
 - **Repetir en el probador una petición con `_csrf_token` en el cuerpo daba 403:** el `[oculto]` del cuerpo se leía antes que el token de la cabecera. Ahora el replay quita el token y el probador manda el de la sesión.
 - **Un cambio de menú o de permisos no llegaba a las sesiones abiertas:** la versión del menú se guardaba en la sesión de quien hizo el cambio, así que los demás usuarios seguían con el menú y los permisos anteriores hasta 5 minutos. Ahora vive en `Cache`, que comparten todas las sesiones.
 - **Un parámetro de ruta igual a `0` respondía 405** (`/perfiles/0`): al contar los segmentos de la URL, `array_filter()` descartaba el `"0"`.

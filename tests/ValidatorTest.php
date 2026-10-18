@@ -93,6 +93,27 @@ final class ValidatorTest extends TestCase
         );
     }
 
+    public function testIntYArrayNoAceptanOtrosTiposPorConversion(): void
+    {
+        $v = Validator::make([
+            'estado' => true,
+            'cantidad' => 1.0,
+            'lista' => 5,
+            'otra' => true,
+            'ok' => '7',
+            'json' => '[1,2]',
+        ], [
+            'estado' => 'int:0-1',
+            'cantidad' => 'int',
+            'lista' => 'array',
+            'otra' => 'array',
+            'ok' => 'int',
+            'json' => 'array',
+        ]);
+
+        self::assertSame(['estado', 'cantidad', 'lista', 'otra'], array_keys($v->errors()));
+    }
+
     public function testUnArregloNoPasaMinNiMaxComoSiFueraElTextoArray(): void
     {
         // (string) ['x'] es "Array": 5 caracteres que pasarían min:3 o max:10
