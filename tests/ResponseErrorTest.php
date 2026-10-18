@@ -163,6 +163,8 @@ final class ResponseErrorTest extends TestCase
 
     public function testUnAvisoPrevioEnProduccionSeRegistraYLaRespuestaSigue(): void
     {
+        // Suprimido a propósito: así PHP lo deja en error_get_last(), que es lo que revisa Response
+        // @mago-expect lint:no-error-control-operator
         @trigger_error('aviso de prueba', E_USER_WARNING);
 
         [$status, , $body] = self::capture(static fn(): bool|string => Response::json(['success' => 1, 'dato' => 7]));
@@ -175,6 +177,8 @@ final class ResponseErrorTest extends TestCase
     {
         global $config;
         $config['build']['debug'] = true;
+        // Suprimido a propósito: así PHP lo deja en error_get_last(), que es lo que revisa Response
+        // @mago-expect lint:no-error-control-operator
         @trigger_error('aviso de prueba', E_USER_WARNING);
 
         [$status, , $body] = self::capture(static fn(): bool|string => Response::json(['success' => 1]));
