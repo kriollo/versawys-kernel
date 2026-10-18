@@ -35,9 +35,12 @@ class Response
         if ($last !== null) {
             error_clear_last();
             if (($GLOBALS['config']['build']['debug'] ?? false) === true) {
+                // El aviso, su archivo y su línea: es lo que el desarrollador necesita ver
                 self::jsonError([
                     'success' => 0,
-                    'message' => 'Error en la petición',
+                    'message' => 'Aviso de PHP antes de la respuesta: ' . $last['message'],
+                    'file' => $last['file'],
+                    'line' => $last['line'],
                     'errors' => $last,
                     'code' => 500,
                 ], 500);

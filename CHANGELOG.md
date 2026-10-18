@@ -73,6 +73,8 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
 - **`app:check:psr4` pasa de 2.612 a ~430 líneas** y queda probado (`CheckPsr4Test`). Sigue revisando lo que funciona en Windows y falla en Linux (estructura PSR-4, mayúsculas de las clases del proyecto en `use`/`new`/`::`/`extends`/`implements`, rutas de `require`/`include`); ya no revisa que los métodos existan, que es trabajo de phpstan y mago. Una importación de namespace (`use app\models as Models;`) ya no se informa como clase inexistente. Los baselines de mago y phpstan bajan (2.809 → 2.443 líneas en phpstan).
 
 ### Corregido
+- **Los botones de las páginas de error de producción no funcionaban con la CSP con nonce:** usaban `onclick=`, que esa CSP bloquea. Ahora son enlaces («Recargar», «Volver al inicio»).
+- **En debug, un aviso de PHP antes de la respuesta solo decía «Error en la petición»:** ahora muestra el aviso, su archivo y su línea.
 - **`Functions::sanitizeSvgContent()` dejaba pasar código ejecutable:** era una lista negra con expresiones regulares (las listas blancas declaradas no se usaban). Pasaban `<SCRIPT src=…>` sin cierre, `java&#9;script:`, `<foreignObject>` y `<style>`; los íconos del menú se imprimen con `|raw`, así que era un XSS almacenado. Ahora analiza el SVG como XML y conserva solo una lista blanca de elementos y atributos: `href` y `url()` solo a `#anclas`, sin DOCTYPE (XXE). Los íconos guardados con entidades (`&lt;svg`) de proyectos 2.x se siguen aceptando.
 - **Type juggling en la entrada:**
   - un `_csrf_token` que no era texto (`0`) respondía 500 en vez de 403; ahora solo cuenta un token de texto, y un campo con otro tipo no tapa el de la cabecera;
