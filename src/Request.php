@@ -155,6 +155,29 @@ class Request
     }
 
     /**
+     * Un campo como texto. Con JSON el cliente puede mandar cualquier tipo: un número o un booleano se
+     * convierten (`true` → `"1"`), y un arreglo u objeto devuelve `$default` en vez del texto `"Array"`.
+     */
+    public function string(string $fieldName, string $default = ''): string
+    {
+        return Functions::text($this->get($fieldName), $default);
+    }
+
+    /**
+     * Un campo como entero: solo dígitos (`"42"`, `"-3"` o un entero de JSON). `"1e3"`, `"0x1A"`,
+     * `"1.5"` o `" 1"`, que PHP convertiría a otro número, devuelven `$default`.
+     */
+    public function integer(string $fieldName, int $default = 0): int
+    {
+        $value = $this->get($fieldName);
+        if (is_int($value)) {
+            return $value;
+        }
+
+        return is_string($value) && preg_match('/^-?\d+$/', $value) === 1 ? (int) $value : $default;
+    }
+
+    /**
      * Returns the file with the given file name from the request.
      *
      * @param string $fileName the name of the file to retrieve

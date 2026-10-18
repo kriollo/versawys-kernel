@@ -316,7 +316,7 @@ final class Profiler
             'url' => $data['path'] . ($query === [] ? '' : '?' . http_build_query($query)),
             'headers' => array_map(strval(...), $headers),
             'content_type' => (string) $request['content_type'],
-            'body' => (string) $request['body'],
+            'body' => self::withoutCsrf((string) $request['content_type'], (string) $request['body']),
             'files' => array_values((array) $request['files']),
         ];
     }
@@ -372,6 +372,35 @@ final class Profiler
         global $config;
 
         return rtrim((string) ($config['profiler']['dir'] ?? 'versaWYS/cache/profiler'), '/') . '/';
+    }
+
+    /**
+     * El cuerpo sin el token CSRF: el probador manda el de la sesión de quien repite la petición. Un
+     * `_csrf_token: "[oculto]"` en el cuerpo se leería antes que la cabecera y la petición daría 403.
+     */
+    private static function withoutCsrf(string $contentType, string $body): string
+    {
+        $isCsrf = static fn(string|int $key): bool => stripos((string) $key, 'csrf') !== false;
+
+        if (str_starts_with($contentType, 'application/x-www-form-urlencoded')) {
+            parse_str($body, $form);
+
+            return http_build_query(array_filter(
+                $form,
+                static fn(string|int $key): bool => !$isCsrf($key),
+                ARRAY_FILTER_USE_KEY,
+            ));
+        }
+
+        $data = json_decode($body, true);
+        if (!is_array($data)) {
+            return $body;
+        }
+
+        return (string) json_encode(
+            array_filter($data, static fn(string|int $key): bool => !$isCsrf($key), ARRAY_FILTER_USE_KEY),
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+        );
     }
 
     /**

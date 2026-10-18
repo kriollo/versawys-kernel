@@ -61,6 +61,8 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
   - método, URL con su query, cabeceras y cuerpo de la petición; estado, cabeceras y cuerpo de la respuesta, hasta 64 KB cada cuerpo;
   - sin secretos: `Cookie`, `Authorization`, el token CSRF y todo campo con nombre de secreto quedan como `[oculto]`; de los archivos, solo nombre, tipo y tamaño;
   - «Repetir en el probador» abre `/doc?route=all&replay=<id>`, que pide `/_profiler/<id>.request.json` y precarga el probador. La plantilla `versaRoute.twig` del proyecto debe actualizarse para tener el botón.
+- **Entrada con su tipo (type juggling):** `$request->string('campo')` y `$request->integer('campo')`, y `Functions::text($valor)` para un arreglo ya leído. Un arreglo, o un `"1e3"`/`"0x1A"` para `integer()`, devuelve el valor por defecto en vez de convertirse a `"Array"` o a otro número.
+- **`NotFound`**: lanzarla desde un controlador o middleware responde 404, como página o JSON según la petición. `RouteParameterMismatch` hereda de ella, y `Tenant::ensure()` la usa: ahora una página recibe la página 404 y no un JSON.
 - **`TestClient::postFile(uri, datos, [campo => ruta])`**: un formulario con archivos, para probar subidas (avatares, documentos).
 - **`TestClient::withConfig(cambios, fn)`**: corre una prueba con otras claves de `config.json` y después deja la configuración como estaba.
 - **Empresa suspendida** (`empresas.estado = 0`): `checkSession` cierra la sesión de sus usuarios, salvo la del superadministrador. Requiere que `Users::findWithCompany()` entregue `empresa_estado` (el esqueleto ya lo hace); sin esa clave, no se revisa.
@@ -68,6 +70,12 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
 - **Aviso de mantenimiento para el equipo:** la variable de Twig `maintenance` indica si el sitio está en `app:down`.
 
 ### Corregido
+- **Type juggling en la entrada:**
+  - un `_csrf_token` que no era texto (`0`) respondía 500 en vez de 403; ahora solo cuenta un token de texto, y un campo con otro tipo no tapa el de la cabecera;
+  - la paginación (`getParamsPaginate`) respondía 500 con `page[]=1` o un filtro como arreglo;
+  - las reglas `min` y `max` medían un arreglo como el texto `"Array"`;
+  - el límite de intentos de login por cuenta juntaba en un solo contador todos los correos enviados como arreglo.
+- **Repetir en el probador una petición con `_csrf_token` en el cuerpo daba 403:** el `[oculto]` del cuerpo se leía antes que el token de la cabecera. Ahora el replay quita el token y el probador manda el de la sesión.
 - **Un cambio de menú o de permisos no llegaba a las sesiones abiertas:** la versión del menú se guardaba en la sesión de quien hizo el cambio, así que los demás usuarios seguían con el menú y los permisos anteriores hasta 5 minutos. Ahora vive en `Cache`, que comparten todas las sesiones.
 - **Un parámetro de ruta igual a `0` respondía 405** (`/perfiles/0`): al contar los segmentos de la URL, `array_filter()` descartaba el `"0"`.
 - **Con la contraseña vencida, la API seguía respondiendo:** solo las páginas llevaban al perfil, así que el bloqueo se saltaba llamando a la API. Ahora la API responde 403 con `password_expired: true`, salvo el perfil y el cambio de contraseña.

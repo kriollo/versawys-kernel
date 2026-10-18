@@ -102,7 +102,9 @@ final class ProfilerTest extends TestCase
         // @mago-expect lint:no-literal-password
         $_GET = ['page' => '2', 'api_key' => 'k-secreta'];
         // @mago-expect lint:no-literal-password
-        Request::setInput('{"nombre":"Ana","password":"Clave-secreta","datos":{"token":"t-secreto"}}');
+        Request::setInput(
+            '{"nombre":"Ana","password":"Clave-secreta","datos":{"token":"t-secreto"},"_csrf_token":"viejo"}',
+        );
         $GLOBALS['request'] = new Request();
 
         Profiler::begin();
@@ -137,6 +139,12 @@ final class ProfilerTest extends TestCase
         self::assertSame(
             ['nombre' => 'Ana', 'password' => '[oculto]', 'datos' => ['token' => '[oculto]']],
             json_decode($replay['body'], true),
+        );
+
+        self::assertArrayNotHasKey(
+            '_csrf_token',
+            json_decode($replay['body'], true),
+            'el probador pone el de la sesión',
         );
 
         $detalle = Profiler::panel((string) $data['id']);
@@ -190,6 +198,14 @@ final class ProfilerTest extends TestCase
         Profiler::begin();
         $form = Profiler::finish();
         self::assertSame('email=ana%40x.cl&password=%5Boculto%5D', $form['request']['body']);
+
+        // Al repetirla, sin el token CSRF del cuerpo: el probador manda el de la sesión actual
+        $_SERVER['CONTENT_TYPE'] = 'application/x-www-form-urlencoded';
+        Request::setInput('nombre=Ana&_csrf_token=viejo');
+        $GLOBALS['request'] = new Request();
+        Profiler::begin();
+        $conToken = Profiler::finish();
+        self::assertSame('nombre=Ana', Profiler::replayFor((string) $conToken['id'])['body'] ?? null);
 
         // Un binario no se guarda; un texto enorme, recortado
         Profiler::attachResponse("\x89PNG\x00\xff\xfe", ['Content-Type: image/png']);

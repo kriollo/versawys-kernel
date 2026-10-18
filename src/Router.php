@@ -696,7 +696,7 @@ class Router
             } catch (RequestHalted $halted) {
                 // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
                 throw $halted;
-            } catch (RouteParameterMismatch) {
+            } catch (NotFound) {
                 return $this->respondNotFound($request, $config);
             } catch (Throwable $e) {
                 Loggin::error(
@@ -771,7 +771,7 @@ class Router
         } catch (RequestHalted $halted) {
             // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
             throw $halted;
-        } catch (RouteParameterMismatch) {
+        } catch (NotFound) {
             return $this->respondNotFound($request, $config);
         } catch (Throwable $throwable) {
             if (isset($controllerClass, $controllerMethodName)) {

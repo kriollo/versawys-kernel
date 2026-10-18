@@ -207,12 +207,24 @@ class GlobalMiddleware
     {
         global $session, $request, $debug;
 
-        // Buscar token en orden de prioridad
-        $token = $request->get('_csrf_token') ?: $request->get('csrf_token') ?: $this->getCSRFTokenWithPrefix(
-            $request,
-        ) ?: $request->getHeader('X-CSRF-Token');
+        // El primero que sea texto, en orden de prioridad. Con JSON llegan otros tipos (0, true, [...]):
+        // no cuentan como token, y nunca terminan en hash_equals() con un error 500
+        $token = null;
+        foreach ([
+            $request->get('_csrf_token'),
+            $request->get('csrf_token'),
+            $this->getCSRFTokenWithPrefix($request),
+            $request->getHeader('X-CSRF-Token'),
+        ] as $candidate) {
+            if (!is_string($candidate) || $candidate === '') {
+                continue;
+            }
 
-        if (in_array($token, [null, '', false], true)) {
+            $token = $candidate;
+            break;
+        }
+
+        if ($token === null) {
             return [
                 'success' => 0,
                 'message' => 'los datos enviados no son correctos',
@@ -492,7 +504,7 @@ class GlobalMiddleware
         $allParams = $request->getAllParams();
 
         foreach ($allParams as $key => $value) {
-            if (!(str_starts_with($key, '_csrf_token') && $value !== null && $value !== '')) {
+            if (!(str_starts_with((string) $key, '_csrf_token') && is_string($value) && $value !== '')) {
                 continue;
             }
 

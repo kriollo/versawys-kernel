@@ -30,6 +30,8 @@ final class RedisModelTest extends TestCase
         $read = RedisModel::get('clave', 'por defecto');
 
         Loggin::setCustomHandler(static function (): void {});
+        // La carpeta temporal se borra: las pruebas siguientes vuelven a la compartida
+        Loggin::initialize(['logging' => ['dir' => sys_get_temp_dir() . '/versawys-test-logs/']]);
         exec('rm -rf ' . escapeshellarg($dir));
 
         self::assertFalse($saved);

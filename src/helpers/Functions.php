@@ -95,6 +95,15 @@ class Functions
     }
 
     /**
+     * Un valor de la entrada como texto: un escalar se convierte y un arreglo u objeto (o null) devuelve
+     * `$default`. Para no comparar ni guardar el texto `"Array"` cuando el cliente manda otro tipo.
+     */
+    public static function text(mixed $value, string $default = ''): string
+    {
+        return is_scalar($value) ? (string) $value : $default;
+    }
+
+    /**
      * Cleans a string by removing leading and trailing whitespace and converting special characters to HTML entities.
      *
      * @param string $string the string to be cleaned

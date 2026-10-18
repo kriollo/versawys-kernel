@@ -93,6 +93,21 @@ final class ValidatorTest extends TestCase
         );
     }
 
+    public function testUnArregloNoPasaMinNiMaxComoSiFueraElTextoArray(): void
+    {
+        // (string) ['x'] es "Array": 5 caracteres que pasarían min:3 o max:10
+        $v = Validator::make(['nombre' => ['x'], 'codigo' => ['a' => 'b']], [
+            'nombre' => 'min:3',
+            'codigo' => 'max:10',
+        ]);
+
+        self::assertTrue($v->fails());
+        self::assertSame(
+            ['nombre' => 'El campo nombre debe ser texto', 'codigo' => 'El campo codigo debe ser texto'],
+            $v->errors(),
+        );
+    }
+
     public function testUnaReglaMalEscritaNoDejaPasarElDato(): void
     {
         self::assertSame(
