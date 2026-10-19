@@ -56,6 +56,24 @@ final class InstallationTest extends TestCase
         self::assertFalse(Installation::isPending(), 'con installed.lock, siempre instalado');
     }
 
+    public function testConOtroConfigJsonElEstadoDeInstalacionEsElDeEseArchivo(): void
+    {
+        // El proyecto tiene la instalación pendiente (recién hecho config:init)...
+        file_put_contents(Installation::tokenFile(), 'tok');
+        self::assertTrue(Installation::isPending());
+
+        // ...pero las pruebas, o un staging, usan otro config.json: su carpeta no tiene token
+        mkdir($this->dir . '/pruebas');
+        putenv('VERSAWYS_CONFIG=' . $this->dir . '/pruebas/config.json');
+
+        try {
+            self::assertFalse(Installation::isPending());
+            self::assertSame($this->dir . '/pruebas/install.token', Installation::tokenFile());
+        } finally {
+            putenv('VERSAWYS_CONFIG');
+        }
+    }
+
     public function testElPrimerArranqueCreaLaConfiguracionYElToken(): void
     {
         self::assertFileDoesNotExist(ConfigManager::path());

@@ -78,6 +78,7 @@ Paso 8 del ROADMAP: programador de tareas, generadores, factories, `Crypt` y URL
 - **`app:check:psr4` pasa de 2.612 a ~430 líneas** y queda probado (`CheckPsr4Test`). Sigue revisando lo que funciona en Windows y falla en Linux (estructura PSR-4, mayúsculas de las clases del proyecto en `use`/`new`/`::`/`extends`/`implements`, rutas de `require`/`include`); ya no revisa que los métodos existan, que es trabajo de phpstan y mago. Una importación de namespace (`use app\models as Models;`) ya no se informa como clase inexistente. Los baselines de mago y phpstan bajan (2.809 → 2.443 líneas en phpstan).
 
 ### Corregido
+- **Con `VERSAWYS_CONFIG` (pruebas, staging), el estado de instalación se leía del proyecto:** si el proyecto tenía `install.token` sin `installed.lock` (recién hecho `config:init`, como en CI), las pruebas veían la aplicación como no instalada. Ahora `installed.lock` e `install.token` se buscan junto al `config.json` en uso, que es donde `createConfig()` ya los escribía.
 - **`method_field()` imprimía el método sin escapar** dentro de un atributo HTML; ahora solo admite letras. **`formatRut('')`** accedía a un índice negativo.
 - **`GlobalMiddleware::blockedReason($usuario)`**: la regla de cuenta desactivada o empresa suspendida, ahora pública, para las rutas que no pasan por `checkSession` (el heartbeat del panel).
 - **Los botones de las páginas de error de producción no funcionaban con la CSP con nonce:** usaban `onclick=`, que esa CSP bloquea. Ahora son enlaces («Recargar», «Volver al inicio»).

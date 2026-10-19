@@ -25,12 +25,12 @@ final class Installation
 
     public static function lockFile(): string
     {
-        return ConfigManager::dir() . '/installed.lock';
+        return dirname(ConfigManager::path()) . '/installed.lock';
     }
 
     public static function tokenFile(): string
     {
-        return ConfigManager::dir() . '/install.token';
+        return dirname(ConfigManager::path()) . '/install.token';
     }
 
     public static function isPending(): bool
