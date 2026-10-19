@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use versaWYS\kernel\Cache;
+use versaWYS\kernel\model\RedisModel;
 use versaWYS\kernel\Storage;
 
 final class CacheStorageTest extends TestCase
@@ -31,6 +32,7 @@ final class CacheStorageTest extends TestCase
 
         $config = $this->originalConfig;
         exec('rm -rf ' . escapeshellarg($this->dir));
+        RedisModel::close();
     }
 
     public function testCacheGuardaVenceYOlvida(): void
@@ -67,6 +69,41 @@ final class CacheStorageTest extends TestCase
         self::assertSame(1, $llamadas);
     }
 
+    public function testConRedisGuardaVenceYOlvidaIgualQueEnArchivos(): void
+    {
+        $this->usarRedis('proyecto-a');
+
+        Cache::set('resumen', ['total' => 3], 60);
+        self::assertSame(['total' => 3], Cache::get('resumen'));
+        self::assertGreaterThan(0, RedisModel::ttl($this->redisKeys()[0] ?? ''), 'Redis vence la clave solo');
+
+        self::assertSame(5, Cache::remember('contador', 60, static fn(): int => 5));
+        self::assertSame(5, Cache::remember('contador', 60, static fn(): int => 9));
+
+        Cache::set('vencida', 'x', -1);
+        self::assertNull(Cache::get('vencida'));
+
+        Cache::forget('resumen');
+        self::assertFalse(Cache::has('resumen'));
+        Cache::flush();
+        self::assertSame([], $this->redisKeys());
+    }
+
+    public function testDosProyectosEnElMismoRedisNoSeMezclan(): void
+    {
+        $this->usarRedis('proyecto-a');
+        Cache::set('resumen', 'de A');
+
+        $this->usarRedis('proyecto-b');
+        self::assertNull(Cache::get('resumen'), 'B no lee la caché de A');
+        Cache::set('resumen', 'de B');
+        Cache::flush();
+
+        $this->usarRedis('proyecto-a');
+        self::assertSame('de A', Cache::get('resumen'), 'el flush de B no borra la de A');
+        Cache::flush();
+    }
+
     public function testStorageGuardaLeeListaYBorra(): void
     {
         Storage::put('facturas/1/a.pdf', '%PDF');
@@ -94,5 +131,36 @@ final class CacheStorageTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
         Storage::put($ruta, 'x');
+    }
+
+    /** La base 15 de Redis local, para no tocar datos de desarrollo; sin Redis, la prueba se omite */
+    private function usarRedis(string $sessionKey): void
+    {
+        global $config;
+
+        if (!extension_loaded('redis')) {
+            self::markTestSkipped('Sin la extensión redis');
+        }
+
+        RedisModel::initialize([
+            'host' => '127.0.0.1',
+            'port' => 6379,
+            'database' => 15,
+            'timeout' => 0.5,
+            'persistent' => false,
+        ]);
+        RedisModel::close();
+        if (!RedisModel::ping()) {
+            self::markTestSkipped('Redis no responde en 127.0.0.1:6379');
+        }
+
+        $config['cache']['driver'] = 'redis';
+        $config['session']['key'] = str_repeat($sessionKey, 8);
+    }
+
+    /** @return list<string> */
+    private function redisKeys(): array
+    {
+        return RedisModel::scan('cache:*');
     }
 }

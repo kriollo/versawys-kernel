@@ -42,7 +42,7 @@ class RateLimitMiddleware
         }
 
         // También por cuenta: un ataque repartido entre muchas IP contra un mismo usuario sigue acotado
-        $email = strtolower(trim((string) $request->get('email', '')));
+        $email = strtolower(trim($request->string('email')));
 
         return $email === '' ? true : SecurityUtils::checkRateLimit('login-user:' . sha1($email), 'login');
     }

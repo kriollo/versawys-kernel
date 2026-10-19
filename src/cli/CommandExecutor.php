@@ -29,18 +29,42 @@ class CommandExecutor
         array $params = [],
         bool $logOutput = false,
         ?string $logModule = 'background-cli',
+        ?string $outputFile = null,
     ): void {
         $cliPath = self::getCliPath();
         $paramsString = self::buildParamsString($params);
         $fullCommand = sprintf(
             '%s %s %s %s',
-            'php',
+            escapeshellarg(self::phpBinary()),
             escapeshellarg($cliPath),
             escapeshellarg('app:' . $command),
             $paramsString,
         );
 
+        // Con un archivo de salida, lo que imprima o el error del proceso quedan ahí en vez de perderse
+        if ($outputFile !== null && PHP_OS_FAMILY !== 'Windows') {
+            exec($fullCommand . ' < /dev/null >> ' . escapeshellarg($outputFile) . ' 2>&1 &');
+
+            return;
+        }
+
         self::executeBackgroundCommand($fullCommand, $logOutput, $logModule);
+    }
+
+    /**
+     * El PHP de consola de esta instalación, con su ruta completa: cron y PHP-FPM corren con un PATH
+     * mínimo y no encuentran un `php` instalado fuera de /usr/bin (cPanel, mise). Desde la terminal es
+     * el que corre; desde la web (FPM, Apache), el `php` de la misma carpeta de binarios.
+     */
+    public static function phpBinary(): string
+    {
+        if (in_array(PHP_SAPI, ['cli', 'cli-server'], true)) {
+            return PHP_BINARY;
+        }
+
+        $cli = PHP_BINDIR . '/php';
+
+        return is_executable($cli) ? $cli : 'php';
     }
 
     /**
@@ -57,7 +81,7 @@ class CommandExecutor
         $paramsString = self::buildParamsString($params);
         $fullCommand = sprintf(
             '%s %s %s %s',
-            'php',
+            escapeshellarg(self::phpBinary()),
             escapeshellarg($cliPath),
             escapeshellarg('app:' . $command),
             $paramsString,

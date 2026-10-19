@@ -239,7 +239,8 @@ final class Validator
 
         $int = static function (string $field, mixed $value, ?string $param): ?string {
             $param = (string) $param;
-            if (filter_var($value, FILTER_VALIDATE_INT) === false) {
+            // Solo un entero o un texto con un entero: true o 1.0 no son "1" (type juggling)
+            if (!is_int($value) && !is_string($value) || filter_var($value, FILTER_VALIDATE_INT) === false) {
                 return sprintf('El campo %s debe ser un número entero', $field);
             }
 
@@ -287,14 +288,25 @@ final class Validator
                 ? null
                 : sprintf('El campo %s no es un rut valido', $field),
             // Caracteres, no bytes: "José" mide 4
-            'min' => static fn(string $field, mixed $value, ?string $param): ?string => mb_strlen((string) $value)
-                < (int) $param
-                    ? sprintf('El campo %s debe tener minimo %s caracteres', $field, $param)
-                    : null,
-            'max' => static fn(string $field, mixed $value, ?string $param): ?string => mb_strlen((string) $value)
-                > (int) $param
-                    ? sprintf('El campo %s debe tener maximo %s caracteres', $field, $param)
-                    : null,
+            // Un arreglo no tiene largo de texto: medirlo como "Array" daría 5 caracteres
+            'min' => static fn(string $field, mixed $value, ?string $param): ?string => match (true) {
+                !is_scalar($value) => sprintf('El campo %s debe ser texto', $field),
+                mb_strlen((string) $value) < (int) $param => sprintf(
+                    'El campo %s debe tener minimo %s caracteres',
+                    $field,
+                    $param,
+                ),
+                default => null,
+            },
+            'max' => static fn(string $field, mixed $value, ?string $param): ?string => match (true) {
+                !is_scalar($value) => sprintf('El campo %s debe ser texto', $field),
+                mb_strlen((string) $value) > (int) $param => sprintf(
+                    'El campo %s debe tener maximo %s caracteres',
+                    $field,
+                    $param,
+                ),
+                default => null,
+            },
             'numeric' => static fn(string $field, mixed $value): ?string => is_numeric($value)
                 ? null
                 : sprintf('El campo %s debe ser numerico', $field),
@@ -322,7 +334,7 @@ final class Validator
                 }
             },
             'array' => static fn(string $field, mixed $value): ?string => is_array($value)
-                || is_array(json_decode($value, true)) && json_last_error() === JSON_ERROR_NONE
+                || is_string($value) && is_array(json_decode($value, true)) && json_last_error() === JSON_ERROR_NONE
                     ? null
                     : sprintf('El campo %s debe ser un arreglo', $field),
             'url' => static fn(string $field, mixed $value): ?string => filter_var($value, FILTER_VALIDATE_URL)

@@ -96,13 +96,18 @@ class FrontManager
                     { type: 'text', title: '$moduleTitle', icon: '', link: '' },
                 ];
 
-                const items = ref<Record<string, unknown>[]>([]);
+                interface Registro {
+                    id: number;
+                    nombre: string;
+                }
 
+                const items = ref<Registro[]>([]);
+
+                // La API la generan versaMODULE y RCMD (app/routes/$moduleTitleRoutes.php): solo los registros de la empresa
                 onMounted(async () => {
-                    // Ruta de ejemplo: agrégala en app/routes/ junto a la de esta pantalla
-                    const res = await versaFetch({ url: `/${panelUrl}/$moduleName/api/list`, method: 'GET' });
+                    const res = await versaFetch({ url: `/${panelUrl}/$moduleName/api/$moduleName`, method: 'GET' });
                     if (!res.success) return showErrorResponse(res);
-                    items.value = res.data ?? [];
+                    items.value = (res.data as Registro[]) ?? [];
                 });
             </script>
             <template>
@@ -111,7 +116,7 @@ class FrontManager
                     <div class="mx-4 flex-1 overflow-y-auto">
                         <p v-if="items.length === 0" class="text-gray-500 dark:text-gray-400">Sin datos todavía.</p>
                         <ul>
-                            <li v-for="(item, i) in items" :key="i" class="text-gray-900 dark:text-white">{{ item }}</li>
+                            <li v-for="item in items" :key="item.id" class="text-gray-900 dark:text-white">{{ item.nombre }}</li>
                         </ul>
                     </div>
                 </div>

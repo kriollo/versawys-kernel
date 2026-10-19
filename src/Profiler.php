@@ -12,9 +12,11 @@ use VersaORM\VersaORM;
  *
  * - Solo con `build.debug` (y `profiler.enabled`, activo por defecto). En producción no corre.
  * - El panel (`/_profiler`) solo responde desde la propia máquina o desde `profiler.allowed_ips`.
- * - Nunca guarda valores sensibles: el SQL va con sus `?` y sin los valores, de la URL solo la ruta
- *   y los nombres de los parámetros, de la sesión solo los nombres de las claves, de la cola solo
- *   la clase del trabajo. Ni cookies ni cabeceras.
+ * - Guarda la petición y la respuesta (cabeceras y cuerpo, hasta 64 KB) para verlas y repetirlas en
+ *   el probador de /doc, sin valores sensibles: Cookie, Authorization, el token CSRF y todo campo que
+ *   parezca un secreto (password, token, api_key… como en el log) quedan como `[oculto]`; de los
+ *   archivos, solo nombre, tipo y tamaño. El SQL va con sus `?` y sin los valores, de la sesión solo
+ *   los nombres de las claves, de la cola solo la clase del trabajo.
  *
  * Cada petición queda en `versaWYS/cache/profiler/<id>.json`; se guardan las últimas 100.
  */
@@ -27,6 +29,23 @@ final class Profiler
 
     private const int MAX_QUERIES = 500;
 
+    /** Bytes que se guardan de cada cuerpo (petición y respuesta) */
+    private const int MAX_BODY = 65_536;
+
+    private const string HIDDEN = '[oculto]';
+
+    /** Cabeceras que no se repiten: son de la conexión o las pone el navegador (fetch no deja fijarlas) */
+    private const array TRANSPORT_HEADERS = [
+        'host',
+        'content-length',
+        'connection',
+        'accept-encoding',
+        'cookie',
+        'origin',
+        'referer',
+        'user-agent',
+    ];
+
     /** @var array<string, mixed>|null null = no se está midiendo esta petición */
     private static ?array $data = null;
 
@@ -34,6 +53,9 @@ final class Profiler
 
     /** @var array<string, mixed>|null resumen de la petición recién cerrada, para la barra */
     private static ?array $summary = null;
+
+    /** Lo que va saliendo por el búfer: el cuerpo de la respuesta */
+    private static string $output = '';
 
     public static function enabled(): bool
     {
@@ -58,7 +80,16 @@ final class Profiler
         }
 
         self::begin();
-        ob_start(static fn(string $html): string => self::injectToolbar($html, self::summary()));
+        // Las respuestas que no muestran la barra (navegación del SPA, API) la actualizan con este id
+        Output::header('X-Versa-Profiler: ' . Request::id());
+        ob_start(static function (string $html, int $phase): string {
+            self::$output .= $html;
+            if (($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0) {
+                self::attachResponse(self::$output, headers_list());
+            }
+
+            return self::injectToolbar($html, self::summary());
+        });
         register_shutdown_function(self::finish(...));
     }
 
@@ -75,6 +106,7 @@ final class Profiler
             'path' => self::path(),
             // Solo los nombres: los valores pueden ser tokens o datos personales
             'query_keys' => array_keys($_GET),
+            'request' => self::requestData(),
             'controller' => null,
             'spans' => [],
             'queries' => [],
@@ -242,11 +274,96 @@ final class Profiler
             : self::page($data['method'] . ' ' . $data['path'], self::detailHtml($data));
     }
 
+    /**
+     * El resumen de un registro (lo que muestra la barra), para /_profiler/<id>.json.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function summaryFor(string $id): ?array
+    {
+        $data = self::load($id);
+
+        return $data === null ? null : self::summaryOf($data);
+    }
+
+    /**
+     * La petición de un registro, lista para el probador de /doc (`/_profiler/<id>.request.json`):
+     * método, URL con su query, cabeceras y cuerpo. Sin las cabeceras ocultas ni las de la conexión.
+     *
+     * @return array{method: string, url: string, headers: array<string, string>, content_type: string, body: string, files: list<array<string, mixed>>}|null
+     */
+    public static function replayFor(string $id): ?array
+    {
+        $data = self::load($id);
+        $request = is_array($data) ? $data['request'] ?? null : null;
+        if (!is_array($request)) {
+            return null;
+        }
+
+        $headers = array_filter(
+            (array) $request['headers'],
+            static fn(mixed $value, string|int $name): bool => (
+                $value !== self::HIDDEN
+                && !in_array(strtolower((string) $name), [...self::TRANSPORT_HEADERS, 'content-type'], true)
+                && !str_starts_with(strtolower((string) $name), 'sec-')
+            ),
+            ARRAY_FILTER_USE_BOTH,
+        );
+        $query = (array) $request['query'];
+
+        return [
+            'method' => (string) $data['method'],
+            'url' => $data['path'] . ($query === [] ? '' : '?' . http_build_query($query)),
+            'headers' => array_map(strval(...), $headers),
+            'content_type' => (string) $request['content_type'],
+            'body' => self::withoutCsrf((string) $request['content_type'], (string) $request['body']),
+            'files' => array_values((array) $request['files']),
+        ];
+    }
+
+    /**
+     * Agrega al registro de la petición actual lo que respondió: cabeceras y cuerpo.
+     *
+     * @internal Lo llama el búfer de start() al cerrarse
+     *
+     * @param list<string> $headers como headers_list()
+     */
+    public static function attachResponse(string $body, array $headers): void
+    {
+        $data = isset(self::$summary['id']) ? self::load((string) self::$summary['id']) : null;
+        if ($data === null) {
+            return;
+        }
+
+        $list = [];
+        $contentType = '';
+        foreach ($headers as $line) {
+            [$name, $value] = array_map(trim(...), explode(':', $line, 2)) + [1 => ''];
+            // De una cookie, solo su nombre
+            $value = strcasecmp($name, 'Set-Cookie') === 0 ? strtok($value, '=') . '=' . self::HIDDEN : $value;
+            $list[] = [$name, $value];
+            $contentType = strcasecmp($name, 'Content-Type') === 0 ? strtolower($value) : $contentType;
+        }
+
+        $data['response'] = [
+            'headers' => $list,
+            'content_type' => $contentType,
+            'body' => self::bodyText($contentType, $body, []),
+        ];
+
+        try {
+            self::store($data);
+        } catch (Throwable) { // @mago-expect lint:no-empty-catch-clause
+            // El profiler nunca puede romper la petición
+        }
+    }
+
     /** @internal Solo para pruebas. */
     public static function reset(): void
     {
         self::$data = null;
         self::$summary = null;
+        self::$output = '';
     }
 
     /** @internal */
@@ -255,6 +372,133 @@ final class Profiler
         global $config;
 
         return rtrim((string) ($config['profiler']['dir'] ?? 'versaWYS/cache/profiler'), '/') . '/';
+    }
+
+    /**
+     * El cuerpo sin el token CSRF: el probador manda el de la sesión de quien repite la petición. Un
+     * `_csrf_token: "[oculto]"` en el cuerpo se leería antes que la cabecera y la petición daría 403.
+     */
+    private static function withoutCsrf(string $contentType, string $body): string
+    {
+        $isCsrf = static fn(string|int $key): bool => stripos((string) $key, 'csrf') !== false;
+
+        if (str_starts_with($contentType, 'application/x-www-form-urlencoded')) {
+            parse_str($body, $form);
+
+            return http_build_query(array_filter(
+                $form,
+                static fn(string|int $key): bool => !$isCsrf($key),
+                ARRAY_FILTER_USE_KEY,
+            ));
+        }
+
+        $data = json_decode($body, true);
+        if (!is_array($data)) {
+            return $body;
+        }
+
+        return (string) json_encode(
+            array_filter($data, static fn(string|int $key): bool => !$isCsrf($key), ARRAY_FILTER_USE_KEY),
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+        );
+    }
+
+    /**
+     * Cabeceras, query y cuerpo de la petición actual, con los secretos ocultos.
+     *
+     * @return array{headers: array<string, string>, query: array<array-key, mixed>, content_type: string, body: string, files: list<array{field: string, name: string, type: string, size: int}>}
+     */
+    private static function requestData(): array
+    {
+        $headers = [];
+        foreach ($_SERVER as $key => $value) {
+            $name = str_starts_with($key, 'HTTP_') ? substr($key, 5) : $key;
+            if (!str_starts_with($key, 'HTTP_') && !in_array($key, ['CONTENT_TYPE', 'CONTENT_LENGTH'], true)) {
+                continue;
+            }
+
+            $name = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', $name))));
+            $headers[$name] = self::isSecret($name) ? self::HIDDEN : (string) $value;
+        }
+
+        $files = [];
+        foreach ($_FILES as $field => $file) {
+            // Un campo simple o uno múltiple (fotos[])
+            foreach ((array) ($file['name'] ?? []) as $i => $name) {
+                $files[] = [
+                    'field' => $field,
+                    'name' => $name,
+                    'type' => is_array($file['type'] ?? null) ? $file['type'][$i] ?? '' : $file['type'] ?? '',
+                    'size' => (int) (is_array($file['size'] ?? null) ? $file['size'][$i] ?? 0 : $file['size'] ?? 0),
+                ];
+            }
+        }
+
+        $contentType = strtolower($_SERVER['CONTENT_TYPE'] ?? '');
+        $request = $GLOBALS['request'] ?? null;
+        $raw = $request instanceof Request ? (string) $request->getRawBody() : '';
+
+        return [
+            'headers' => $headers,
+            'query' => Loggin::redact($_GET),
+            'content_type' => $contentType,
+            'body' => self::bodyText($contentType, $raw, $_POST),
+            'files' => $files,
+        ];
+    }
+
+    /** ¿El nombre de la cabecera o del campo es de un secreto? El mismo criterio que el log */
+    private static function isSecret(string $name): bool
+    {
+        return Loggin::redact([$name => true])[$name] !== true;
+    }
+
+    /**
+     * Un cuerpo legible y sin secretos: JSON y formularios con sus campos sensibles ocultos; otro
+     * texto tal cual, hasta MAX_BODY; un binario, solo su tamaño.
+     *
+     * @param array<array-key, mixed> $fields los campos de un formulario multipart ($_POST)
+     */
+    private static function bodyText(string $contentType, string $raw, array $fields): string
+    {
+        if (str_starts_with($contentType, 'multipart/form-data')) {
+            return self::clip((string) json_encode(
+                Loggin::redact($fields),
+                JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+            ));
+        }
+
+        if (str_contains($contentType, 'json')) {
+            $data = json_decode($raw, true);
+
+            return self::clip(
+                is_array($data)
+                    ? (string) json_encode(
+                        Loggin::redact($data),
+                        JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+                    )
+                    : $raw,
+            );
+        }
+
+        if (str_starts_with($contentType, 'application/x-www-form-urlencoded')) {
+            parse_str($raw, $form);
+
+            return self::clip(http_build_query(Loggin::redact($form)));
+        }
+
+        return self::clip($raw);
+    }
+
+    private static function clip(string $text): string
+    {
+        if ($text !== '' && !mb_check_encoding($text, 'UTF-8')) {
+            return '[contenido binario, ' . strlen($text) . ' bytes]';
+        }
+
+        return strlen($text) > self::MAX_BODY
+            ? mb_strcut($text, 0, self::MAX_BODY) . "\n… [recortado: " . strlen($text) . ' bytes en total]'
+            : $text;
     }
 
     /** @return array<string, mixed>|null */
@@ -279,14 +523,15 @@ final class Profiler
             'db_ms' => $data['db_ms'],
             'n_plus_one' => count($data['n_plus_one']),
             'memory_mb' => $data['memory_mb'],
-            'controller' => $data['controller'],
+            // Sin el namespace: es lo que cabe en la barra
+            'controller' => $data['controller'] === null ? null : self::shortName((string) $data['controller']),
             'exceptions' => count($data['exceptions']),
         ];
     }
 
     private static function path(): string
     {
-        $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
         return is_string($path) && $path !== '' ? $path : '/';
     }
@@ -379,35 +624,70 @@ final class Profiler
         return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
-    /** @param array<string, mixed> $s */
+    /**
+     * La barra: el resumen inicial va en JSON y el mismo script la dibuja y la actualiza. En cada
+     * navegación del SPA (fetch con X-SPA) lee el id de X-Versa-Profiler y pide su resumen a
+     * /_profiler/<id>.json; las demás llamadas a la API solo se cuentan.
+     *
+     * @param array<string, mixed> $s
+     */
     private static function toolbar(array $s): string
     {
-        $alerts = $s['n_plus_one'] > 0 ? " <b class=\"vp-warn\">⚠ N+1 ×{$s['n_plus_one']}</b>" : '';
-        $alerts .= $s['exceptions'] > 0 ? " <b class=\"vp-warn\">⚠ {$s['exceptions']} excepción(es)</b>" : '';
+        global $config;
 
+        $nonce = self::h(SecurityUtils::cspNonce());
+        $initial = json_encode(
+            $s,
+            JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE,
+        );
+        $framework = json_encode(
+            (string) ($config['framework'] ?? 'versaWYS-PHP'),
+            JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT,
+        );
+
+        // La misma franja roja de modo debug que dibujaba versaTwig, ahora con las métricas del profiler
         return (
             '<style nonce="'
-            . self::h(SecurityUtils::cspNonce())
+            . $nonce
             . '">'
-            . '#versa-profiler{position:fixed;right:12px;bottom:12px;z-index:2147483647;font:12px/1.4 ui-monospace,monospace;'
-            . 'background:#0f172a;color:#e2e8f0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:6px 10px}'
-            . '#versa-profiler a{color:inherit;text-decoration:none}#versa-profiler .vp-warn{color:#fbbf24}'
-            . '</style><div id="versa-profiler"><a href="/_profiler/'
-            . self::h($s['id'])
-            . '" target="_blank" rel="noopener">'
-            . self::h($s['status'])
-            . ' · '
-            . self::h($s['ms'])
-            . ' ms · '
-            . self::h($s['queries'])
-            . ' SQL ('
-            . self::h($s['db_ms'])
-            . ' ms) · '
-            . self::h($s['memory_mb'])
-            . ' MB'
-            . ($s['controller'] !== null ? ' · ' . self::h(self::shortName((string) $s['controller'])) : '')
-            . $alerts
-            . '</a></div>'
+            . '#versa-profiler{position:fixed;left:0;right:0;bottom:0;z-index:2147483647;display:flex;align-items:center;'
+            . 'justify-content:space-between;gap:12px;flex-wrap:wrap;padding:6px 12px;background:#7f1d1d;color:#fff;'
+            . 'font:12px/1.4 system-ui,sans-serif;box-shadow:0 -2px 8px rgba(0,0,0,.25)}'
+            . '#versa-profiler a{color:inherit;text-decoration:none;font-family:ui-monospace,monospace}#versa-profiler a:hover{text-decoration:underline}'
+            . '#versa-profiler .vp-warn{color:#fde68a}#versa-profiler .vp-api{opacity:.8}'
+            . '#versa-profiler .vp-brand{display:flex;align-items:center;gap:6px}#versa-profiler img{width:20px;height:20px}'
+            // En pantallas angostas, una sola línea con las métricas: tres líneas tapaban el contenido
+            . '@media (max-width:640px){#versa-profiler{flex-wrap:nowrap;padding:4px 8px;font-size:11px}'
+            . '#versa-profiler .vp-label,#versa-profiler .vp-brand{display:none}'
+            . '#vp-metrics{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}}'
+            // Espacio al final de la página para que la barra fija no tape lo último
+            . '#versa-profiler-spacer{height:44px}'
+            . '</style><div id="versa-profiler-spacer"></div><div id="versa-profiler"><span class="vp-label">Modo Debug: Activado</span><span id="vp-metrics"></span>'
+            . '<span class="vp-brand"><img src="/public/dashboard/img/favicon.webp" alt="">VersaWYS Framework <span id="vp-load"></span></span></div>'
+            . '<script nonce="'
+            . $nonce
+            . '">(function(){'
+            . 'var bar=document.getElementById("vp-metrics"),current='
+            . $initial
+            . ',api=0;'
+            . 'console.log("%c"+'
+            . $framework
+            . ',"color:#fff;background:#f00;padding:5px;border-radius:5px");'
+            . 'function add(parent,tag,text,cls){var e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;parent.appendChild(e);return e;}'
+            . 'function render(s){bar.textContent="";var a=add(bar,"a","");a.href="/_profiler/"+encodeURIComponent(s.id);a.target="_blank";a.rel="noopener";'
+            . 'a.textContent=s.status+" · "+s.ms+" ms · "+s.queries+" SQL ("+s.db_ms+" ms) · "+s.memory_mb+" MB"+(s.controller?" · "+s.controller:"");'
+            . 'if(s.n_plus_one>0)add(a,"b"," ⚠ N+1 ×"+s.n_plus_one,"vp-warn");if(s.exceptions>0)add(a,"b"," ⚠ "+s.exceptions+" excepción(es)","vp-warn");'
+            . 'if(api>0){var l=add(bar,"a"," · +"+api+" API","vp-api");l.href="/_profiler";l.target="_blank";l.rel="noopener";}}'
+            . 'function load(id,retry){fetch("/_profiler/"+encodeURIComponent(id)+".json").then(function(r){if(r.ok)return r.json();'
+            . 'if(retry)setTimeout(function(){load(id,false);},300);return null;}).then(function(s){if(s){current=s;render(s);}}).catch(function(){});}'
+            . 'function loadTime(seconds){document.getElementById("vp-load").textContent="· CARGA: "+seconds.toFixed(2)+"s";}'
+            . 'var original=window.fetch;window.fetch=function(input,init){var t0=performance.now();return original.apply(this,arguments).then(function(res){'
+            . 'var id=res.headers.get("X-Versa-Profiler");if(id){var h=new Headers(init&&init.headers?init.headers:(input instanceof Request?input.headers:undefined));'
+            // En una navegación del SPA, CARGA es lo que tardó esa página
+            . 'if(h.get("X-SPA")){api=0;loadTime((performance.now()-t0)/1000);load(id,true);}else{api++;render(current);}}return res;});};'
+            // Tiempo de carga en el navegador, desde el inicio de la navegación
+            . 'window.addEventListener("load",function(){loadTime(performance.now()/1000);});'
+            . 'render(current);})();</script>'
         );
     }
 
@@ -484,6 +764,8 @@ final class Profiler
             . self::h($d['id'])
             . '</dd></dl>';
 
+        $html .= self::exchangeHtml($d);
+
         if ($d['exceptions'] !== []) {
             $html .= '<h2>Excepciones</h2><ul>';
             foreach ($d['exceptions'] as $e) {
@@ -558,6 +840,93 @@ final class Profiler
         return $html;
     }
 
+    /**
+     * La petición y la respuesta, como un inspector de tráfico, con el botón para repetirla en el
+     * probador de /doc.
+     *
+     * @param array<string, mixed> $d
+     */
+    private static function exchangeHtml(array $d): string
+    {
+        $request = $d['request'] ?? null;
+        if (!is_array($request)) {
+            return '';
+        }
+
+        $query = (array) $request['query'];
+        $url = $d['path'] . ($query === [] ? '' : '?' . http_build_query($query));
+        $html =
+            '<h2>Petición</h2><p><code>'
+            . self::h($d['method'] . ' ' . $url)
+            . '</code> <a class="btn" href="/doc?route=all&amp;replay='
+            . rawurlencode((string) $d['id'])
+            . '">Repetir en el probador</a></p>'
+            . self::headersHtml(array_map(
+                null,
+                array_keys((array) $request['headers']),
+                array_values((array) $request['headers']),
+            ));
+
+        $html .= self::bodyHtml((string) $request['body'], 'La petición no trae cuerpo.');
+        if ($request['files'] !== []) {
+            $html .= '<p>Archivos (no se guardan; al repetir hay que elegirlos de nuevo):</p><ul>';
+            foreach ((array) $request['files'] as $f) {
+                $html .=
+                    '<li><b>'
+                    . self::h($f['field'])
+                    . '</b>: '
+                    . self::h($f['name'])
+                    . ' <small>('
+                    . self::h($f['type'])
+                    . ', '
+                    . self::h($f['size'])
+                    . ' bytes)</small></li>';
+            }
+
+            $html .= '</ul>';
+        }
+
+        $response = $d['response'] ?? null;
+        if (!is_array($response)) {
+            return $html . '<h2>Respuesta</h2><p>No quedó registrada (la petición terminó antes de responder).</p>';
+        }
+
+        return (
+            $html
+            . '<h2>Respuesta</h2><p><code>'
+            . self::h($d['status'])
+            . '</code></p>'
+            . self::headersHtml((array) $response['headers'])
+            . self::bodyHtml((string) $response['body'], 'La respuesta no trae cuerpo.')
+        );
+    }
+
+    /** @param array<array-key, mixed> $headers pares [nombre, valor] */
+    private static function headersHtml(array $headers): string
+    {
+        if ($headers === []) {
+            return '';
+        }
+
+        $html = '<details><summary>Cabeceras (' . count($headers) . ')</summary><table>';
+        foreach ($headers as $pair) {
+            $pair = (array) $pair;
+            $html .=
+                '<tr><th>'
+                . self::h($pair[0] ?? '')
+                . '</th><td><code>'
+                . self::h($pair[1] ?? '')
+                . '</code></td></tr>';
+        }
+
+        return $html . '</table></details>';
+    }
+
+    private static function bodyHtml(string $body, string $empty): string
+    {
+        return $body === '' ? '<p><small>' . self::h($empty) . '</small></p>' : '<pre>' . self::h($body) . '</pre>';
+    }
+
     private static function page(string $title, string $body): string
     {
         $nonce = self::h(SecurityUtils::cspNonce());
@@ -574,7 +943,9 @@ final class Profiler
             . 'table{border-collapse:collapse;width:100%;background:#fff}th,td{border-bottom:1px solid #e2e8f0;padding:6px 8px;text-align:left;vertical-align:top}'
             . 'code{font:12px/1.5 ui-monospace,monospace;word-break:break-all}.err{background:#fee2e2}.warn{color:#b45309}'
             . 'dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px}dt{color:#64748b}dd{margin:0}a{color:#2563eb}'
-            . '@media (prefers-color-scheme:dark){body{background:#0f172a;color:#e2e8f0}table{background:#1e293b}th,td{border-color:#334155}.err{background:#7f1d1d}a{color:#93c5fd}}'
+            . 'pre{background:#fff;border:1px solid #e2e8f0;padding:10px;overflow:auto;max-height:420px;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;word-break:break-all}'
+            . 'details summary{cursor:pointer;margin:6px 0}.btn{display:inline-block;margin-left:8px;padding:4px 10px;border-radius:6px;background:#2563eb;color:#fff;text-decoration:none;font-size:13px}'
+            . '@media (prefers-color-scheme:dark){body{background:#0f172a;color:#e2e8f0}table,pre{background:#1e293b;border-color:#334155}th,td{border-color:#334155}.err{background:#7f1d1d}a{color:#93c5fd}}'
             . '</style></head><body><header><h1>'
             . self::h($title)
             . '</h1><small>Profiler · solo en modo debug</small></header><main>'

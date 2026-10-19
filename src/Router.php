@@ -248,8 +248,33 @@ class Router
 
             $url = self::normalize_url($request->getUrl());
 
+            // app:down: 503 para todos, salvo quien entró con la clave
+            if (Maintenance::handle($request, $url)) {
+                return true;
+            }
+
             if ($url === '/up' && in_array($method, ['get', 'head'], true)) {
                 return Response::json(self::health(), 200);
+            }
+
+            // Instalación sin terminar: todo lleva al asistente, nada cae en el login
+            if (
+                Installation::isPending()
+                && $url !== Installation::PATH
+                && !str_starts_with($url, Installation::PATH . '/')
+                && !str_starts_with($url, '/_profiler')
+            ) {
+                if ($request->isApiCall()) {
+                    return Response::json([
+                        'success' => 0,
+                        'message' => 'La aplicación aún no está instalada.',
+                        'redirect' => Installation::PATH,
+                    ], 503);
+                }
+
+                Response::redirect(Installation::PATH);
+
+                return true;
             }
 
             // Panel del profiler: solo en modo debug y desde la propia máquina (o profiler.allowed_ips)
@@ -258,7 +283,22 @@ class Router
                     return $this->respondNotFound($request, $config, 'Página no encontrada');
                 }
 
-                echo Profiler::panel($url === '/_profiler' ? null : substr($url, strlen('/_profiler/')));
+                $id = $url === '/_profiler' ? null : substr($url, strlen('/_profiler/'));
+                // El probador de /doc pide la petición para repetirla
+                if ($id !== null && str_ends_with($id, '.request.json')) {
+                    $replay = Profiler::replayFor(substr($id, 0, -13));
+
+                    return Response::json($replay ?? ['success' => 0], $replay === null ? 404 : 200);
+                }
+
+                // La barra pide el resumen de cada navegación del SPA
+                if ($id !== null && str_ends_with($id, '.json')) {
+                    $summary = Profiler::summaryFor(substr($id, 0, -5));
+
+                    return Response::json($summary ?? ['success' => 0], $summary === null ? 404 : 200);
+                }
+
+                echo Profiler::panel($id);
 
                 return true;
             }
@@ -347,7 +387,12 @@ class Router
 
             // Si no hay coincidencia exacta, buscar rutas con parámetros
             // Precalcular cantidad de segmentos de la URL solicitada
-            $urlSegmentCount = count(array_filter(explode('/', trim($url, '/'))));
+            // Sin callback, array_filter() descartaría el segmento "0" (/usuarios/0): se cuentan los no vacíos
+            $segments = static fn(string $path): int => count(array_filter(
+                explode('/', trim($path, '/')),
+                static fn(string $segment): bool => $segment !== '',
+            ));
+            $urlSegmentCount = $segments($url);
             foreach ($routes as $route => $callback) {
                 // Verificar tiempo de ejecución excesivo
                 if ((microtime(true) - $startTime) > $maxExecutionTime) {
@@ -363,7 +408,7 @@ class Router
                 }
 
                 // Optimización: solo intentar match si el número de segmentos coincide
-                $routeSegmentCount = count(array_filter(explode('/', trim($route, '/'))));
+                $routeSegmentCount = $segments($route);
                 if ($routeSegmentCount !== $urlSegmentCount) {
                     continue;
                 }
@@ -651,7 +696,7 @@ class Router
             } catch (RequestHalted $halted) {
                 // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
                 throw $halted;
-            } catch (RouteParameterMismatch) {
+            } catch (NotFound) {
                 return $this->respondNotFound($request, $config);
             } catch (Throwable $e) {
                 Loggin::error(
@@ -726,7 +771,7 @@ class Router
         } catch (RequestHalted $halted) {
             // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
             throw $halted;
-        } catch (RouteParameterMismatch) {
+        } catch (NotFound) {
             return $this->respondNotFound($request, $config);
         } catch (Throwable $throwable) {
             if (isset($controllerClass, $controllerMethodName)) {

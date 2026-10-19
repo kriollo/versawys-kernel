@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace versaWYS\kernel\Tests;
 
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
+use versaWYS\kernel\Profiler;
 use versaWYS\kernel\versaTwig;
 
 final class TwigTest extends TestCase
@@ -58,6 +60,30 @@ final class TwigTest extends TestCase
         self::assertMatchesRegularExpression('/<script nonce="[A-Za-z0-9+\/=]{24}">/', $this->twig(
             true,
         )->renderDirect('ficha', ['nombre' => '', 'html' => '']));
+    }
+
+    public function testEnDebugLaBarraLaDibujaElProfilerYNoSeDuplica(): void
+    {
+        global $config;
+
+        $twig = $this->twig(false);
+        $config['build']['debug'] = true;
+        $config['framework'] = 'versaWYS-PHP';
+        $debug = new ReflectionMethod($twig, 'debug');
+
+        // Sin profiler (apagado o en consola), versaTwig sigue dibujando su barra
+        Profiler::reset();
+        self::assertStringContainsString('Modo Debug: Activado', (string) $debug->invoke($twig));
+
+        // Con el profiler midiendo la petición, la barra es la suya: versaTwig no agrega otra
+        $config['profiler']['dir'] = $this->dir . '/profiler';
+        Profiler::begin();
+
+        try {
+            self::assertSame('', $debug->invoke($twig));
+        } finally {
+            Profiler::reset();
+        }
     }
 
     private function twig(bool $nonce): versaTwig

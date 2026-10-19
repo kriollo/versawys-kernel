@@ -49,6 +49,12 @@ final class TestClient
      * @param string $root raíz del proyecto (la carpeta de index.php)
      * @param string|null $configFile otro config.json, p. ej. uno con la base de datos de pruebas
      */
+    /** ¿Ya arrancó la aplicación en este proceso? (arranca una sola vez) */
+    public static function booted(): bool
+    {
+        return self::$root !== null;
+    }
+
     public static function boot(string $root, ?string $configFile = null): self
     {
         if (self::$root === null) {
@@ -80,6 +86,38 @@ final class TestClient
         }
 
         return new self();
+    }
+
+    /**
+     * Corre `$fn` con esas claves de config.json cambiadas y después deja la configuración como estaba,
+     * aunque la prueba falle. Para probar combinaciones sin otro config.json:
+     *
+     *     TestClient::withConfig(['admin' => ['hide_default' => true]], function () use ($client): void {
+     *         $client->get('/admin/login')->assertStatus(404);
+     *     });
+     *
+     * Las claves se fusionan como en config.json; una lista reemplaza la original posición por
+     * posición. Lo que el kernel lee al arrancar (la conexión a la base, Twig) no cambia.
+     *
+     * @template T
+     *
+     * @param array<string, mixed> $overrides
+     * @param callable(): T $fn
+     *
+     * @return T
+     */
+    public static function withConfig(array $overrides, callable $fn): mixed
+    {
+        global $config;
+
+        $original = $config;
+        $config = array_replace_recursive($config, $overrides);
+
+        try {
+            return $fn();
+        } finally {
+            $config = $original;
+        }
     }
 
     /** @param array<string, string> $headers */
@@ -128,6 +166,36 @@ final class TestClient
         return $this->request('POST', $uri, $data);
     }
 
+    /**
+     * Un formulario con archivos (multipart), como un `<input type="file">`. Cada archivo se copia a un
+     * temporal: la prueba puede usar el mismo varias veces.
+     *
+     *     $client->postFile('/admin/usuarios/updateAvatar', [], ['fileAvatar' => __DIR__ . '/fixtures/foto.png']);
+     *
+     * @param array<string, mixed> $data
+     * @param array<string, string> $files campo => ruta del archivo
+     */
+    public function postFile(string $uri, array $data, array $files): TestResponse
+    {
+        $uploads = [];
+        foreach ($files as $field => $path) {
+            $tmp = (string) tempnam(sys_get_temp_dir(), 'versa_upload_');
+            copy($path, $tmp);
+            $uploads[$field] = [
+                'name' => basename($path),
+                'type' => (string) mime_content_type($path),
+                'tmp_name' => $tmp,
+                'error' => UPLOAD_ERR_OK,
+                'size' => (int) filesize($tmp),
+                // move_uploaded_file() solo acepta subidas HTTP reales: File copia el contenido, como
+                // con los archivos de un PUT multipart
+                'from' => 'formData',
+            ];
+        }
+
+        return $this->request('POST', $uri, $data, ['Content-Type' => 'multipart/form-data'], files: $uploads);
+    }
+
     /** @param array<string, mixed> $data */
     public function postJson(string $uri, array $data = []): TestResponse
     {
@@ -169,6 +237,7 @@ final class TestClient
      *
      * @param array<string, mixed> $data parámetros de la URL (GET) o del formulario (POST)
      * @param array<string, string> $headers
+     * @param array<string, array<string, mixed>> $files como $_FILES (ver postFile())
      */
     public function request(
         string $method,
@@ -176,6 +245,7 @@ final class TestClient
         array $data = [],
         array $headers = [],
         ?string $body = null,
+        array $files = [],
     ): TestResponse {
         global $config;
 
@@ -198,7 +268,7 @@ final class TestClient
 
         self::prepareServer($method, $uri, $headers);
         $_COOKIE = $this->cookies;
-        $_FILES = [];
+        $_FILES = $files;
         if ($method === 'GET' || $method === 'HEAD') {
             $_GET = $data + $_GET;
             $_POST = [];

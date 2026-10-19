@@ -78,6 +78,8 @@ class GlobalControllers
         $this->template->addGlobal('hasActiveSession', $hasActiveSession);
         $this->template->addGlobal('ws_url', $config['websocket_service']['ws_url'] ?? '');
         $this->template->addGlobal('config', $config);
+        // Quien entró con la clave de app:down ve el sitio normal: el layout le avisa que está cerrado
+        $this->template->addGlobal('maintenance', Maintenance::status() !== null);
     }
 
     /**
@@ -100,12 +102,18 @@ class GlobalControllers
         array $allowedFilters = [],
     ): array {
         // ponytail: tope fijo de filas por página; exportaciones mayores necesitan un endpoint por streaming
-        $per_page = min(max((int) $http->get('per_page', 15), 1), 5000);
-        $page = max((int) $http->get('page', 1), 1);
+        // Solo valores escalares: page[]=1 o un filtro como arreglo (JSON) no son un número ni un texto
+        $scalar = static function (string $name, string $default) use ($http): string {
+            $value = $http->get($name, $default);
+
+            return is_scalar($value) ? (string) $value : $default;
+        };
+        $per_page = min(max((int) $scalar('per_page', '15'), 1), 5000);
+        $page = max((int) $scalar('page', '1'), 1);
         $offset = ($page - 1) * $per_page;
 
-        $fitro = trim((string) $http->get('filter', ''));
-        $externalFilters = (string) $http->get('externalFilters', '');
+        $fitro = trim($scalar('filter', ''));
+        $externalFilters = $scalar('externalFilters', '');
 
         $conditions = [];
         $bindings = [];
@@ -129,7 +137,7 @@ class GlobalControllers
             'page' => $offset,
             'per_page' => $per_page,
             'filtro' => $fitro,
-            'order' => self::sanitizeOrder((string) $http->get('order', $orderDefault), $orderDefault),
+            'order' => self::sanitizeOrder($scalar('order', $orderDefault), $orderDefault),
             'externalFilters' => $externalFilters,
             'limit' => sprintf('LIMIT %d , %d', $offset, $per_page),
             'filter' => implode(' AND ', $conditions),

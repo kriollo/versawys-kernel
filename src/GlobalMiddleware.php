@@ -12,6 +12,11 @@ use versaWYS\kernel\helpers\Functions;
 
 class GlobalMiddleware
 {
+    private const array BLOCKED_MESSAGES = [
+        'cuenta_desactivada' => 'Cuenta de usuario desactivada',
+        'empresa_suspendida' => 'La empresa está suspendida',
+    ];
+
     // Propiedad estática para almacenar los datos del usuario durante una única petición.
     // Esto evita tener que pasar el objeto de usuario entre funciones.
     private static ?array $currentUserData = null;
@@ -115,29 +120,11 @@ class GlobalMiddleware
                 ];
             }
 
-            // 5. Validar estado del usuario
+            // 5. Cuenta desactivada o empresa suspendida: la sesión termina
             $userData = self::$currentUserData['user'];
-            if (!isset($userData['status']) || (int) $userData['status'] !== 1) {
-                if ($debug) {
-                    Loggin::error(
-                        '[GlobalMiddleware::checkSession] Usuario inactivo ID: ' . $userId,
-                        'GlobalMiddleware',
-                    );
-                }
-
-                $session->destroy();
-
-                if (!$request->isApiCall()) {
-                    Response::redirect('/' . $config['admin']['custom_url'] . '/login');
-                    Output::halt();
-                }
-
-                return [
-                    'success' => 0,
-                    'valid' => false,
-                    'message' => 'Cuenta de usuario desactivada',
-                    'code' => 403,
-                ];
+            $blocked = self::blockedReason($userData);
+            if ($blocked !== null) {
+                return $this->endSession($blocked, self::BLOCKED_MESSAGES[$blocked]);
             }
 
             // 6. Comprobar la expiración de la contraseña
@@ -145,18 +132,25 @@ class GlobalMiddleware
                 dateExpiration: self::$currentUserData['user']['expiration_pass'] ?? null,
             );
 
-            // 7. Manejar redirección por contraseña expirada (solo para navegador)
+            // 7. Contraseña vencida: solo el perfil y el cambio de contraseña. Las páginas llevan al
+            // perfil y la API responde 403, para que el bloqueo no se salte llamando a la API
             $adminUrl = '/' . $config['admin']['custom_url'];
+            $path = (string) parse_url($request->getUrl(), PHP_URL_PATH);
             if (
-                !$request->isApiCall()
-                && (
-                    $passwordExpired
-                    && $request->getUrl() !== $adminUrl . '/perfiluser'
-                    && $request->getUrl() !== $adminUrl . '/login/resetPassByUser'
-                )
+                $passwordExpired
+                && !in_array($path, [$adminUrl . '/perfiluser', $adminUrl . '/login/resetPassByUser'], true)
             ) {
-                Response::redirect($adminUrl . '/perfiluser');
-                Output::halt();
+                if (!$request->isApiCall()) {
+                    Response::redirect($adminUrl . '/perfiluser');
+                    Output::halt();
+                }
+
+                return [
+                    'success' => 0,
+                    'password_expired' => true,
+                    'message' => 'Tu contraseña venció: cámbiala en tu perfil para continuar',
+                    'code' => 403,
+                ];
             }
 
             // 8. Guardar el estado de expiración para que esté disponible en el controlador y la vista
@@ -202,12 +196,24 @@ class GlobalMiddleware
     {
         global $session, $request, $debug;
 
-        // Buscar token en orden de prioridad
-        $token = $request->get('_csrf_token') ?: $request->get('csrf_token') ?: $this->getCSRFTokenWithPrefix(
-            $request,
-        ) ?: $request->getHeader('X-CSRF-Token');
+        // El primero que sea texto, en orden de prioridad. Con JSON llegan otros tipos (0, true, [...]):
+        // no cuentan como token, y nunca terminan en hash_equals() con un error 500
+        $token = null;
+        foreach ([
+            $request->get('_csrf_token'),
+            $request->get('csrf_token'),
+            $this->getCSRFTokenWithPrefix($request),
+            $request->getHeader('X-CSRF-Token'),
+        ] as $candidate) {
+            if (!is_string($candidate) || $candidate === '') {
+                continue;
+            }
 
-        if (in_array($token, [null, '', false], true)) {
+            $token = $candidate;
+            break;
+        }
+
+        if ($token === null) {
             return [
                 'success' => 0,
                 'message' => 'los datos enviados no son correctos',
@@ -425,6 +431,48 @@ class GlobalMiddleware
     }
 
     /**
+     * Por qué esta cuenta ya no puede usar el panel: 'cuenta_desactivada', 'empresa_suspendida' o null.
+     * Una empresa suspendida no afecta al superadministrador, que es quien administra las empresas.
+     * `empresa_estado` lo entrega Users::findWithCompany(); sin esa clave, no se revisa.
+     *
+     * @param array<string, mixed> $user
+     */
+    public static function blockedReason(array $user): ?string
+    {
+        return match (true) {
+            (int) ($user['status'] ?? 0) !== 1 => 'cuenta_desactivada',
+            ($user['role'] ?? '') !== 'superadmin'
+                && array_key_exists('empresa_estado', $user)
+                && !(bool) $user['empresa_estado']
+                => 'empresa_suspendida',
+            default => null,
+        };
+    }
+
+    /**
+     * Cierra la sesión por el estado de la cuenta. Una página vuelve al login con el motivo
+     * (`?motivo=`), para que el usuario sepa por qué; la API responde 403.
+     *
+     * @return array{success: int, valid: false, message: string, code: int}
+     */
+    private function endSession(string $motivo, string $message): array
+    {
+        global $session, $request, $config, $cookie;
+
+        // Como el logout: el JWT de la cookie queda revocado. Sin esto, el login lo vería como una
+        // sesión abierta y devolvería al panel, que volvería a cerrarla: un bucle de redirecciones
+        $session->revokeToken($cookie?->get('tknHash'));
+        $cookie?->delete('tknHash');
+        $session->destroy();
+        if (!$request->isApiCall()) {
+            Response::redirect('/' . $config['admin']['custom_url'] . '/login?motivo=' . $motivo);
+            Output::halt();
+        }
+
+        return ['success' => 0, 'valid' => false, 'message' => $message, 'code' => 403];
+    }
+
+    /**
      * Usuario de la petición: el que ya cargó checkSession o, si no se ejecutó antes, desde la BD.
      *
      * @return array<string, mixed>
@@ -445,7 +493,9 @@ class GlobalMiddleware
     {
         global $request, $config;
 
-        if (strtoupper((string) $request->getMethod()) !== 'GET') {
+        // Una llamada de la API (también un GET con fetch) recibe 403: una redirección la haría
+        // terminar en el HTML del dashboard con 200. Solo una página se redirige
+        if ($request->isApiCall() || strtoupper((string) $request->getMethod()) !== 'GET') {
             Response::json(['success' => 0, 'message' => 'No tiene permisos para realizar esta acción'], 403);
             Output::halt();
         }
@@ -462,7 +512,7 @@ class GlobalMiddleware
         $allParams = $request->getAllParams();
 
         foreach ($allParams as $key => $value) {
-            if (!(str_starts_with($key, '_csrf_token') && $value !== null && $value !== '')) {
+            if (!(str_starts_with((string) $key, '_csrf_token') && is_string($value) && $value !== '')) {
                 continue;
             }
 

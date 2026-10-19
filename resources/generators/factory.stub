@@ -1,0 +1,14 @@
+<?php
+
+declare(strict_types=1);
+
+use versaWYS\kernel\Testing\Factory;
+
+/*
+ * Datos de prueba de {{table}}: Factory::create('{{table}}', ['id_empresa' => $empresa]).
+ * $n no se repite: sirve para valores únicos. Ver documentacion/Pruebas.md
+ */
+Factory::define('{{table}}', static fn(int $n): array => [
+    'id_empresa' => 1,
+    'nombre' => "{{Name}} {$n}",
+]);

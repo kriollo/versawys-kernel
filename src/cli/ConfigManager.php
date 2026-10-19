@@ -244,6 +244,25 @@ class ConfigManager
             return;
         }
 
+        try {
+            $token = self::createConfig();
+            CLIErrorHandler::success('Archivo de configuración creado exitosamente en: ' . self::path());
+            CLIErrorHandler::info('Token para el instalador web (/install): ' . $token);
+        } catch (Throwable $throwable) {
+            CLIErrorHandler::warning(
+                'Error: No se pudo crear el archivo de configuración: ' . $throwable->getMessage(),
+            );
+        }
+    }
+
+    /**
+     * Crea config.json con los valores por defecto, una clave de sesión propia y el token de un solo
+     * uso que exige el instalador web. La usan `config:init` y el primer arranque web (Installation).
+     *
+     * @return string el token de instalación (queda en install.token, junto a config.json)
+     */
+    public static function createConfig(): string
+    {
         // Misma fuente que usa el runtime para los valores por defecto: no pueden divergir
         $defaults = self::currentDefaults();
         $defaults['session']['key'] = bin2hex(random_bytes(32));
@@ -253,31 +272,25 @@ class ConfigManager
         $defaults['csp']['unsafe_eval'] = false;
         $template = json_encode($defaults, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        // Asegurarse de que el directorio de configuración exista
-        $configPath = self::path();
-        /** @var string $configDir */
-        $configDir = dirname($configPath);
-
-        try {
-            CLIHelper::ensureDirectory($configDir, 0o775);
-
-            if (file_put_contents(self::path(), $template) !== false) {
-                chmod(self::path(), 0o660);
-                CLIErrorHandler::success('Archivo de configuración creado exitosamente en: ' . self::path());
-
-                // Token de un solo uso que exige el instalador web (/install)
-                $token = bin2hex(random_bytes(16));
-                file_put_contents($configDir . '/install.token', $token);
-                chmod($configDir . '/install.token', 0o660);
-                CLIErrorHandler::info('Token para el instalador web (/install): ' . $token);
-            } else {
-                throw new RuntimeException('No se pudo escribir el archivo');
-            }
-        } catch (Throwable $throwable) {
-            CLIErrorHandler::warning(
-                'Error: No se pudo crear el archivo de configuración: ' . $throwable->getMessage(),
-            );
+        $configDir = dirname(self::path());
+        if (!is_dir($configDir) && !mkdir($configDir, 0o775, true) && !is_dir($configDir)) {
+            throw new RuntimeException("No se pudo crear la carpeta {$configDir}");
         }
+
+        if (file_put_contents(self::path(), $template) === false) {
+            throw new RuntimeException('No se pudo escribir ' . self::path());
+        }
+
+        chmod(self::path(), 0o660);
+
+        $token = bin2hex(random_bytes(16));
+        if (file_put_contents($configDir . '/install.token', $token) === false) {
+            throw new RuntimeException("No se pudo escribir {$configDir}/install.token");
+        }
+
+        chmod($configDir . '/install.token', 0o660);
+
+        return $token;
     }
 
     /**

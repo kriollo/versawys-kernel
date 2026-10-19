@@ -1,0 +1,6 @@
+# Contraseñas de prueba (base SQLite desechable, cuerpos de ejemplo del profiler): no son secretos
+version: 2
+secret:
+  ignored_paths:
+    - "tests/**"
+    - "src/Testing/TestDatabase.php"

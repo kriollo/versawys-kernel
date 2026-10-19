@@ -41,6 +41,7 @@ Todo lo que llega en la petición es **no confiable**: parámetros, cuerpo, cook
 | Secretos en los logs | El contexto se limpia de claves con nombre de secreto (`password`, `token`, `api_key`…) a cualquier profundidad | LogTest |
 | Rutas que se pisan | `route:check` y `app:check:deploy` marcan método + URL duplicados | RouteDuplicatesTest |
 | *Method override* para saltarse CSRF | Solo un POST cambia de método, y los métodos que modifican siguen exigiendo CSRF | RouterTest: override |
+| Instalar un sitio recién subido antes que su dueño (apuntarlo a otra base de datos, crear su propio superadministrador) | El instalador exige el token de `install.token`, que nunca se muestra en la web: hay que leerlo del servidor (terminal o Administrador de archivos). Al terminar se borra y queda `installed.lock` | InstallationTest; esqueleto: «exige el token» |
 | Leer o cambiar datos de otra empresa por id | `Tenant::ensure($fila)` responde 404, sin confirmar que existe; `Tenant::id()` sale de la sesión, no de la petición | AuthorizationTest; versaTodo: «otra empresa no ve ni modifica nada» |
 | Acción sin permiso | `Gate::authorize` responde 403. Una habilidad no definida niega | AuthorizationTest |
 | Datos sin validar en un controlador | Con una `FormRequest`, el método no corre si los datos fallan (422) | AuthorizationTest; ValidatorTest |

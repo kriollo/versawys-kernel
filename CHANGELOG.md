@@ -2,6 +2,109 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.11.0] - 2026-10-19
+
+Paso 8 del ROADMAP: programador de tareas, generadores, factories, `Crypt` y URLs firmadas, modo mantenimiento, documentación completa y la suite de pruebas ampliada. Lo que hay que cambiar en el `app/` de cada proyecto está en `UPGRADE.md` («3.10 → 3.11»).
+
+### Añadido
+- **Programador de tareas:**
+  - Las tareas se definen en `app/schedule.php` con `Schedule::cron(Clase::class)` (una clase de `app/cron`) o `Schedule::command('...')`.
+  - Frecuencias: `everyMinute`, `everyMinutes(n)`, `hourly(At)`, `daily(At)`, `weeklyOn`, `monthlyOn` o `cron('expresión')`.
+  - `withoutOverlapping()` usa un candado de archivo: si la ejecución anterior sigue corriendo, esa vuelta se omite.
+  - Comandos: `app:schedule:run` (una sola línea en el crontab; lanza cada tarea en su propio proceso), `app:schedule:list` (próxima ejecución y resultado de la última) y `app:schedule:exec <id>`.
+  - `CronExpression` acepta expresiones cron estándar de 5 campos.
+  - **Frecuencia en palabras** («Cada 5 minutos», «Todos los días a las 03:00»): la da `CronExpression::describe()` y la muestra el panel.
+  - **La línea sugerida para el crontab** trae la ruta completa de PHP y escribe la salida en `versaWYS/logs/cron.log`. Cron corre con un `PATH` mínimo: con un PHP fuera de `/usr/bin` (cPanel, mise) el comando fallaba sin avisar, y con `/dev/null` el error se perdía.
+  - `Schedule::report()` arma lo que muestran `app:schedule:list` y el panel, incluido si el crontab está llamando a `app:schedule:run`. Si no lo está, `app:schedule:list` lo avisa con la línea exacta para el crontab.
+
+- **Instalación a prueba de un hosting sin terminal** (`Installation`):
+  - **Primer arranque sin `config.json`:** se crea solo, con clave de sesión propia y token de instalación. Si el servidor no cumple los requisitos, se muestra una página con qué corregir: PHP, extensiones, carpetas con permiso de escritura y HTTPS.
+  - **Instalación pendiente** (existe el token y no existe `installed.lock`): toda página lleva a `/install` y la API responde 503 en JSON.
+  - **Proyectos ya instalados:** no tienen token, así que no se ven afectados.
+  - `ConfigManager::createConfig()` lo comparten `config:init` y el primer arranque.
+- **`SystemCheck`**: una sola revisión del servidor para el asistente de instalación y `versaCLI status`. Revisa:
+  - la versión de PHP;
+  - las extensiones del proyecto y las que piden las dependencias de producción, según `installed.json`, sin herramientas de desarrollo y considerando los polyfills;
+  - el driver de la base de datos;
+  - las carpetas con permiso de escritura;
+  - el frontend compilado;
+  - HTTPS, en la web.
+
+  Cada falla dice cómo corregirla en cPanel y en Linux.
+
+- **Generadores modernos:**
+  - `versaMODULE` y `RCMD` crean un módulo **aislado por empresa desde el inicio**: migración con `id_empresa`, un modelo que filtra cada consulta por empresa, una FormRequest, un controlador con el modelo inyectado y `Tenant::id()`, rutas REST documentadas y una prueba con `TestClient` que pasa recién generada.
+  - Antes, el módulo listaba los registros de todas las empresas, validaba en un middleware comentado y no tenía pruebas.
+  - Comandos nuevos: `request:make`, `job:make` y `test:make`. `cron:make` ya no abre otra conexión a la base de datos.
+  - Las plantillas viven en `resources/generators`.
+- **`Testing\TestDatabase`:**
+  - una SQLite desechable con las migraciones y los seeders del proyecto, compartida por toda la suite;
+  - `user()`, `empresa()` y `login()` crean datos de prueba con correos y RUT únicos;
+  - si otra prueba ya arrancó `TestClient`, usa esa misma base.
+- **`TestClient::booted()`.**
+- **`Testing\Factory`:**
+  - `define(tabla, fn(int $n) => [...])` define los datos por defecto de una tabla;
+  - `create` y `createMany` guardan registros, con `created_at` y `updated_at` automáticos;
+  - las definiciones se cargan solas desde `versaWYS/tests/factories`;
+  - `factory:make` crea una definición, y versaMODULE crea la del módulo.
+- **`Crypt`**: cifrado autenticado (AES-256-GCM con openssl) para guardar secretos en la base de datos.
+  - `encrypt` acepta textos, números y arreglos; `decrypt` lanza una excepción si el valor fue alterado o se cifró con otra clave.
+  - `isEncrypted` sirve para migrar valores guardados en texto plano.
+  - La clave sale de `crypt.key` (32 bytes en base64) o, si falta, de `session.key`. Cada uso tiene una clave derivada distinta.
+- **`SignedUrl`**: enlaces que vencen, para descargas o confirmaciones por correo.
+  - `SignedUrl::make('/ruta', segundos, [params])` firma la ruta, los parámetros y el vencimiento.
+  - El middleware `[SignedUrl::class, 'check']` responde 403 si el enlace venció o fue alterado.
+- **Modo mantenimiento** (`Maintenance`): `app:down` hace que todo responda 503, con `Retry-After`; la API responde en JSON. `app:up` lo termina.
+  - Quien abre `/<clave>` una vez queda con una cookie firmada (no es la clave) y sigue entrando. `--secret` la elige; si no, se genera una.
+  - El estado vive en `down.json`, junto a `config.json`: sobrevive a `cache:clear`.
+- **El profiler guarda la petición y la respuesta, y las repite en el probador de `/doc`**, como el inspector de ngrok:
+  - método, URL con su query, cabeceras y cuerpo de la petición; estado, cabeceras y cuerpo de la respuesta, hasta 64 KB cada cuerpo;
+  - sin secretos: `Cookie`, `Authorization`, el token CSRF y todo campo con nombre de secreto quedan como `[oculto]`; de los archivos, solo nombre, tipo y tamaño;
+  - «Repetir en el probador» abre `/doc?route=all&replay=<id>`, que pide `/_profiler/<id>.request.json` y precarga el probador. La plantilla `versaRoute.twig` del proyecto debe actualizarse para tener el botón.
+- **Entrada con su tipo (type juggling):** `$request->string('campo')` y `$request->integer('campo')`, y `Functions::text($valor)` para un arreglo ya leído. Un arreglo, o un `"1e3"`/`"0x1A"` para `integer()`, devuelve el valor por defecto en vez de convertirse a `"Array"` o a otro número.
+- **`NotFound`**: lanzarla desde un controlador o middleware responde 404, como página o JSON según la petición. `RouteParameterMismatch` hereda de ella, y `Tenant::ensure()` la usa: ahora una página recibe la página 404 y no un JSON.
+- **`TestClient::postFile(uri, datos, [campo => ruta])`**: un formulario con archivos, para probar subidas (avatares, documentos).
+- **`TestClient::withConfig(cambios, fn)`**: corre una prueba con otras claves de `config.json` y después deja la configuración como estaba.
+- **Empresa suspendida** (`empresas.estado = 0`): `checkSession` cierra la sesión de sus usuarios, salvo la del superadministrador. Requiere que `Users::findWithCompany()` entregue `empresa_estado` (el esqueleto ya lo hace); sin esa clave, no se revisa.
+- **El login explica por qué se cerró la sesión:** `checkSession` vuelve a `/login?motivo=cuenta_desactivada` o `?motivo=empresa_suspendida`.
+- **Aviso de mantenimiento para el equipo:** la variable de Twig `maintenance` indica si el sitio está en `app:down`.
+- **Caché del esquema de la base en producción** (con `build.debug` en `false`):
+  - Qué guarda: lo que el ORM consulta de cada tabla (columnas, índices, claves foráneas). Antes lo consultaba una vez por tabla en cada petición; ahora queda en `Cache`, en archivos o en Redis, y sirve para las peticiones siguientes.
+  - Cuánto se gana: en PostgreSQL, ~1,6 ms por tabla y petición con la base en el mismo servidor, más el viaje de red si está en otro.
+  - Cuándo se renueva: una migración, o cualquier DDL hecho con el ORM, lo invalida. Un cambio hecho a mano en la base se ve en un día como máximo, o al instante con `cache:clear`.
+  - Requisito: VersaORM 2.2 (`VersaORM::schemaCache()`); el kernel pide `versaorm/versaorm-php: ^2.2`.
+
+### Cambiado
+- **`app:check:psr4` pasa de 2.612 a ~430 líneas** y queda probado (`CheckPsr4Test`). Sigue revisando lo que funciona en Windows y falla en Linux (estructura PSR-4, mayúsculas de las clases del proyecto en `use`/`new`/`::`/`extends`/`implements`, rutas de `require`/`include`); ya no revisa que los métodos existan, que es trabajo de phpstan y mago. Una importación de namespace (`use app\models as Models;`) ya no se informa como clase inexistente. Los baselines de mago y phpstan bajan (2.809 → 2.443 líneas en phpstan).
+
+### Corregido
+- **Con `VERSAWYS_CONFIG` (pruebas, staging), el estado de instalación se leía del proyecto:** si el proyecto tenía `install.token` sin `installed.lock` (recién hecho `config:init`, como en CI), las pruebas veían la aplicación como no instalada. Ahora `installed.lock` e `install.token` se buscan junto al `config.json` en uso, que es donde `createConfig()` ya los escribía.
+- **`method_field()` imprimía el método sin escapar** dentro de un atributo HTML; ahora solo admite letras. **`formatRut('')`** accedía a un índice negativo.
+- **`GlobalMiddleware::blockedReason($usuario)`**: la regla de cuenta desactivada o empresa suspendida, ahora pública, para las rutas que no pasan por `checkSession` (el heartbeat del panel).
+- **Los botones de las páginas de error de producción no funcionaban con la CSP con nonce:** usaban `onclick=`, que esa CSP bloquea. Ahora son enlaces («Recargar», «Volver al inicio»).
+- **En debug, un aviso de PHP antes de la respuesta solo decía «Error en la petición»:** ahora muestra el aviso, su archivo y su línea.
+- **`Functions::sanitizeSvgContent()` dejaba pasar código ejecutable:** era una lista negra con expresiones regulares (las listas blancas declaradas no se usaban). Pasaban `<SCRIPT src=…>` sin cierre, `java&#9;script:`, `<foreignObject>` y `<style>`; los íconos del menú se imprimen con `|raw`, así que era un XSS almacenado. Ahora analiza el SVG como XML y conserva solo una lista blanca de elementos y atributos: `href` y `url()` solo a `#anclas`, sin DOCTYPE (XXE). Los íconos guardados con entidades (`&lt;svg`) de proyectos 2.x se siguen aceptando.
+- **Type juggling en la entrada:**
+  - un `_csrf_token` que no era texto (`0`) respondía 500 en vez de 403; ahora solo cuenta un token de texto, y un campo con otro tipo no tapa el de la cabecera;
+  - la paginación (`getParamsPaginate`) respondía 500 con `page[]=1` o un filtro como arreglo;
+  - las reglas `min` y `max` medían un arreglo como el texto `"Array"`;
+  - el límite de intentos de login por cuenta juntaba en un solo contador todos los correos enviados como arreglo.
+  - la regla `int` aceptaba `true` y `1.0` como 1, y la regla `array` respondía 500 con un número o un booleano.
+- **Repetir en el probador una petición con `_csrf_token` en el cuerpo daba 403:** el `[oculto]` del cuerpo se leía antes que el token de la cabecera. Ahora el replay quita el token y el probador manda el de la sesión.
+- **Un cambio de menú o de permisos no llegaba a las sesiones abiertas:** la versión del menú se guardaba en la sesión de quien hizo el cambio, así que los demás usuarios seguían con el menú y los permisos anteriores hasta 5 minutos. Ahora vive en `Cache`, que comparten todas las sesiones.
+- **Un parámetro de ruta igual a `0` respondía 405** (`/perfiles/0`): al contar los segmentos de la URL, `array_filter()` descartaba el `"0"`.
+- **Con la contraseña vencida, la API seguía respondiendo:** solo las páginas llevaban al perfil, así que el bloqueo se saltaba llamando a la API. Ahora la API responde 403 con `password_expired: true`, salvo el perfil y el cambio de contraseña.
+- **Cerrar la sesión por el estado de la cuenta no revocaba el JWT:** el login veía la cookie como una sesión abierta y devolvía al panel, que la volvía a cerrar. Ahora revoca el token igual que el logout.
+- **Un GET de API sin permiso (`onlyAdmin`, `onlySuperAdmin`) respondía 302 al dashboard:** un `fetch` sigue la redirección y recibía HTML con 200. Ahora responde 403 en JSON; las páginas siguen redirigiendo.
+- **`Cache` en Redis mezclaba proyectos:** las claves eran `cache:<clave>`, sin identificar el proyecto. Dos sitios en el mismo Redis leían la caché del otro, y `Cache::flush()` (también `cache:clear`) borraba la de todos. Ahora cada proyecto tiene su espacio: `cache.prefix`, o uno derivado de `session.key`. Al actualizar, la caché en Redis empieza vacía.
+- **Un Redis caído fallaba en silencio:** `RedisModel` atrapa los errores de conexión y devuelve `false` o el valor por defecto, pero solo los registraba con `enableLogging`, que estaba apagado. Ahora quedan en el log `RedisModel`.
+- **`Loggin::request()` y `Loggin::performance()` guardaban el nivel en el lugar del mensaje:** el nivel quedaba en INFO y el texto era solo «ERROR» o «WARNING».
+- **`CommandExecutor` lanzaba los procesos con `php` sin ruta:** en cron y en PHP-FPM, que corren con un `PATH` mínimo, el proceso hijo no arrancaba y nada lo avisaba. Por eso el programador decía «Lanzada», pero la tarea nunca corría. Ahora usa la ruta completa del PHP actual (`CommandExecutor::phpBinary()`). Además, la salida de cada tarea programada va a `versaWYS/logs/cron.log`.
+- **`versaCLI status` pedía `tailwind.config.js`**, que Tailwind 4 ya no usa. Ahora revisa `src/dashboard/css/dashboard.css`. Sus extensiones y requisitos salen de `SystemCheck`.
+- **Una instalación nueva sin `config.json` mostraba un error fatal de PHP con código 200 en cualquier página.** Con la configuración creada pero sin instalar, llevaba al login y `/install` solo era accesible con el token que imprime la terminal.
+- **La barra del profiler no cambiaba al navegar en el SPA.** Ahora cada respuesta lleva `X-Versa-Profiler` y la barra pide `/_profiler/<id>.json`. CARGA mide cada página, y las demás llamadas a la API se cuentan.
+- **Una sola barra de debug:** la franja roja que dibujaba `versaTwig` ahora es la del profiler. Si el profiler está apagado, `versaTwig` vuelve a dibujar la suya.
+
 ## [3.10.0] - 2026-10-15
 
 Paso 8 del ROADMAP, ítem 1: panel de depuración y profiler.

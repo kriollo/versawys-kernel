@@ -45,7 +45,7 @@ final class Tenant
             return;
         }
 
-        Response::json(['success' => 0, 'message' => 'No encontrado', 'code' => 404], 404);
-        Output::halt();
+        // El Router responde el 404: página o JSON, según la petición
+        throw new NotFound();
     }
 }

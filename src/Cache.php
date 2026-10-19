@@ -14,6 +14,9 @@ use versaWYS\kernel\model\RedisModel;
  *     Cache::forget("resumen_{$idEmpresa}");   // al cambiar los datos
  *
  * Guarda valores que JSON puede representar (escalares y arreglos), igual en los dos almacenes.
+ *
+ * En Redis, cada proyecto tiene sus propias claves (`cache.prefix`, o una derivada de `session.key`):
+ * varios sitios pueden compartir el mismo Redis sin leer ni borrar la caché del otro.
  */
 final class Cache
 {
@@ -38,7 +41,7 @@ final class Cache
         $raw = json_encode(['e' => $ttl !== 0 ? time() + $ttl : 0, 'v' => $value], JSON_THROW_ON_ERROR);
         Profiler::cache('writes');
         if (self::redis()) {
-            RedisModel::set(self::PREFIX . $key, $raw, $ttl > 0 ? $ttl : null);
+            RedisModel::set(self::redisKey($key), $raw, $ttl > 0 ? $ttl : null);
 
             return;
         }
@@ -76,7 +79,7 @@ final class Cache
     public static function forget(string $key): void
     {
         if (self::redis()) {
-            RedisModel::delete(self::PREFIX . $key);
+            RedisModel::delete(self::redisKey($key));
 
             return;
         }
@@ -91,7 +94,7 @@ final class Cache
     public static function flush(): void
     {
         if (self::redis()) {
-            $keys = RedisModel::scan(self::PREFIX . '*');
+            $keys = RedisModel::scan(self::redisKey('*'));
             if ($keys !== []) {
                 RedisModel::delete($keys);
             }
@@ -109,7 +112,7 @@ final class Cache
     private static function read(string $key): ?array
     {
         if (self::redis()) {
-            $raw = RedisModel::get(self::PREFIX . $key);
+            $raw = RedisModel::get(self::redisKey($key));
         } else {
             $file = self::file($key);
             $raw = is_file($file) ? file_get_contents($file) : null;
@@ -127,6 +130,19 @@ final class Cache
         }
 
         return $entry;
+    }
+
+    private static function redisKey(string $key): string
+    {
+        global $config;
+
+        $project = (string) ($config['cache']['prefix'] ?? '');
+        if ($project === '') {
+            // Estable mientras no cambie session.key, y distinta en cada proyecto; no revela la clave
+            $project = substr(hash('sha256', 'cache:' . (string) ($config['session']['key'] ?? '')), 0, 12);
+        }
+
+        return self::PREFIX . $project . ':' . $key;
     }
 
     private static function redis(): bool

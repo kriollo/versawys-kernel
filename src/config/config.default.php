@@ -121,7 +121,8 @@ return [
         'default_expiration' => 3600,
     ],
     // Caché de la aplicación (Cache): 'file' o 'redis' (usa la conexión de 'redis')
-    'cache' => ['driver' => 'file', 'dir' => 'versaWYS/cache/data/'],
+    // prefix: espacio de claves en Redis; vacío = uno propio derivado de session.key
+    'cache' => ['driver' => 'file', 'dir' => 'versaWYS/cache/data/', 'prefix' => ''],
     // Cola de trabajos (Queue): 'database' (tabla versa_jobs + queue:work) o 'sync' (en el acto)
     'queue' => ['driver' => 'database'],
     // Profiler de desarrollo (/_profiler): solo con build.debug; el panel responde desde la propia máquina y estas IPs

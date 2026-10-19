@@ -209,13 +209,13 @@ El paso 7 dejó el kernel al nivel de Laravel y Symfony en lo esencial. Este pas
 | # | Qué | Por qué | Criterio de salida |
 |---|---|---|---|
 | 1 | ✅ (3.10.0) **Panel de depuración y profiler** | Prioridad crítica: hoy no se ve qué hace una petición. La "barra de depuración" que citaba la documentación no existía. | Muestra el tiempo total y por middleware, el controlador, la ruta y el código HTTP, la memoria, las consultas SQL con su duración y aviso de N+1, las excepciones, la caché, la sesión y los trabajos encolados. Solo funciona con `build.debug`, con acceso protegido y sin guardar credenciales, cookies ni datos sensibles. Requiere en VersaORM un escuchador de consultas. |
-| 2 | **Programador de tareas** | Hay 7 crons sueltos en el crontab de cada servidor (anima 4, versaBOT 2, vserv 1), sin protección contra ejecuciones solapadas. | Las tareas se definen en código, con `withoutOverlapping()`. En el servidor queda una sola línea: `app:schedule:run` cada minuto. |
+| 2 | ✅ **Programador de tareas** | Hay 7 crons sueltos en el crontab de cada servidor (anima 4, versaBOT 2, vserv 1), sin protección contra ejecuciones solapadas. | Las tareas se definen en código, con `withoutOverlapping()`. En el servidor queda una sola línea: `app:schedule:run` cada minuto. |
 | 3 | **Usar la cola en los proyectos** | Hay 9 `runInBackground` sin reintentos y una cola casera en versaBOT. | Correos y tareas pesadas pasan por `Queue::push`; `app:queue:work` corre como tarea programada. |
-| 4 | **Generadores modernos** | `RCMD`/`versaMODULE` generan validación en middleware y nada de lo nuevo. | Hay `request:make`, `job:make`, `test:make` y `factory:make`. Un módulo nuevo sale con FormRequests, `Tenant`, inyección por constructor y su prueba con `TestClient`, y esa prueba pasa recién generada. |
-| 5 | **Factories para pruebas** | Las pruebas insertan filas a mano con PDO. | Con `Factory` se crean datos de prueba en una línea, respetando la empresa y las relaciones. |
-| 6 | **Cifrado y URLs firmadas** | versaSTORE cifra a mano; `Storage` necesita enlaces que venzan. | `Crypt::encrypt`/`decrypt` con sodium y una clave propia; `Url::signed(..., expira)` y un middleware que la valida. |
-| 7 | **Modo mantenimiento** | Para migraciones largas y restauraciones. | `app:down` / `app:up` responden 503, con una clave para que el equipo siga entrando. |
-| 8 | **Documentación completa** | Ya pasó que la documentación prometía algo inexistente (la barra de depuración). | Cada guía se contrasta con el código y tiene ejemplos que se ejecutan. Hay una ruta de aprendizaje de la instalación al despliegue. |
+| 4 | ✅ **Generadores modernos** | `RCMD`/`versaMODULE` generan validación en middleware y nada de lo nuevo. | Hay `request:make`, `job:make`, `test:make` y `factory:make`. Un módulo nuevo sale con FormRequests, `Tenant`, inyección por constructor y su prueba con `TestClient`, y esa prueba pasa recién generada. |
+| 5 | ✅ **Factories para pruebas** | Las pruebas insertan filas a mano con PDO. | Con `Factory` se crean datos de prueba en una línea, respetando la empresa y las relaciones. |
+| 6 | ✅ **Cifrado y URLs firmadas** | versaSTORE cifra a mano; `Storage` necesita enlaces que venzan. | `Crypt::encrypt`/`decrypt` con AES-256-GCM (openssl, ya presente en todo hosting; sodium no siempre) y una clave propia; `SignedUrl::make(..., segundos)` y un middleware que la valida. |
+| 7 | ✅ **Modo mantenimiento** | Para migraciones largas y restauraciones. | `app:down` / `app:up` responden 503, con una clave para que el equipo siga entrando. |
+| 8 | ✅ **Documentación completa** | Ya pasó que la documentación prometía algo inexistente (la barra de depuración). | Cada guía se contrasta con el código y tiene ejemplos que se ejecutan. Hay una ruta de aprendizaje de la instalación al despliegue. |
 
 ## Revisión final de los criterios de salida
 

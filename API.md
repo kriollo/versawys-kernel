@@ -33,6 +33,7 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`CacheUsers`** — `updateMenuVersion`, `invalidateUserCache`, `invalidateAllUserCache`; *interno*: `getUserData`
 - **`Container`** — `getInstance`, `bind`, `singleton`, `instance`, `forget`, `has`, `get`, `make`, `call`; *interno*: `resetGlobal`
 - **`ContentType`** — enum del tipo de contenido de un correo (`HTML`, `TEXT`, `TWIG`)
+- **`Crypt`** — `encrypt`, `decrypt`, `isEncrypted`; *interno*: `key`
 - **`Cookie`** — `set`, `has`, `get`, `delete`, `getAll`, `clear`
 - **`FormRequest`** — `rules`, `messages`, `authorize`, `validated`, `input`; *interno*: `validateResolved`. Clase base: el contenedor la valida antes de llamar al controlador (422 con `errors`, 403 si `authorize()` es false)
 - **`ErrorHandler`** — `initialize`, `handleError`; *interno*: `handleException`, `handleShutdown`, `debugPage`
@@ -44,16 +45,24 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`Job`** — interfaz de un trabajo de la cola: `handle(array $data)`
 - **`MailSender`** — `send`
 - **`Output`** — `header`, `removeHeader`, `status`, `cookie`, `halt`, `capturing`; *interno*: `capture`, `release`. El kernel escribe la respuesta solo por aquí: en producción equivale a `header()`, `http_response_code()`, `setcookie()` y `exit()`
+- **`NotFound`** — el recurso no existe: el Router responde 404 (página o JSON)
 - **`RouteParameterMismatch`** — un parámetro de la ruta no calza con el tipo del método (`int $id`): el Router responde 404
 - **`RequestHalted`** — en pruebas reemplaza al `exit()` de una petición (extiende `Error`)
-- **`Profiler`** — `enabled`, `active`, `span`, `query`, `exception`, `cache`, `job`, `nPlusOne`, `allowed`, `panel`; *interno*: `start`, `begin`, `finish`, `injectToolbar`, `reset`, `dir`. Solo actúa con `build.debug`
+- **`Maintenance`** — `down`, `up`, `status`, `file`, `COOKIE`; *interno*: `handle`
+- **`Profiler`** — `enabled`, `active`, `span`, `query`, `exception`, `cache`, `job`, `nPlusOne`, `allowed`, `panel`, `replayFor`; *interno*: `start`, `begin`, `finish`, `injectToolbar`, `attachResponse`, `reset`, `dir`. Solo actúa con `build.debug`
+- **`Schedule`** — `load`, `cron`, `command`, `tasks`, `due`, `find`; *interno*: `dir`
+- **`ScheduledTask`** — `id`, `expression`, `overlaps`, `cron`, `everyMinute`, `everyMinutes`, `hourly`, `hourlyAt`, `daily`, `dailyAt`, `weeklyOn`, `monthlyOn`, `withoutOverlapping`, `isDue`, `nextRun`, `description`, `execute`, `lastRun`
+- **`CronExpression`** — `isDue`, `nextRun`
+- **`SystemCheck`** — `run`, `passes`, `extensions`
+- **`Installation`** — `isPending`, `requirements`, `lockFile`, `tokenFile`, `PATH`; *interno*: `bootstrap`, `requirementsPage`
 - **`Queue`** — `push`, `work`, `failed`, `retry`, `createTable` (la llama la migración del proyecto)
 - **`RateLimitMiddleware`** — `checkApiLimit`, `checkLoginLimit`, `checkUploadLimit`, `checkSensitiveLimit`
-- **`Request`** — `setParam`, `get`, `file`, `getAllParams`, `getRawParams`, `getAllFiles`, `getContentType`, `getMethod`, `getUrl`, `getFiles`, `getIp`, `getClientIp`, `getRawBody`, `getBaseUrl`, `clientIp`, `isTrustedProxy`, `getHeader`, `isApiCall`, `id`; *interno*: `setInput`, `resetRequestState`, `procesaFormData`, `parseProxyRange`, `isSPARequest`, `isSPARequestStatic`, `isApiRequest`
+- **`Request`** — `setParam`, `get`, `string`, `integer`, `file`, `getAllParams`, `getRawParams`, `getAllFiles`, `getContentType`, `getMethod`, `getUrl`, `getFiles`, `getIp`, `getClientIp`, `getRawBody`, `getBaseUrl`, `clientIp`, `isTrustedProxy`, `getHeader`, `isApiCall`, `id`; *interno*: `setInput`, `resetRequestState`, `procesaFormData`, `parseProxyRange`, `isSPARequest`, `isSPARequestStatic`, `isApiRequest`
 - **`Response`** — `json`, `jsonError`, `textPlain`, `redirect`; *interno*: `resetRequestState`
 - **`Router`** — `health`, `normalize_url`, `group`, `get`, `post`, `put`, `patch`, `delete`, `query`, `withoutCsrf`, `middleware`, `resolve`; *interno*: `loadRoutes`, `healthToken`
 - **`SecurityUtils`** — `validateAndCleanUrl`; *interno*: `sanitizeUrl`, `cspNonce`, `resetRequestState`, `checkRateLimit`, `checkGlobalRateLimit`, `cleanExpiredLimits`; *deprecado*: `validateCsrfToken`
 - **`Session`** — `revokeToken`, `regenerate`, `setCSRFToken`, `getCSRFToken`, `set`, `has`, `get`, `getAll`, `delete`, `clear`, `getAttempts`, `getAllAttempts`, `setAttempts`, `restoreAttempts`, `setAttemptsSession`, `maximumAttempts`, `generateJWT`, `decodeJWT`, `setUserSession`, `refreshUserSession`, `checkUserSession`, `touchSessionActivity`, `destroy`; *interno*: `checkExistSession`, `checkUserSessionCached`, `resetRequestState`
+- **`SignedUrl`** — `make`, `isValid`, `check` (middleware)
 - **`Storage`** — `put`, `get`, `exists`, `delete`, `files`, `path`
 - **`Tenant`** — `id`, `owns`, `ensure` (404 si la fila no existe o es de otra empresa)
 - **`Validator`** — `make`, `fails`, `errors`, `validated`
@@ -66,8 +75,10 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 - **`cli\CommandInterface`** — `execute`; *interno*: `getDescription`, `getHelp`
 - **`cli\ConfigManager`** — `dir`, `path`, `defaults`, `getConfig`, `saveConfig`, `setDebug`, `merge`, `align`, `clearCache`; *interno*: `setTemplateCache`, `mergeArrays`, `initConfig`
 - **`helpers\FechasFunction`** — `formatFechaLargaES`; *interno*: `formaFechaFullES`, `formatFecha`, `setTwigFilters`, `setTwigFunctions`
-- **`helpers\Functions`** — `dump`, `cleanString`, `validateParams`, `e`, `validarRut`, `hash`, `needsRehash`, `verifyHash`, `generateCSRFToken`, `validateCSRFToken`, `assets_url`, `csrf_field`, `getAssets`, `removeScape`, `sanitizeSvgContent`, `formatRut`, `getPanelUrl`, `httpRequest`, `httpGet`, `httpPostJson`, `httpUploadFile`; *interno*: `validateJson`, `replace_spaces_with_underscore`, `method_field`, `setTwigFilters`, `cspNonce`, `setTwigFunctions`
-- **`Testing\TestClient`** — `boot`, `withHeaders`, `withoutCsrfToken`, `login`, `get`, `getJson`, `post`, `postJson`, `putJson`, `patchJson`, `deleteJson`, `json`, `request`, `container`, `cookies`
+- **`helpers\Functions`** — `text`, `dump`, `cleanString`, `validateParams`, `e`, `validarRut`, `hash`, `needsRehash`, `verifyHash`, `generateCSRFToken`, `validateCSRFToken`, `assets_url`, `csrf_field`, `getAssets`, `removeScape`, `sanitizeSvgContent`, `formatRut`, `getPanelUrl`, `httpRequest`, `httpGet`, `httpPostJson`, `httpUploadFile`; *interno*: `validateJson`, `replace_spaces_with_underscore`, `method_field`, `setTwigFilters`, `cspNonce`, `setTwigFunctions`
+- **`Testing\TestClient`** — `boot`, `booted`, `withConfig`, `postFile`, `withHeaders`, `withoutCsrfToken`, `login`, `get`, `getJson`, `post`, `postJson`, `putJson`, `patchJson`, `deleteJson`, `json`, `request`, `container`, `cookies`
+- **`Testing\Factory`** — `define`, `make`, `create`, `createMany`; *interno*: `reset`
+- **`Testing\TestDatabase`** — `boot`, `user`, `empresa`, `login`, `pdo`, `configPath`, `PASSWORD`
 - **`Testing\TestResponse`** — `header`, `json`, `assertStatus`, `assertOk`, `assertRedirect`, `assertHeader`, `assertSee`, `assertDontSee`, `assertJson`, `assertJsonPath`
 - **`model\OrmFactory`** — `make`
 - **`model\RedisModel`** — `initialize`, `getInstance`, `set`, `get`, `delete`, `del`, `exists`, `expire`, `ttl`, `increment`, `decrement`, `rPush`, `lPop`, `lRange`, `lLen`, `scan`, `searchValueBySubKey`, `info`, `ping`, `close`, `multi`, `exec`, `remember`, `forget`, `pull`, `add`, `replace`; *interno*: `setMultiple`, `getMultiple`, `hSet`, `hGet`, `hSetMultiple`, `hGetAll`, `hDel`, `hExists`, `lPush`, `rPop`, `sAdd`, `sMembers`, `sIsMember`, `sRem`, `sCard`, `zAdd`, `zRange`, `zRem`, `zScore`, `dbSize`, `flushDb`, `flushAll`, `rawCommand`, `discard`
@@ -77,7 +88,7 @@ En cada clase, los métodos marcados *interno* solo los llama el kernel y pueden
 
 La maquinaria del CLI y sus generadores. Se usan a través de `php versaCLI`, no desde el código de la aplicación.
 
-`cli\ApplicationCommandManager`, `cli\CacheManager`, `cli\CommandLineInterface`, `cli\CommandMakeCommand`, `cli\CommandRegistry`, `cli\ControllerManager`, `cli\CronManager`, `cli\FrontManager`, `cli\HelpView`, `cli\LogManager`, `cli\MiddlewareManager`, `cli\MigrationManager`, `cli\ModelManager`, `cli\RouteManager`, `cli\SeederManager`, `cli\ServerManager`, `cli\StatusManager`, `cli\VersionManager`, `cli\commands\CheckDeployCommand`, `cli\commands\CheckPsr4Command`, `cli\commands\DeployFinishCommand`, `cli\commands\KernelPublishCommand`, `cli\commands\MailSendCommand`, `helpers\FilesFunction`.
+`cli\ApplicationCommandManager`, `cli\CacheManager`, `cli\CommandLineInterface`, `cli\CommandMakeCommand`, `cli\CommandRegistry`, `cli\ControllerManager`, `cli\CronManager`, `cli\FrontManager`, `cli\HelpView`, `cli\LogManager`, `cli\MiddlewareManager`, `cli\MigrationManager`, `cli\ModelManager`, `cli\RouteManager`, `cli\SeederManager`, `cli\ServerManager`, `cli\StatusManager`, `cli\VersionManager`, `cli\commands\CheckDeployCommand`, `cli\commands\CheckPsr4Command`, `cli\commands\DownCommand`, `cli\commands\UpCommand`, `cli\commands\DeployFinishCommand`, `cli\commands\KernelPublishCommand`, `cli\commands\MailSendCommand`, `helpers\FilesFunction`.
 
 ## Cómo se mantiene
 

@@ -17,6 +17,9 @@ final class App
         // El kernel usa rutas relativas a la raíz del proyecto
         chdir($root);
 
+        // Primer arranque sin config.json: lo crea, o explica qué le falta al servidor
+        Installation::bootstrap();
+
         require __DIR__ . '/config/config.php';
         require __DIR__ . '/init_error_handling.php';
         require __DIR__ . '/init_headers.php';

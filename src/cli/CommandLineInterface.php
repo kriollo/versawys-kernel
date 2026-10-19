@@ -123,6 +123,10 @@ class CommandLineInterface
             'front',
             'cron',
             'logs',
+            'request',
+            'job',
+            'test',
+            'factory',
         ];
         if (in_array($modulo, $generators, strict: true)) {
             foreach ($params as $param) {
@@ -167,6 +171,7 @@ class CommandLineInterface
                 'logs' => LogManager::handleLogs($params, $this->verbose),
                 'cache' => CacheManager::handleCacheCommands($params, $this->verbose),
                 'cron' => $this->handleCron($params),
+                'request', 'job', 'test', 'factory' => $this->handleScaffold($modulo, $params),
                 'command' => $this->handleCommand($params),
                 'app' => $this->handleAppCommand($params),
                 'help' => HelpView::printHelp(),
@@ -311,6 +316,29 @@ class CommandLineInterface
         }
     }
 
+    /**
+     * request:make:Nombre, job:make:Nombre, test:make:Nombre.
+     *
+     * @param array<int, string> $params
+     */
+    private function handleScaffold(string $module, array $params): void
+    {
+        if (($params[0] ?? '') !== 'make' || !isset($params[1])) {
+            CLIErrorHandler::warning("Uso: php versaCLI {$module}:make:Nombre");
+            exit(1);
+        }
+
+        $created = match ($module) {
+            'request' => Scaffold::request($params[1]),
+            'job' => Scaffold::job($params[1]),
+            'factory' => Scaffold::factory($params[1]),
+            default => Scaffold::test($params[1]),
+        };
+        if (!$created) {
+            exit(1);
+        }
+    }
+
     private function handleModule(array $params): void
     {
         if ($params === []) {
@@ -332,18 +360,9 @@ class CommandLineInterface
         ];
 
         try {
-            $this->verboseInfo('Generando ruta...');
-            $this->handleRoute($moduleParams);
-
-            $this->verboseInfo('Generando controlador...');
-            $this->handleController($moduleParams, $type);
-
-            $this->verboseInfo('Generando modelo...');
-            $this->handleModel($moduleParams);
-            MigrationManager::createMigration($name);
-
-            $this->verboseInfo('Generando middleware...');
-            $this->handleMiddleware($moduleParams);
+            // Aislado por empresa desde el inicio: migración con id_empresa, modelo, FormRequest,
+            // controlador con Tenant, rutas documentadas y su prueba (resources/generators/module)
+            Scaffold::module($name, $type);
 
             $this->verboseInfo('Generando frontend...');
             $this->handleFront([
@@ -374,18 +393,7 @@ class CommandLineInterface
         ];
 
         try {
-            $this->verboseInfo(sprintf("Generando ruta para módulo '%s'...", $moduleName));
-            $this->handleRoute($moduleParams);
-
-            $this->verboseInfo(sprintf("Generando controlador para módulo '%s'...", $moduleName));
-            $this->handleController($moduleParams);
-
-            $this->verboseInfo(sprintf("Generando modelo para módulo '%s'...", $moduleName));
-            $this->handleModel($moduleParams);
-            MigrationManager::createMigration($moduleName);
-
-            $this->verboseInfo(sprintf("Generando middleware para módulo '%s'...", $moduleName));
-            $this->handleMiddleware($moduleParams);
+            Scaffold::module($moduleName, 'twig');
 
             $this->showSuccess(sprintf(
                 "Módulo '%s' creado exitosamente con todos los archivos necesarios.",
@@ -709,7 +717,7 @@ class CommandLineInterface
 
         try {
             match ($action) {
-                'make' => CronManager::createCron($name),
+                'make' => Scaffold::cron($name),
                 'list' => CronManager::listCrons(),
                 'run' => CronManager::runCron($name),
                 default => $this->showError("Acción de cron '{$action}' no reconocida."),

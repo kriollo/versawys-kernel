@@ -22,7 +22,7 @@ class versaController extends GlobalControllers
     {
         global $request;
 
-        $route = (string) $request->get('route', '');
+        $route = $request->string('route');
         $allRoutes = RouteManager::extractAllRouteData();
 
         $opcionActual = [];

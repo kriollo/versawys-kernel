@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+namespace app\jobs;
+
+use versaWYS\kernel\Job;
+
+/**
+ * Trabajo de la cola: Queue::push({{Name}}::class, ['id' => $id]). Lo ejecuta `versaCLI app:queue:work`.
+ * Si lanza una excepción se reintenta. El constructor puede pedir servicios (MailService, modelos):
+ * se crea con el contenedor. Ver documentacion/Cache_Colas_Archivos.md
+ */
+final class {{Name}} implements Job
+{
+    /** @param array<array-key, mixed> $data los datos de Queue::push, tal como se guardaron (JSON) */
+    public function handle(array $data): void
+    {
+        // Tu lógica aquí
+    }
+}

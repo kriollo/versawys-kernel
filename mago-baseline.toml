@@ -14,12 +14,6 @@ count = 1
 
 [[issues]]
 file = "src/CacheUsers.php"
-code = "no-empty-catch-clause"
-message = "Do not use empty `catch` blocks."
-count = 1
-
-[[issues]]
-file = "src/CacheUsers.php"
 code = "no-shorthand-ternary"
 message = "Use of the shorthand ternary operator."
 count = 1
@@ -35,12 +29,6 @@ file = "src/GlobalControllers.php"
 code = "no-redundant-math"
 message = "Redundant addition of `0`: adding 0 does not alter the value."
 count = 1
-
-[[issues]]
-file = "src/GlobalMiddleware.php"
-code = "no-shorthand-ternary"
-message = "Use of the shorthand ternary operator."
-count = 3
 
 [[issues]]
 file = "src/Loggin.php"
@@ -190,30 +178,6 @@ count = 2
 file = "src/cli/commands/CheckDeployCommand.php"
 code = "no-nested-ternary"
 message = "Nested ternary expressions are confusing due to PHP's operator associativity rules."
-count = 1
-
-[[issues]]
-file = "src/cli/commands/CheckPsr4Command.php"
-code = "excessive-nesting"
-message = "Excessive block nesting."
-count = 8
-
-[[issues]]
-file = "src/cli/commands/CheckPsr4Command.php"
-code = "no-empty-catch-clause"
-message = "Do not use empty `catch` blocks."
-count = 1
-
-[[issues]]
-file = "src/cli/commands/CheckPsr4Command.php"
-code = "no-error-control-operator"
-message = "Unsafe use of error control operator `@`."
-count = 1
-
-[[issues]]
-file = "src/cli/commands/CheckPsr4Command.php"
-code = "no-insecure-comparison"
-message = "Insecure comparison of sensitive data."
 count = 1
 
 [[issues]]

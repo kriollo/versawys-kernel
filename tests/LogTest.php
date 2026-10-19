@@ -53,4 +53,30 @@ final class LogTest extends TestCase
         // Un cliente cualquiera no puede elegir el identificador con que quedan sus entradas
         self::assertNotSame('lb-1234abcd', $fromClient);
     }
+
+    public function testLosHelpersDePeticionYRendimientoGuardanElNivelYElMensaje(): void
+    {
+        $dir = sys_get_temp_dir() . '/versawys_log_' . bin2hex(random_bytes(4)) . '/';
+        Loggin::initialize(['logging' => ['dir' => $dir, 'min_level' => 'DEBUG']]);
+        $entries = [];
+        Loggin::setCustomHandler(static function (string $level, string $message) use (&$entries): void {
+            $entries[] = [$level, $message];
+        });
+
+        Loggin::request('GET', '/admin', 503, 0.2);
+        Loggin::performance('reporte', 1.5);
+
+        Loggin::setCustomHandler(static function (): void {});
+        // La carpeta temporal se borra: las pruebas siguientes vuelven a la compartida
+        Loggin::initialize(['logging' => ['dir' => sys_get_temp_dir() . '/versawys-test-logs/']]);
+        exec('rm -rf ' . escapeshellarg($dir));
+
+        self::assertSame(
+            [
+                ['ERROR',   'HTTP Request: GET /admin'],
+                ['WARNING', 'Performance: reporte took 1.5s'],
+            ],
+            $entries,
+        );
+    }
 }

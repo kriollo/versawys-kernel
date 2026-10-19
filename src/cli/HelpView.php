@@ -48,9 +48,17 @@ class HelpView
         echo "  {$yellow}--force{$reset}        Omitir la confirmación de comandos destructivos\n";
         echo "\n";
         echo sprintf('%s%sAtajos rápidos:%s%s', $bold, $blue, $reset, PHP_EOL);
-        echo "  {$yellow}RCMD:[nombre]{$reset}              Crear ruta, controlador, modelo y middleware\n";
-        echo "  {$yellow}versaMODULE:twig:[nombre]{$reset}  Crear módulo completo con template Twig\n";
-        echo "  {$yellow}versaMODULE:vue:[nombre]{$reset}   Crear módulo completo con componente Vue\n";
+        echo
+            "  {$yellow}RCMD:[nombre]{$reset}              Módulo aislado por empresa sin frontend (CRUD, FormRequest, prueba)\n";
+        echo
+            "  {$yellow}versaMODULE:twig:[nombre]{$reset}  Módulo aislado por empresa (CRUD, FormRequest, prueba) + Twig\n";
+        echo
+            "  {$yellow}versaMODULE:vue:[nombre]{$reset}   Módulo aislado por empresa (CRUD, FormRequest, prueba) + Vue\n";
+        echo "  {$yellow}request:make:[nombre]{$reset}      Crear FormRequest (validación de una acción)\n";
+        echo "  {$yellow}job:make:[nombre]{$reset}          Crear trabajo para la cola (Queue::push)\n";
+        echo "  {$yellow}test:make:[nombre]{$reset}         Crear prueba con TestClient y TestDatabase\n";
+        echo
+            "  {$yellow}factory:make:[nombre]{$reset}      Crear factory de datos de prueba (versaWYS/tests/factories)\n";
         echo "\n";
         echo sprintf('%s%sComandos disponibles:%s%s', $bold, $blue, $reset, PHP_EOL);
         echo "\n";
@@ -241,13 +249,21 @@ class HelpView
 
     private static function printModuleGeneratorHelp(string $color, string $reset): void
     {
-        echo "  {$color}versaMODULE:twig:[nombre]{$reset}  Crear módulo completo con template Twig\n";
-        echo "  {$color}versaMODULE:vue:[nombre]{$reset}   Crear módulo completo con componente Vue\n";
+        echo
+            "  {$color}versaMODULE:twig:[nombre]{$reset}  Módulo aislado por empresa (CRUD, FormRequest, prueba) + Twig\n";
+        echo
+            "  {$color}versaMODULE:vue:[nombre]{$reset}   Módulo aislado por empresa (CRUD, FormRequest, prueba) + Vue\n";
+        echo "  {$color}request:make:[nombre]{$reset}      Crear FormRequest (validación de una acción)\n";
+        echo "  {$color}job:make:[nombre]{$reset}          Crear trabajo para la cola (Queue::push)\n";
+        echo "  {$color}test:make:[nombre]{$reset}         Crear prueba con TestClient y TestDatabase\n";
+        echo
+            "  {$color}factory:make:[nombre]{$reset}      Crear factory de datos de prueba (versaWYS/tests/factories)\n";
     }
 
     private static function printRCMDHelp(string $color, string $reset): void
     {
-        echo "  {$color}RCMD:[nombre]{$reset}              Crear ruta, controlador, modelo y middleware\n";
+        echo
+            "  {$color}RCMD:[nombre]{$reset}              Módulo aislado por empresa sin frontend (CRUD, FormRequest, prueba)\n";
     }
 
     private static function printLogsHelp(string $color, string $reset): void

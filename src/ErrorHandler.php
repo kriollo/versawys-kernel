@@ -18,6 +18,14 @@ class ErrorHandler
     /**
      * Inicializa el manejador global de errores.
      */
+    private static bool $handled = false;
+
+    /** @internal Solo para pruebas: el manejo es una vez por petición. */
+    public static function resetRequestState(): void
+    {
+        self::$handled = false;
+    }
+
     public static function initialize(): void
     {
         if (self::$initialized) {
@@ -51,12 +59,12 @@ class ErrorHandler
         }
 
         // Protección contra ejecución múltiple
-        static $errorHandled = false;
-        if ($errorHandled) {
+        // Una sola vez por petición: un error dentro del manejo no vuelve a entrar
+        if (self::$handled) {
             return;
         }
 
-        $errorHandled = true;
+        self::$handled = true;
         $isApiCall = $request instanceof Request && $request->isApiCall();
 
         // FAST-PATH para producción: respuesta inmediata sin procesamiento pesado
@@ -71,7 +79,7 @@ class ErrorHandler
                 // Petición SPA en producción: devolver error como JSON SPA renderizable
                 Response::json([
                     'type' => 'html',
-                    'content' => '<div class="flex justify-center items-center h-screen"><div class="text-center"><h1 class="text-2xl font-bold text-red-600 mb-4">Error interno del servidor</h1><p class="text-gray-600">Por favor, intenta nuevamente más tarde.</p><button onclick="location.reload()" class="mt-4 px-6 py-2 bg-brand text-white rounded-lg">Recargar</button></div></div>',
+                    'content' => '<div class="flex justify-center items-center h-screen"><div class="text-center"><h1 class="text-2xl font-bold text-red-600 mb-4">Error interno del servidor</h1><p class="text-gray-600">Por favor, intenta nuevamente más tarde.</p><a href="" class="inline-block mt-4 px-6 py-2 bg-brand text-white rounded-lg">Recargar</a></div></div>',
                     'scripts' => [],
                     'styles' => [],
                 ], 500);
@@ -79,7 +87,7 @@ class ErrorHandler
                 // Request regular en producción: mostrar página de error simple sin redirección
                 Output::status(500);
                 echo
-                    '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Error del Servidor</title><style>body{font-family:system-ui,-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}.container{background:white;padding:3rem;border-radius:1rem;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;max-width:500px}h1{color:#dc2626;font-size:2rem;margin-bottom:1rem}p{color:#4b5563;margin-bottom:2rem}button{background:#667eea;color:white;border:none;padding:0.75rem 2rem;border-radius:0.5rem;font-size:1rem;cursor:pointer;transition:background 0.2s}button:hover{background:#5a67d8}</style></head><body><div class="container"><h1>Error del Servidor</h1><p>Ha ocurrido un error inesperado. Por favor, intenta nuevamente más tarde.</p><button onclick="window.history.back()">Volver</button></div></body></html>';
+                    '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Error del Servidor</title><style>body{font-family:system-ui,-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}.container{background:white;padding:3rem;border-radius:1rem;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;max-width:500px}h1{color:#dc2626;font-size:2rem;margin-bottom:1rem}p{color:#4b5563;margin-bottom:2rem}a{display:inline-block;background:#667eea;color:white;text-decoration:none;padding:0.75rem 2rem;border-radius:0.5rem;font-size:1rem;transition:background 0.2s}a:hover{background:#5a67d8}</style></head><body><div class="container"><h1>Error del Servidor</h1><p>Ha ocurrido un error inesperado. Por favor, intenta nuevamente más tarde.</p><a href="/">Volver al inicio</a></div></body></html>';
                 Output::halt();
             }
 
