@@ -2,9 +2,9 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
-## [Sin publicar]
+## [3.11.0] - 2026-10-19
 
-Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
+Paso 8 del ROADMAP: programador de tareas, generadores, factories, `Crypt` y URLs firmadas, modo mantenimiento, documentación completa y la suite de pruebas ampliada. Lo que hay que cambiar en el `app/` de cada proyecto está en `UPGRADE.md` («3.10 → 3.11»).
 
 ### Añadido
 - **Programador de tareas:**
@@ -72,7 +72,7 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
   - Qué guarda: lo que el ORM consulta de cada tabla (columnas, índices, claves foráneas). Antes lo consultaba una vez por tabla en cada petición; ahora queda en `Cache`, en archivos o en Redis, y sirve para las peticiones siguientes.
   - Cuánto se gana: en PostgreSQL, ~1,6 ms por tabla y petición con la base en el mismo servidor, más el viaje de red si está en otro.
   - Cuándo se renueva: una migración, o cualquier DDL hecho con el ORM, lo invalida. Un cambio hecho a mano en la base se ve en un día como máximo, o al instante con `cache:clear`.
-  - Requisito: VersaORM 2.2 (`VersaORM::schemaCache()`). Al publicar, el kernel debe pedir `versaorm/versaorm-php: ^2.2`.
+  - Requisito: VersaORM 2.2 (`VersaORM::schemaCache()`); el kernel pide `versaorm/versaorm-php: ^2.2`.
 
 ### Cambiado
 - **`app:check:psr4` pasa de 2.612 a ~430 líneas** y queda probado (`CheckPsr4Test`). Sigue revisando lo que funciona en Windows y falla en Linux (estructura PSR-4, mayúsculas de las clases del proyecto en `use`/`new`/`::`/`extends`/`implements`, rutas de `require`/`include`); ya no revisa que los métodos existan, que es trabajo de phpstan y mago. Una importación de namespace (`use app\models as Models;`) ya no se informa como clase inexistente. Los baselines de mago y phpstan bajan (2.809 → 2.443 líneas en phpstan).

@@ -13,6 +13,27 @@ El panel base (`app/models`, `app/services`) se copia en cada proyecto y el kern
 
 **Agregar algo a esta lista o cambiar una firma es un cambio de versión mayor.** `php versaCLI app:check:deploy` falla si al proyecto le falta alguno.
 
+## 3.10 → 3.11
+
+`composer update versawys/kernel versaorm/versaorm-php`: el kernel pide VersaORM `^2.2`. El código de los proyectos sigue funcionando sin cambios, pero estos cambios de comportamiento conviene revisarlos:
+
+- **API sin permiso:** un GET de API a una ruta `onlyAdmin`/`onlySuperAdmin` responde 403 en JSON en vez de 302 al dashboard. Revisar si algún frontend dependía de la redirección.
+- **Contraseña vencida:** la API responde 403 con `password_expired: true`, salvo el perfil y el cambio de contraseña.
+- **`Tenant::ensure()`** lanza `NotFound`: una página recibe la página 404 en vez de un JSON.
+- **`Cache` en Redis** cambia de claves (una por proyecto): la caché empieza vacía tras actualizar.
+- **Producción:** el esquema de la base queda en `Cache` (ver CHANGELOG). Un cambio hecho a mano en la base se ve con `php versaCLI cache:clear`.
+
+Para aprovechar lo nuevo, copiar del esqueleto al `app/` de cada proyecto:
+
+- `Users::findWithCompany()` con `e.estado as empresa_estado`: sin esa clave, una empresa suspendida no corta las sesiones de sus usuarios.
+- Login con `?motivo=` (`DashBoardController::login`, `login.twig`) y el rechazo de empresa suspendida en `autentication`.
+- `DashBoardController::sessionHeartbeat`: la empresa sale de `$session->get('empresa_id')`, y antes de renovar se llama a `GlobalMiddleware::blockedReason()`.
+- `spa-content.twig`: `ws_url|e('html_attr')` sin `json_encode`.
+- La franja `maintenance` en el layout del panel, y `down.json` (junto a `config.json`) en `.gitignore`.
+- `app/templates/versaWYS/versaRoute.twig`, para «Repetir en el probador» del profiler.
+- Las tareas de cron en `app/schedule.php`; el crontab queda con una sola línea, la que imprime `php versaCLI app:schedule:list`.
+- Entrada con tipo: `$request->string()`/`integer()` y `Functions::text()` en vez de `(string)`/`(int)` sobre la entrada.
+
 ## 3.9 → 3.10 (sin cambios incompatibles)
 
 - `composer update versawys/kernel versaorm/versaorm-php`: el kernel pide VersaORM `^2.1`.
