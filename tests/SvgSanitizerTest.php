@@ -102,6 +102,28 @@ final class SvgSanitizerTest extends TestCase
         );
     }
 
+    public function testUnIconoGuardadoComoFragmentoSeConservaSinEnvolver(): void
+    {
+        // anima, versaBOT…: el ícono es solo el <path>, la plantilla del menú pone el <svg>
+        $fragmento = '<path stroke="currentColor" stroke-width="2" d="M3 10h18"/><circle cx="4" cy="4" r="2"/>';
+
+        self::assertSame($fragmento, Functions::sanitizeSvgContent($fragmento));
+        self::assertSame(
+            $fragmento,
+            Functions::sanitizeSvgContent(htmlspecialchars($fragmento)),
+            'escapado al guardar',
+        );
+    }
+
+    public function testUnFragmentoTambienSeLimpia(): void
+    {
+        $limpio = Functions::sanitizeSvgContent(
+            '<path d="M1 1" onclick="alert(1)"/><script>alert(2)</script><foreignObject><b>x</b></foreignObject>',
+        );
+
+        self::assertSame('<path d="M1 1"/>', $limpio);
+    }
+
     public function testLoQueNoEsUnSvgValidoQuedaVacio(): void
     {
         foreach (['', 'hola', '<div>x</div>', '<svg><path></svg>', '<SVG onload="alert(1)"></SVG>'] as $entrada) {
