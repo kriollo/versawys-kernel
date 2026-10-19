@@ -7,12 +7,18 @@ namespace versaWYS\kernel\model;
 use RuntimeException;
 use Throwable;
 use VersaORM\VersaORM;
+use versaWYS\kernel\Cache;
 
 /**
  * OrmFactory: construye VersaORM por petición a partir de config + request.
  */
 class OrmFactory
 {
+    /** Cambia con cada DDL del ORM: las entradas de la generación anterior quedan huérfanas y vencen solas */
+    private const string SCHEMA_GENERATION = 'versaorm:schema:generation';
+
+    private const int SCHEMA_TTL = 86_400;
+
     public static function make(array $appConfig): VersaORM
     {
         // Puedes aplicar multi-tenant, selección de DB por header/host, etc.
@@ -38,6 +44,8 @@ class OrmFactory
             'logging' => $voConfig['logging'] ?? false,
             'log_path' => $dbConfig['log_path'] ?? $voConfig['log_path'] ?? './versaWYS/logs/orm/',
         ];
+
+        self::schemaCache(!(bool) ($appConfig['build']['debug'] ?? false));
 
         try {
             $orm = new VersaORM($config);
@@ -156,5 +164,30 @@ class OrmFactory
                 $throwable,
             );
         }
+    }
+
+    /**
+     * En producción, la introspección de esquema (information_schema, una consulta por tabla y por
+     * petición) se guarda en Cache. Una migración, o cualquier DDL hecho con el ORM, la invalida;
+     * un cambio hecho a mano en la base se ve al día siguiente o con `cache:clear`.
+     */
+    private static function schemaCache(bool $enabled): void
+    {
+        if (!$enabled) {
+            VersaORM::schemaCache(null);
+
+            return;
+        }
+
+        $key = static fn(string $key): string => $key . ':' . (string) Cache::get(self::SCHEMA_GENERATION, '0');
+        VersaORM::schemaCache(
+            get: static function (string $clave) use ($key): ?array {
+                $value = Cache::get($key($clave));
+
+                return is_array($value) ? $value : null;
+            },
+            set: static fn(string $clave, array $valor) => Cache::set($key($clave), $valor, self::SCHEMA_TTL),
+            clear: static fn() => Cache::set(self::SCHEMA_GENERATION, bin2hex(random_bytes(4))),
+        );
     }
 }

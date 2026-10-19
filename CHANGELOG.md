@@ -68,6 +68,11 @@ Paso 8 del ROADMAP, en desarrollo. Saldrá en una sola versión al terminar.
 - **Empresa suspendida** (`empresas.estado = 0`): `checkSession` cierra la sesión de sus usuarios, salvo la del superadministrador. Requiere que `Users::findWithCompany()` entregue `empresa_estado` (el esqueleto ya lo hace); sin esa clave, no se revisa.
 - **El login explica por qué se cerró la sesión:** `checkSession` vuelve a `/login?motivo=cuenta_desactivada` o `?motivo=empresa_suspendida`.
 - **Aviso de mantenimiento para el equipo:** la variable de Twig `maintenance` indica si el sitio está en `app:down`.
+- **Caché del esquema de la base en producción** (con `build.debug` en `false`):
+  - Qué guarda: lo que el ORM consulta de cada tabla (columnas, índices, claves foráneas). Antes lo consultaba una vez por tabla en cada petición; ahora queda en `Cache`, en archivos o en Redis, y sirve para las peticiones siguientes.
+  - Cuánto se gana: en PostgreSQL, ~1,6 ms por tabla y petición con la base en el mismo servidor, más el viaje de red si está en otro.
+  - Cuándo se renueva: una migración, o cualquier DDL hecho con el ORM, lo invalida. Un cambio hecho a mano en la base se ve en un día como máximo, o al instante con `cache:clear`.
+  - Requisito: VersaORM 2.2 (`VersaORM::schemaCache()`). Al publicar, el kernel debe pedir `versaorm/versaorm-php: ^2.2`.
 
 ### Cambiado
 - **`app:check:psr4` pasa de 2.612 a ~430 líneas** y queda probado (`CheckPsr4Test`). Sigue revisando lo que funciona en Windows y falla en Linux (estructura PSR-4, mayúsculas de las clases del proyecto en `use`/`new`/`::`/`extends`/`implements`, rutas de `require`/`include`); ya no revisa que los métodos existan, que es trabajo de phpstan y mago. Una importación de namespace (`use app\models as Models;`) ya no se informa como clase inexistente. Los baselines de mago y phpstan bajan (2.809 → 2.443 líneas en phpstan).
