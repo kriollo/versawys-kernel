@@ -458,10 +458,13 @@ class Functions
             return '';
         }
 
+        // Un fragmento (solo <path …>: algunos proyectos guardan así sus íconos y la plantilla pone el
+        // <svg>) se limpia dentro de un <svg> y se devuelve sin él, en el mismo formato
+        $fragment = str_starts_with($svg, '<') && preg_match('/^<svg[\s>\/]/i', $svg) !== 1;
         $doc = new DOMDocument();
         $previous = libxml_use_internal_errors(true);
         // Sin LIBXML_NOENT: las entidades no se expanden; LIBXML_NONET: nada se pide a la red
-        $loaded = $doc->loadXML($svg, LIBXML_NONET);
+        $loaded = $doc->loadXML($fragment ? '<svg>' . $svg . '</svg>' : $svg, LIBXML_NONET);
         libxml_clear_errors();
         libxml_use_internal_errors($previous);
 
@@ -472,7 +475,18 @@ class Functions
 
         self::cleanSvgNode($root);
 
-        return (string) $doc->saveXML($root);
+        if (!$fragment) {
+            return (string) $doc->saveXML($root);
+        }
+
+        $inner = '';
+        foreach ($root->childNodes as $child) {
+            if ($child instanceof DOMElement) {
+                $inner .= (string) $doc->saveXML($child);
+            }
+        }
+
+        return $inner;
     }
 
     /**

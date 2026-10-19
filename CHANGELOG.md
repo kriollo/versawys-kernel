@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.11.1] - 2026-10-19
+
+### Corregido
+- **Los íconos del menú guardados como fragmento desaparecían:** algunos proyectos guardan solo el `<path …>` y la plantilla pone el `<svg>` alrededor. `sanitizeSvgContent()` (también el filtro Twig `sanitizeSvg`) exigía un `<svg>` completo y devolvía vacío. El menú quedaba sin íconos, y guardar un módulo borraba el suyo. Ahora un fragmento se limpia con la misma lista blanca y se devuelve en su formato.
+
 ## [3.11.0] - 2026-10-19
 
 Paso 8 del ROADMAP: programador de tareas, generadores, factories, `Crypt` y URLs firmadas, modo mantenimiento, documentación completa y la suite de pruebas ampliada. Lo que hay que cambiar en el `app/` de cada proyecto está en `UPGRADE.md` («3.10 → 3.11»).
