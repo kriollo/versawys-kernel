@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace versaWYS\kernel\Testing;
 
 use Closure;
+use PDO;
 use RuntimeException;
 
 /**
@@ -132,7 +133,16 @@ final class Factory
     /** @return list<string> */
     private static function columns(string $table): array
     {
-        $statement = TestDatabase::pdo()->query(sprintf('PRAGMA table_info("%s")', $table));
+        $pdo = TestDatabase::pdo();
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql') {
+            $statement = $pdo->prepare(
+                "SELECT column_name AS name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ?",
+            );
+            $statement->execute([$table]);
+        } else {
+            $statement = $pdo->query(sprintf('PRAGMA table_info("%s")', $table));
+        }
+
         $rows = $statement === false ? [] : $statement->fetchAll();
 
         return array_values(array_map(static fn(array $c): string => (string) $c['name'], $rows));
