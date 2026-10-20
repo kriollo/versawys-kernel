@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace versaWYS\kernel\cli;
 
 use Exception;
+use versaWYS\kernel\Loggin;
 
 class LogManager
 {
@@ -40,7 +41,7 @@ class LogManager
 
     private static function clearLogs(bool $verbose): void
     {
-        $logsDir = 'versaWYS/logs';
+        $logsDir = Loggin::directory();
 
         if (!is_dir($logsDir)) {
             CLIErrorHandler::warning('Directorio de logs no encontrado: ' . $logsDir);
@@ -79,7 +80,7 @@ class LogManager
 
     private static function listLogs(): void
     {
-        $logsDir = 'versaWYS/logs';
+        $logsDir = Loggin::directory();
 
         if (!is_dir($logsDir)) {
             CLIErrorHandler::warning('Directorio de logs no encontrado: ' . $logsDir);
@@ -118,7 +119,7 @@ class LogManager
             return;
         }
 
-        $logFile = sprintf('versaWYS/logs/%s.log', $logName);
+        $logFile = sprintf('%s/%s.log', Loggin::directory(), basename($logName));
 
         if (!file_exists($logFile)) {
             CLIErrorHandler::warning('Archivo de log no encontrado: ' . $logFile);
@@ -162,7 +163,7 @@ class LogManager
             return;
         }
 
-        $logFile = sprintf('versaWYS/logs/%s.log', $logName);
+        $logFile = sprintf('%s/%s.log', Loggin::directory(), basename($logName));
 
         if (!file_exists($logFile)) {
             CLIErrorHandler::warning('Archivo de log no encontrado: ' . $logFile);

@@ -19,7 +19,7 @@ class ModelManager
         if (file_exists($modelFile)) {
             if (!CLIHelper::confirm("El modelo {$modelFile} ya existe. Desea sobreescribirlo?")) {
                 CLIErrorHandler::info('Operación cancelada.');
-                exit();
+                exit(1);
             }
 
             unlink($modelFile);
@@ -68,7 +68,7 @@ class ModelManager
 
         if (!file_exists($modelFile)) {
             CLIErrorHandler::warning("El modelo {$modelFile} no existe.");
-            exit();
+            exit(1);
         }
 
         if (unlink($modelFile)) {

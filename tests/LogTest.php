@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace versaWYS\kernel\Tests;
 
 use PHPUnit\Framework\TestCase;
+use versaWYS\kernel\cli\LogManager;
 use versaWYS\kernel\Loggin;
 
 final class LogTest extends TestCase
@@ -78,5 +79,38 @@ final class LogTest extends TestCase
             ],
             $entries,
         );
+    }
+
+    public function testLosComandosLogsUsanLaCarpetaConfigurada(): void
+    {
+        global $config;
+
+        $original = $config;
+        $dir = sys_get_temp_dir() . '/versawys-logs-' . bin2hex(random_bytes(4));
+        mkdir($dir);
+        file_put_contents($dir . '/app_2026.log', "linea uno\nlinea dos\n");
+        $config = ['logging' => ['dir' => $dir . '/']];
+        $cwd = (string) getcwd();
+        // Una carpeta versaWYS/logs en el directorio actual que los comandos no deben tocar
+        $otra = sys_get_temp_dir() . '/versawys-cwd-' . bin2hex(random_bytes(4));
+        mkdir($otra . '/versaWYS/logs', 0o777, true);
+        file_put_contents($otra . '/versaWYS/logs/ajeno.log', 'no tocar');
+        chdir($otra);
+
+        try {
+            ob_start();
+            LogManager::handleLogs(['tail', 'app_2026']);
+            LogManager::handleLogs(['clear']);
+            $salida = (string) ob_get_clean();
+
+            self::assertSame($dir, Loggin::directory());
+            self::assertStringContainsString('linea dos', $salida);
+            self::assertFileDoesNotExist($dir . '/app_2026.log');
+            self::assertFileExists($otra . '/versaWYS/logs/ajeno.log');
+        } finally {
+            chdir($cwd);
+            $config = $original;
+            exec('rm -rf ' . escapeshellarg($dir) . ' ' . escapeshellarg($otra));
+        }
     }
 }

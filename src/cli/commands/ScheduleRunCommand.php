@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Override;
 use versaWYS\kernel\cli\BaseCommand;
 use versaWYS\kernel\cli\CommandExecutor;
+use versaWYS\kernel\Loggin;
 use versaWYS\kernel\Schedule;
 
 /**
@@ -33,7 +34,7 @@ class ScheduleRunCommand extends BaseCommand
             CommandExecutor::runInBackground(
                 'schedule:exec',
                 [$task->id()],
-                outputFile: getcwd() . '/versaWYS/logs/cron.log',
+                outputFile: Loggin::directory() . '/cron.log',
             );
             $this->info('Lanzada: ' . $task->description());
         }

@@ -43,7 +43,7 @@ class SeederManager extends VersaORMModel
         if (file_exists($SeedersFile)) {
             if (!CLIHelper::confirm("El seeder {$SeedersFile} ya existe. Desea sobreescribirlo?")) {
                 CLIErrorHandler::info('Operación cancelada.');
-                exit();
+                exit(1);
             }
 
             unlink($SeedersFile);
@@ -91,19 +91,19 @@ class SeederManager extends VersaORMModel
 
             if (!class_exists($seederClass)) {
                 CLIErrorHandler::warning("El Seeder {$seederName} no existe.");
-
-                return;
+                exit(1);
             }
 
             CLIErrorHandler::info(sprintf('Ejecutando... %s....:', $seederName));
             $seeder = new $seederClass();
             $result = $seeder->run();
 
-            if ($result['success']) {
-                echo $result['message'] . "\n";
-            } else {
+            if (!$result['success']) {
                 CLIErrorHandler::warning('Error: ' . $result['message']);
+                exit(1);
             }
+
+            echo $result['message'] . "\n";
         } catch (VersaORMException $versaormException) {
             CLIErrorHandler::handleDatabaseError($versaormException);
         }
@@ -152,7 +152,7 @@ class SeederManager extends VersaORMModel
 
         if (!class_exists($seederClass)) {
             CLIErrorHandler::warning("El Seeder {$seederName} no existe.");
-            exit();
+            exit(1);
         }
 
         $seeder = new $seederClass();
@@ -160,7 +160,7 @@ class SeederManager extends VersaORMModel
 
         if (!$result['success']) {
             CLIErrorHandler::warning('Error en ' . $seederName . ': ' . $result['message']);
-            exit();
+            exit(1);
         }
     }
 

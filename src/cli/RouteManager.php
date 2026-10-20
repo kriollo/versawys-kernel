@@ -27,7 +27,7 @@ class RouteManager
         if (file_exists($routesFile)) {
             if (!CLIHelper::confirm("La ruta {$routesFile} ya existe. Desea sobreescribirlo?")) {
                 CLIErrorHandler::info('Operación cancelada.');
-                exit();
+                exit(1);
             }
 
             unlink($routesFile);
@@ -100,7 +100,12 @@ class RouteManager
 
         if (!file_exists($routesFile)) {
             CLIErrorHandler::warning("La ruta {$routesFile} no existe.");
-            exit();
+            exit(1);
+        }
+
+        if (!CLIHelper::confirm("¿Eliminar el archivo de rutas {$routesFile}?")) {
+            CLIErrorHandler::info('Operación cancelada. Use --force para omitir esta confirmación.');
+            exit(1);
         }
 
         if (unlink($routesFile)) {

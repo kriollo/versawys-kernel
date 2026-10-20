@@ -18,7 +18,7 @@ class MiddlewareManager
         if (file_exists($middlewareFile)) {
             if (!CLIHelper::confirm("El Middleware {$middlewareFile} ya existe. Desea sobreescribirlo?")) {
                 CLIErrorHandler::info('Operación cancelada.');
-                exit();
+                exit(1);
             }
 
             unlink($middlewareFile);
@@ -75,7 +75,12 @@ class MiddlewareManager
 
         if (!file_exists($middlewareFile)) {
             CLIErrorHandler::warning("El Middleware {$middlewareFile} no existe.");
-            exit();
+            exit(1);
+        }
+
+        if (!CLIHelper::confirm("¿Eliminar el middleware {$middlewareFile}?")) {
+            CLIErrorHandler::info('Operación cancelada. Use --force para omitir esta confirmación.');
+            exit(1);
         }
 
         if (unlink($middlewareFile)) {
