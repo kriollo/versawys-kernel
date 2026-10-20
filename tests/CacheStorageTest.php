@@ -104,6 +104,26 @@ final class CacheStorageTest extends TestCase
         Cache::flush();
     }
 
+    public function testFlushEncuentraSusClavesEntreMuchasAjenas(): void
+    {
+        $this->usarRedis('proyecto-a');
+        // SCAN filtra cada lote después de leerlo: con claves ajenas, un lote puede venir vacío aunque falten
+        $ajenas = array_map(static fn(int $i): string => 'ajena:' . $i, range(1, 300));
+        foreach ($ajenas as $clave) {
+            RedisModel::set($clave, 1, 60);
+        }
+
+        try {
+            Cache::set('resumen', 'de A', 60);
+            Cache::flush();
+
+            self::assertNull(Cache::get('resumen'));
+            self::assertSame([], $this->redisKeys());
+        } finally {
+            RedisModel::delete($ajenas);
+        }
+    }
+
     public function testStorageGuardaLeeListaYBorra(): void
     {
         Storage::put('facturas/1/a.pdf', '%PDF');

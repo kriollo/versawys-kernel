@@ -913,13 +913,16 @@ class RedisModel
 
             $prefixLen = strlen(self::$keyPrefix);
 
-            while ($scannedKeys = $redis->scan($iterator, $pattern, $count)) {
-                foreach ($scannedKeys as $key) {
+            // Un lote puede venir vacío aunque falten claves (el patrón se filtra después de leer cada
+            // lote): se sigue hasta que Redis devuelve el cursor en 0, no hasta el primer lote vacío
+            do {
+                $scannedKeys = $redis->scan($iterator, $pattern, $count);
+                foreach ($scannedKeys === false ? [] : $scannedKeys as $key) {
                     // substr() elimina solo el prefijo inicial; str_replace() eliminaría
                     // todas las ocurrencias si el nombre de la clave contiene el prefijo
                     $keys[] = $prefixLen > 0 ? substr($key, $prefixLen) : $key;
                 }
-            }
+            } while ($iterator > 0);
 
             return $keys;
         } catch (RedisException $redisException) {
