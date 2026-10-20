@@ -2,6 +2,17 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.12.0] - 2026-10-20
+
+### Añadido
+- **`route:check` detecta parámetros cruzados:** los parámetros de la URL llegan al controlador en orden, no por nombre. Si `{kbId}` es el primero de la URL pero `$kbId` es el segundo del método, ahora es un error. Así apareció en versaBOT una búsqueda que usaba el ID de la base de conocimiento como ID de empresa.
+- **`Loggin::directory()`:** la carpeta de logs (`logging.dir`) en un solo lugar.
+
+### Corregido
+- **`logs:list/clear/view/tail`** leían y borraban `versaWYS/logs` del directorio actual en vez de `logging.dir`. El log de `app:schedule:run` también va ahora a `logging.dir`.
+- **`controller:delete`, `middleware:delete` y `route:delete`** borraban sin preguntar. Ahora piden confirmación: con `-n` no borran; `--force` omite la pregunta.
+- **Códigos de salida:** `seeder:run` y `seeder:runAll` con un seeder inexistente o que falla, y las cancelaciones de los generadores, terminaban con código 0. Ahora terminan con 1, así que `app:deploy:finish` y un CI las ven como fallas.
+
 ## [3.11.1] - 2026-10-19
 
 ### Corregido
