@@ -2,6 +2,17 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.13.0] - 2026-10-20
+
+### Añadido
+- **`TestDatabase` en PostgreSQL:** con `VERSA_TEST_DB=host:puerto:base:usuario:clave`, las pruebas usan ese PostgreSQL desechable en vez de SQLite. Se vacía su esquema `public` y las migraciones corren ahí.
+  - Sirve a los proyectos cuyas migraciones modifican columnas o usan SQL propio de PostgreSQL, y prueba contra el motor de producción.
+  - `Factory` lee las columnas desde `information_schema`.
+- **CI:** la suite del esqueleto corre en SQLite y en PostgreSQL, y las pruebas de caché usan un Redis real.
+
+### Corregido
+- **`RedisModel::scan()` se detenía en el primer lote sin coincidencias.** `SCAN` filtra el patrón después de leer cada lote, así que con claves ajenas en la misma base un lote puede venir vacío aunque falten claves. Por eso `Cache::flush()` (`cache:clear`) no borraba nada en un Redis compartido. Ahora `scan()` sigue hasta que el cursor vuelve a 0.
+
 ## [3.12.0] - 2026-10-20
 
 ### Añadido
