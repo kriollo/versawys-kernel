@@ -8,6 +8,30 @@ on:
 jobs:
     kernel:
         runs-on: ubuntu-latest
+        # PostgreSQL desechables: respaldo/instalador del esqueleto (VERSA_TEST_PG) y su suite completa
+        # sobre PostgreSQL (VERSA_TEST_DB). La versión es la del pg_dump del runner
+        services:
+            postgres:
+                image: postgres:16-alpine
+                env:
+                    POSTGRES_PASSWORD: prueba-local
+                    POSTGRES_DB: respaldo
+                ports: ['55432:5432']
+                options: --health-cmd pg_isready --health-interval 2s --health-timeout 5s --health-retries 15
+            postgres-panel:
+                image: postgres:16-alpine
+                env:
+                    POSTGRES_PASSWORD: prueba-local
+                    POSTGRES_DB: panel
+                ports: ['55433:5432']
+                options: --health-cmd pg_isready --health-interval 2s --health-timeout 5s --health-retries 15
+            # Caché y RedisModel con un Redis real (sin él, esas pruebas se saltan)
+            redis:
+                image: redis:7-alpine
+                ports: ['6379:6379']
+                options: --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 5s --health-retries 15
+        env:
+            VERSA_TEST_PG: 127.0.0.1:55432:respaldo:postgres:prueba-local
         strategy:
             fail-fast: false
             matrix:
@@ -36,7 +60,7 @@ jobs:
             - uses: shivammathur/setup-php@v2
               with:
                   php-version: ${{ matrix.php }}
-                  extensions: intl, mbstring, pdo_mysql, pdo_pgsql, pdo_sqlite, curl, fileinfo, zip
+                  extensions: intl, mbstring, pdo_mysql, pdo_pgsql, pdo_sqlite, curl, fileinfo, zip, redis
                   coverage: none
 
             - name: Kernel (formato, pruebas, análisis estático, auditoría)
@@ -55,3 +79,5 @@ jobs:
                   composer config repositories.kernel "{\"type\": \"path\", \"url\": \"$kernel\", \"options\": {\"symlink\": true}}"
                   composer require --no-interaction --no-progress -W "versawys/kernel:*@dev"
                   composer test
+                  # La misma suite con la base de prueba en PostgreSQL (TestDatabase)
+                  VERSA_TEST_DB=127.0.0.1:55433:panel:postgres:prueba-local composer test
