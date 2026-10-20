@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace versaWYS\kernel\cli;
 
 use InvalidArgumentException;
+use ReflectionMethod;
+use ReflectionNamedType;
 use RuntimeException;
 use SensitiveParameter;
 
@@ -25,7 +27,7 @@ class RouteManager
         if (file_exists($routesFile)) {
             if (!CLIHelper::confirm("La ruta {$routesFile} ya existe. Desea sobreescribirlo?")) {
                 CLIErrorHandler::info('Operación cancelada.');
-                exit();
+                exit(1);
             }
 
             unlink($routesFile);
@@ -98,7 +100,12 @@ class RouteManager
 
         if (!file_exists($routesFile)) {
             CLIErrorHandler::warning("La ruta {$routesFile} no existe.");
-            exit();
+            exit(1);
+        }
+
+        if (!CLIHelper::confirm("¿Eliminar el archivo de rutas {$routesFile}?")) {
+            CLIErrorHandler::info('Operación cancelada. Use --force para omitir esta confirmación.');
+            exit(1);
         }
 
         if (unlink($routesFile)) {
@@ -424,6 +431,17 @@ class RouteManager
             ];
         } elseif (($problem = $missing($route['class'], (string) $route['class_method'])) !== null) {
             $issues[] = ['level' => 'error', 'message' => 'Controlador: ' . $problem . '.'];
+        } else {
+            $issues = [
+                ...$issues,
+                ...self::paramOrderIssues(
+                    $route['routeParams'],
+                    new ReflectionMethod(
+                        self::resolveClass($route['class'], $imports),
+                        (string) $route['class_method'],
+                    ),
+                ),
+            ];
         }
 
         foreach ($route['middleware'] as $middleware) {
@@ -445,6 +463,42 @@ class RouteManager
 
         foreach (array_diff($documented, $route['routeParams']) as $param) {
             $issues[] = ['level' => 'warning', 'message' => "`path-param {$param}` no aparece en la URL de la ruta."];
+        }
+
+        return $issues;
+    }
+
+    /**
+     * Los parámetros de la URL llegan al controlador en orden, no por nombre (los servicios tipados se
+     * inyectan aparte). Si `{kbId}` es el primero de la URL pero en el método `$kbId` es el segundo, el
+     * método recibe los valores cruzados: casi siempre un error.
+     *
+     * @param array<int, string> $routeParams
+     *
+     * @return array<int, array{level: string, message: string}>
+     */
+    private static function paramOrderIssues(array $routeParams, ReflectionMethod $method): array
+    {
+        $normalize = static fn(string $name): string => strtolower(str_replace('_', '', ltrim($name, '_')));
+        $scalar = [];
+        foreach ($method->getParameters() as $parameter) {
+            $type = $parameter->getType();
+            if (!$type instanceof ReflectionNamedType || $type->isBuiltin()) {
+                $scalar[] = $parameter->getName();
+            }
+        }
+
+        $issues = [];
+        $positions = array_map($normalize, $scalar);
+        foreach ($routeParams as $index => $param) {
+            $position = array_search($normalize($param), $positions, true);
+            if ($position !== false && $position !== $index) {
+                $receives = isset($scalar[$index]) ? '$' . $scalar[$index] : 'ningún parámetro';
+                $issues[] = [
+                    'level' => 'error',
+                    'message' => "`{{$param}}` llega a {$receives} y no a \${$scalar[$position]}: los parámetros de la URL se pasan en orden, no por nombre.",
+                ];
+            }
         }
 
         return $issues;

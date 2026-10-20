@@ -153,7 +153,7 @@ class MigrationManager extends VersaORMModel
         if (file_exists($migrationFile)) {
             if (!CLIHelper::confirm("La migración {$migrationFile} ya existe. Desea sobreescribirlo?")) {
                 CLIErrorHandler::info('Operación cancelada.');
-                exit();
+                exit(1);
             }
 
             unlink($migrationFile);

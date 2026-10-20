@@ -24,7 +24,7 @@ Pruebas que ya existen en el esqueleto y cubren al kernel por HTTP (las corre la
 
 Esto inicia la base de pruebas, pero **no completa** el inventario de contratos, la cobertura del kernel ni la revisión de seguridad. El orden siguiente es recomendado; cada etapa debe acabar con sus pruebas y criterios de aceptación antes de ampliar la siguiente.
 
-**Al 2026-10-15 (3.9.0) los siete primeros pasos están completos; el paso 8 está en curso.** El resultado está en la [revisión final](#revisión-final-de-los-criterios-de-salida), con los límites conocidos. Las listas «Trabajo pendiente» de cada paso se conservan como el plan original con el que se midió cada uno.
+**Al 2026-10-15 (3.9.0) los siete primeros pasos estaban completos; el paso 8 se completó el 2026-10-19 (3.11).** El resultado está en la [revisión final](#revisión-final-de-los-criterios-de-salida), con los límites conocidos. Las listas «Trabajo pendiente» de cada paso se conservan como el plan original con el que se midió cada uno.
 
 ## Principios para todas las etapas
 
@@ -202,7 +202,7 @@ Por qué A primero: los errores que encontró la app de prueba (versaTodo) apare
 
 ## Paso 8 — Herramientas de trabajo diario
 
-**Estado: en curso (desde 2026-10-15).**
+**Estado: completo (2026-10-15 a 2026-10-19; kernel 3.10.0 a 3.11.1, esqueleto 3.12.0).**
 
 El paso 7 dejó el kernel al nivel de Laravel y Symfony en lo esencial. Este paso suma las herramientas que más tiempo ahorran en el día a día. Cada una sale de un uso medido en los cuatro proyectos o de un pedido explícito; no hay ninguna "por si acaso". El orden es el de ejecución.
 
@@ -210,7 +210,7 @@ El paso 7 dejó el kernel al nivel de Laravel y Symfony en lo esencial. Este pas
 |---|---|---|---|
 | 1 | ✅ (3.10.0) **Panel de depuración y profiler** | Prioridad crítica: hoy no se ve qué hace una petición. La "barra de depuración" que citaba la documentación no existía. | Muestra el tiempo total y por middleware, el controlador, la ruta y el código HTTP, la memoria, las consultas SQL con su duración y aviso de N+1, las excepciones, la caché, la sesión y los trabajos encolados. Solo funciona con `build.debug`, con acceso protegido y sin guardar credenciales, cookies ni datos sensibles. Requiere en VersaORM un escuchador de consultas. |
 | 2 | ✅ **Programador de tareas** | Hay 7 crons sueltos en el crontab de cada servidor (anima 4, versaBOT 2, vserv 1), sin protección contra ejecuciones solapadas. | Las tareas se definen en código, con `withoutOverlapping()`. En el servidor queda una sola línea: `app:schedule:run` cada minuto. |
-| 3 | **Usar la cola en los proyectos** | Hay 9 `runInBackground` sin reintentos y una cola casera en versaBOT. | Correos y tareas pesadas pasan por `Queue::push`; `app:queue:work` corre como tarea programada. |
+| 3 | ✅ (3.11.0) **Usar la cola en los proyectos** | Hay 9 `runInBackground` sin reintentos y una cola casera en versaBOT. | Correos y tareas pesadas pasan por `Queue::push`; `app:queue:work` corre como tarea programada. Quedan fuera a propósito: el webhook del chatbot de versaBOT (la cola lo atrasaría hasta un minuto), el botón «ejecutar ahora» de las tareas programadas y la cola de la base de conocimiento de versaBOT, que es el estado de cada documento y la procesa un worker en Python. |
 | 4 | ✅ **Generadores modernos** | `RCMD`/`versaMODULE` generan validación en middleware y nada de lo nuevo. | Hay `request:make`, `job:make`, `test:make` y `factory:make`. Un módulo nuevo sale con FormRequests, `Tenant`, inyección por constructor y su prueba con `TestClient`, y esa prueba pasa recién generada. |
 | 5 | ✅ **Factories para pruebas** | Las pruebas insertan filas a mano con PDO. | Con `Factory` se crean datos de prueba en una línea, respetando la empresa y las relaciones. |
 | 6 | ✅ **Cifrado y URLs firmadas** | versaSTORE cifra a mano; `Storage` necesita enlaces que venzan. | `Crypt::encrypt`/`decrypt` con AES-256-GCM (openssl, ya presente en todo hosting; sodium no siempre) y una clave propia; `SignedUrl::make(..., segundos)` y un middleware que la valida. |

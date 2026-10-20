@@ -93,6 +93,11 @@ class ControllerManager
             return;
         }
 
+        if (!CLIHelper::confirm("¿Eliminar el controlador {$controllersFile}?")) {
+            CLIErrorHandler::info('Operación cancelada. Use --force para omitir esta confirmación.');
+            exit(1);
+        }
+
         if (unlink($controllersFile)) {
             CLIErrorHandler::success("Controller {$controllersFile} eliminada.");
         } else {

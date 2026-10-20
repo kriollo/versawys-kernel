@@ -106,6 +106,21 @@ class Loggin
     private static $customHandler = null;
 
     /**
+     * La carpeta de logs (`logging.dir`), sin barra final. La usan el logger y los comandos `logs:*`, para
+     * que lean y limpien la misma carpeta en la que se escribe.
+     *
+     * @param array<string, mixed>|null $config por defecto la configuración global
+     */
+    public static function directory(?array $config = null): string
+    {
+        if ($config === null) {
+            global $config;
+        }
+
+        return rtrim((string) ($config['logging']['dir'] ?? getcwd() . '/versaWYS/logs'), '/');
+    }
+
+    /**
      * Inicializar configuración del logger.
      *
      * @param array $config Configuración
@@ -121,7 +136,7 @@ class Loggin
 
         $logConfig = $config['logging'] ?? [];
 
-        self::$logDir = $logConfig['dir'] ?? getcwd() . '/versaWYS/logs/';
+        self::$logDir = self::directory($config) . '/';
         self::$minLevel = $logConfig['min_level'] ?? self::DEBUG;
         self::$defaultModule = $logConfig['default_module'] ?? 'app';
         self::$useConsole = $logConfig['use_console'] ?? false;
