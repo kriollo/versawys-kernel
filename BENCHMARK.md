@@ -19,6 +19,20 @@ Mide en el mismo proceso, sin servidor ni base de datos, con 60 rutas registrada
 | Resolver ruta con parámetro | 29.1 – 29.3 | 30.7 – 31.6 |
 | Crear `Request` | 0.7 | 0.8 |
 
+**2026-10-19, kernel 3.11.1** (mismo equipo y PHP, 2000 iteraciones):
+
+| Escenario | p50 (µs) | p95 (µs) |
+|---|---|---|
+| Registrar 60 rutas | 16.1 | 16.7 |
+| Resolver ruta exacta | 13.3 | 13.9 |
+| Resolver ruta con parámetro | 40.9 | 45.5 |
+| Crear `Request` | 0.7 | 0.8 |
+
+Lo que subió desde la 3.2.0 se explica por funciones agregadas, medidas por separado: comprobar si la
+instalación está pendiente (2,0 µs) y el modo mantenimiento (2,3 µs) leen un archivo cada uno; el profiler
+apagado cuesta 0,4 µs; y la ruta con parámetro pasa por el contenedor (3.6.0), que revisa por reflexión si
+el controlador pide servicios. En total, menos del 1 % de una petición real (1,4 ms): no se optimiza.
+
 La mediana se repite entre corridas; el p95 depende de la carga del equipo. Comparar solo con el mismo equipo y la misma configuración de PHP.
 
 ## Aplicación completa (esqueleto)
