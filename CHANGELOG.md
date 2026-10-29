@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.13.1] - 2026-10-29
+
+### Cambiado
+- **Requiere VersaORM `^2.2.4`.** En MySQL/MariaDB, el ejecutor de migraciones (una transacción por migración) necesita el arreglo de 2.2.3: el commit implícito de un DDL ya no hace fallar `commit()`/`rollBack()`. En 2.2.4, además, un `commit()` sin transacción sigue siendo un error.
+
 ## [3.13.0] - 2026-10-20
 
 ### Añadido
