@@ -735,23 +735,37 @@ class CommandLineInterface
         // Los params vienen como: ["video", "process", "123"]
         // Necesitamos determinar cuáles partes son el comando y cuáles son parámetros
 
-        // Obtener lista de comandos registrados para determinar el match correcto
-        $commands = CommandRegistry::getCachedCommands();
+        $match = self::matchAppCommand($params, CommandRegistry::getCachedCommands());
+        // Un comando recién creado no está en la caché: se busca de nuevo antes de darlo por inexistente
+        if ($match === null && $params !== [] && $params[0] !== 'help') {
+            $match = self::matchAppCommand($params, CommandRegistry::getCachedCommands(true));
+        }
 
-        $commandName = '';
-        $commandParams = [];
+        // Sin coincidencia, el nombre completo llega igual: así se informa como inexistente (código 1)
+        [$commandName, $commandParams] = $match ?? [implode(':', $params), []];
 
-        // Intentar match más largo primero (ej: video:process antes que video)
+        ApplicationCommandManager::handleAppCommand($commandName, $commandParams);
+    }
+
+    /**
+     * El comando registrado más largo que coincide con el inicio de los parámetros
+     * (video:process antes que video) y el resto como sus parámetros.
+     *
+     * @param array<int, string> $params
+     * @param array<string, string> $commands
+     *
+     * @return array{0: string, 1: array<int, string>}|null
+     */
+    private static function matchAppCommand(array $params, array $commands): ?array
+    {
         for ($i = count($params); $i > 0; --$i) {
-            $testCommand = implode(':', array_slice($params, 0, $i));
-            if (isset($commands[$testCommand])) {
-                $commandName = $testCommand;
-                $commandParams = array_slice($params, $i);
-                break;
+            $name = implode(':', array_slice($params, 0, $i));
+            if (isset($commands[$name])) {
+                return [$name, array_slice($params, $i)];
             }
         }
 
-        ApplicationCommandManager::handleAppCommand($commandName, $commandParams);
+        return null;
     }
 
     /**

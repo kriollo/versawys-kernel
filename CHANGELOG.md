@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.13.3] - 2026-11-03
+
+### Corregido
+- **Un comando `app:` inexistente salía con código 0.** Mostraba la lista de comandos como si no se hubiera escrito ninguno, así que un script o el CI no detectaban un nombre mal escrito. Ahora informa "no encontrado" y sale con 1.
+- **Un comando recién creado no se encontraba mientras la caché de comandos estuviera vieja.** Antes de darlo por inexistente, se vuelve a leer `app/commands/`.
+
 ## [3.13.2] - 2026-11-03
 
 ### Seguridad
