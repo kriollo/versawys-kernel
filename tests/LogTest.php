@@ -89,6 +89,10 @@ final class LogTest extends TestCase
         $dir = sys_get_temp_dir() . '/versawys-logs-' . bin2hex(random_bytes(4));
         mkdir($dir);
         file_put_contents($dir . '/app_2026.log', "linea uno\nlinea dos\n");
+        // VersaORM escribe en logs/orm/; .gitkeep no es un log
+        mkdir($dir . '/orm');
+        file_put_contents($dir . '/orm/versaorm_errors_2026-10-19.log', 'x');
+        file_put_contents($dir . '/.gitkeep', '');
         $config = ['logging' => ['dir' => $dir . '/']];
         $cwd = (string) getcwd();
         // Una carpeta versaWYS/logs en el directorio actual que los comandos no deben tocar
@@ -106,6 +110,8 @@ final class LogTest extends TestCase
             self::assertSame($dir, Loggin::directory());
             self::assertStringContainsString('linea dos', $salida);
             self::assertFileDoesNotExist($dir . '/app_2026.log');
+            self::assertFileDoesNotExist($dir . '/orm/versaorm_errors_2026-10-19.log');
+            self::assertFileExists($dir . '/.gitkeep');
             self::assertFileExists($otra . '/versaWYS/logs/ajeno.log');
         } finally {
             chdir($cwd);

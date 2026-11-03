@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.13.2] - 2026-11-03
+
+### Corregido
+- **`logs:clear` dejaba los logs de subcarpetas.** Solo borraba los `.log` del primer nivel, así que `logs/orm/` (errores de VersaORM) quedaba intacta. Ahora recorre las subcarpetas y también la carpeta de `database.log_path` si está fuera de `logging.dir`.
+- **`cache:clear` dejaba los perfiles del profiler y la caché de comandos.** Ahora vacía `profiler.dir` y borra `versaWYS/cache/commands.php` (se regenera en el siguiente comando). Twig y rate limits se vacían por completo, subcarpetas incluidas; se conservan `.gitkeep` y `.gitignore`.
+  - A propósito no se tocan `jwt_revoked` (borrarla haría válidos otra vez los tokens revocados), `db_backups` ni `schedule` (candados de tareas en curso).
+
 ## [3.13.1] - 2026-10-29
 
 ### Cambiado

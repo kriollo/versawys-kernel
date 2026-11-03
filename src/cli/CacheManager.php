@@ -7,6 +7,7 @@ namespace versaWYS\kernel\cli;
 use Exception;
 use Throwable;
 use versaWYS\kernel\Cache;
+use versaWYS\kernel\Profiler;
 
 class CacheManager
 {
@@ -54,6 +55,19 @@ class CacheManager
         if (self::clearRateLimitsCache(false)) {
             $cacheCleared++;
         }
+
+        $profiles = self::emptyDirectory(Profiler::dir());
+        if ($profiles > 0) {
+            CLIErrorHandler::success(sprintf('Perfiles del profiler eliminados (%d archivos)', $profiles));
+            $cacheCleared++;
+        }
+
+        // Se vuelve a generar en el próximo comando
+        if (is_file('versaWYS/cache/commands.php') && unlink('versaWYS/cache/commands.php')) {
+            $cacheCleared++;
+        }
+
+        // No se tocan jwt_revoked (borrarla volvería válidos tokens revocados), db_backups ni schedule (candados)
 
         // La caché de la aplicación (Cache), en archivos o en Redis según cache.driver
         try {
@@ -141,20 +155,7 @@ class CacheManager
             return false;
         }
 
-        $files = glob($twigCacheDir . '/*');
-        $cleared = 0;
-
-        foreach ($files as $file) {
-            if (is_file($file)) {
-                if (unlink($file)) {
-                    $cleared++;
-                }
-            } elseif (is_dir($file)) {
-                // Para directorios, eliminamos recursivamente el contenido
-                self::deleteDirectory($file);
-                $cleared++;
-            }
-        }
+        $cleared = self::emptyDirectory($twigCacheDir);
 
         if ($showMessage) {
             if ($cleared > 0) {
@@ -183,16 +184,7 @@ class CacheManager
             return false;
         }
 
-        $files = glob($rateLimitsDir . '/*');
-        $cleared = 0;
-
-        foreach ($files as $file) {
-            if (!is_file($file) || !unlink($file)) {
-                continue;
-            }
-
-            $cleared++;
-        }
+        $cleared = self::emptyDirectory($rateLimitsDir);
 
         if ($showMessage) {
             if ($cleared > 0) {
@@ -205,24 +197,40 @@ class CacheManager
         return $cleared > 0;
     }
 
-    private static function deleteDirectory(string $dir): bool
+    /**
+     * Borra todo lo que hay dentro de la carpeta, subcarpetas incluidas; la carpeta y sus .gitignore/.gitkeep quedan.
+     *
+     * @return int archivos borrados
+     */
+    private static function emptyDirectory(string $dir): int
     {
         if (!is_dir($dir)) {
-            return false;
+            return 0;
         }
 
-        $files = array_diff(scandir($dir), ['.', '..']);
+        $deleted = 0;
+        $items = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST,
+        );
+        foreach ($items as $item) {
+            if (!$item instanceof \SplFileInfo) {
+                continue;
+            }
 
-        foreach ($files as $file) {
-            $filePath = $dir . DIRECTORY_SEPARATOR . $file;
-            if (is_dir($filePath)) {
-                self::deleteDirectory($filePath);
-            } else {
-                unlink($filePath);
+            if ($item->isDir() && !$item->isLink()) {
+                // Si quedó un .gitkeep dentro, la carpeta se conserva
+                if (!(new \FilesystemIterator($item->getPathname()))->valid()) {
+                    rmdir($item->getPathname());
+                }
+            } elseif (
+                !in_array($item->getFilename(), ['.gitignore', '.gitkeep'], true) && unlink($item->getPathname())
+            ) {
+                $deleted++;
             }
         }
 
-        return rmdir($dir);
+        return $deleted;
     }
 
     private static function validateAction(string $action, array $allowedActions, string $command): string

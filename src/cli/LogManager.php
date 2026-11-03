@@ -53,21 +53,16 @@ class LogManager
             CLIErrorHandler::info('Limpiando logs en directorio: ' . $logsDir);
         }
 
-        $files = glob($logsDir . '/*.log');
         $cleared = 0;
 
-        foreach ($files as $file) {
-            if (!file_exists($file)) {
-                continue;
-            }
-
+        foreach (self::logFiles() as $file) {
             if (unlink($file)) {
                 $cleared++;
                 if ($verbose) {
-                    CLIErrorHandler::info('Log eliminado: ' . basename($file));
+                    CLIErrorHandler::info('Log eliminado: ' . $file);
                 }
             } else {
-                CLIErrorHandler::warning('No se pudo eliminar: ' . basename($file));
+                CLIErrorHandler::warning('No se pudo eliminar: ' . $file);
             }
         }
 
@@ -76,6 +71,43 @@ class LogManager
         } else {
             CLIErrorHandler::info('No se encontraron archivos de log para eliminar.');
         }
+    }
+
+    /**
+     * Cada .log, también los de subcarpetas (logs/orm/ de VersaORM) y los del ORM si su log_path está fuera.
+     *
+     * @return list<string>
+     */
+    private static function logFiles(): array
+    {
+        global $config;
+
+        $dirs = [Loggin::directory()];
+        $ormDir = $config['database']['log_path'] ?? null;
+        if (is_string($ormDir) && $ormDir !== '') {
+            $dirs[] = rtrim($ormDir, '/');
+        }
+
+        $files = [];
+        foreach ($dirs as $dir) {
+            if (!is_dir($dir)) {
+                continue;
+            }
+
+            $items = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(
+                $dir,
+                \FilesystemIterator::SKIP_DOTS,
+            ));
+            foreach ($items as $item) {
+                if (!$item instanceof \SplFileInfo || !$item->isFile() || $item->getExtension() !== 'log') {
+                    continue;
+                }
+
+                $files[$item->getRealPath()] = $item->getPathname();
+            }
+        }
+
+        return array_values($files);
     }
 
     private static function listLogs(): void
