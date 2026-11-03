@@ -86,6 +86,25 @@ final class TwigTest extends TestCase
         }
     }
 
+    /**
+     * CVE-2026-46634 (escape del sandbox de Twig con template_from_string): el kernel no carga
+     * StringLoaderExtension ni el sandbox, así que un texto del usuario nunca se compila como plantilla.
+     */
+    public function testUserTextIsNeverCompiledAsATemplate(): void
+    {
+        file_put_contents($this->dir . '/tpl/eco.twig', '<p>{{ texto }}</p>');
+        $twig = $this->twig(false);
+
+        $html = $twig->renderDirect('eco', ['texto' => "{{ 7*7 }}{% include '/etc/passwd' %}{{ _self }}"]);
+        self::assertStringContainsString('{{ 7*7 }}', $html);
+        self::assertStringNotContainsString('49', $html);
+
+        $env = $twig->init($GLOBALS['config']);
+        self::assertFalse($env->hasExtension(\Twig\Extension\StringLoaderExtension::class));
+        self::assertFalse($env->hasExtension(\Twig\Extension\SandboxExtension::class));
+        self::assertNull($env->getFunction('template_from_string'));
+    }
+
     private function twig(bool $nonce): versaTwig
     {
         global $config;

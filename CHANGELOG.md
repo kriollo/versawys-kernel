@@ -4,6 +4,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); v
 
 ## [3.13.2] - 2026-11-03
 
+### Seguridad
+Revisión contra las vulnerabilidades de 2026 de Laravel, Symfony y WordPress; cada una deja una prueba.
+- **Una cookie enviada como arreglo (`tknHash[]=x`) respondía 500.** No autenticaba, pero rompía la petición: es el vector de CVE-2026-114509 (TokenGuard de Laravel). `Cookie::has()`/`get()` ignoran ahora las cookies que no son texto, y la petición responde 401.
+- **Ejemplo de vhost de Apache: las reglas que protegían `vendor/`, `composer.json`, `app/`, `versaWYS/` y `node_modules/` no coincidían nunca.** A nivel de VirtualHost la ruta empieza con `/` y los patrones no la contemplaban. Con `AllowOverride None` tampoco se lee el `.htaccess`, así que un servidor armado con este ejemplo servía `versaWYS/config/config.json` y `vendor/`. Comprobado en Apache 2.4.
+- **Los ejemplos de Apache y nginx ejecutaban cualquier `.php` de la raíz web**, no solo `index.php`: un archivo subido u olvidado en `public/` corría en el servidor (el vector de CVE-2026-119977 en WordPress). Ahora solo `index.php` pasa a PHP-FPM y el resto responde 404.
+- **Ejemplo de nginx: un `.js`, `.svg` o `.png` dentro de `app/` o `versaWYS/` se servía directamente**, porque las `location` de estáticos van antes. Las carpetas internas usan ahora `location ^~`, que tiene prioridad.
+- El ejemplo de Apache acepta el método `QUERY`.
+- Pruebas nuevas: CRLF en correos (CVE-2026-48019), Twig sin `template_from_string` ni sandbox (CVE-2026-46634); en el esqueleto, cabeceras enormes (CVE-2026-108082), cuerpos anidados (CVE-2026-109449), archivos que el sistema escribe en disco y la API sin sesión (CVE-2026-63030).
+
 ### Corregido
 - **`logs:clear` dejaba los logs de subcarpetas.** Solo borraba los `.log` del primer nivel, así que `logs/orm/` (errores de VersaORM) quedaba intacta. Ahora recorre las subcarpetas y también la carpeta de `database.log_path` si está fuera de `logging.dir`.
 - **`cache:clear` dejaba los perfiles del profiler y la caché de comandos.** Ahora vacía `profiler.dir` y borra `versaWYS/cache/commands.php` (se regenera en el siguiente comando). Twig y rate limits se vacían por completo, subcarpetas incluidas; se conservan `.gitkeep` y `.gitignore`.

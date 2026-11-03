@@ -42,14 +42,15 @@ class Cookie
         return ($config['session']['user_cookie']['secure'] ?? true) === true;
     }
 
+    /** Una cookie enviada como `nombre[]=x` llega como arreglo: no es una cookie del sistema y se ignora. */
     public function has($key): bool
     {
-        return isset($_COOKIE[$key]);
+        return is_string($_COOKIE[$key] ?? null);
     }
 
     public function get(string $key, $default = null)
     {
-        return $_COOKIE[$key] ?? $default;
+        return $this->has($key) ? $_COOKIE[$key] : $default;
     }
 
     public function delete(string $key): void
