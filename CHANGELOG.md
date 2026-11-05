@@ -2,7 +2,7 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
-## [Sin publicar]
+## [3.13.5] - 2026-11-05
 
 ### Rendimiento
 - **Una petición que no consulta la base no se conecta.** `OrmFactory::make()` lanzaba `SET TIME ZONE` (PostgreSQL) o `SET time_zone` (MySQL) al arrancar, y eso abría la conexión en todas las peticiones: `/up`, redirects, 404, páginas sin datos. Ahora la zona viaja como `session_timezone` y VersaORM la fija al abrir la conexión, en la primera consulta. Con PostgreSQL local, conectar (autenticación scram-sha-256) cuesta ~9 ms, casi todo el tiempo de `/up`. Exige VersaORM `^2.2.5`, que trae `session_timezone`.
