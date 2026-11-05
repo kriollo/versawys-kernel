@@ -182,7 +182,7 @@ class GlobalControllers
             $bindings[] = match (true) {
                 strtolower($value) === 'true' => true,
                 strtolower($value) === 'false' => false,
-                is_numeric($value) => $value + 0,
+                is_numeric($value) => $value + 0, // @mago-expect lint:no-redundant-math (convierte "5" en 5 y "1.5" en 1.5)
                 default => $value,
             };
         }

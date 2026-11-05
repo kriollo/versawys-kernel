@@ -23,18 +23,8 @@ class Router
 
     protected static array $groupMiddlewares = [];
 
-    protected static array $getRoutes = [];
-
-    protected static array $postRoutes = [];
-
-    protected static array $putRoutes = [];
-
-    protected static array $patchRoutes = [];
-
-    protected static array $deleteRoutes = [];
-
-    /** @var array<string, mixed> */
-    protected static array $queryRoutes = [];
+    /** @var array<string, array<string, mixed>> Tabla de rutas por método (ver METHODS) */
+    protected static array $routes = [];
 
     protected static array $middlewares = []; // Estructura: $middlewares[method][route][]
 
@@ -94,6 +84,7 @@ class Router
             'opcache' => is_array($opcache) && ($opcache['opcache_enabled'] ?? false) === true,
             'opcache_validate_timestamps' => (bool) ini_get('opcache.validate_timestamps'),
             // Con xdebug.mode=off la extensión sigue cargada pero no hace nada; ini_get devuelve '' en ese caso
+            // @mago-expect lint:no-debug-symbols (solo informa si Xdebug está activo)
             'xdebug' => function_exists('xdebug_info')
                 ? xdebug_info('mode') !== []
                 : !in_array((string) ini_get('xdebug.mode'), ['', 'off'], true),
@@ -422,7 +413,7 @@ class Router
                     // Fin de la petición en pruebas (Output::halt): no es un error de la aplicación
                     throw $halted;
                 } catch (Throwable $e) {
-                    if (!empty($config['build']['debug'])) {
+                    if ((bool) ($config['build']['debug'] ?? false)) {
                         Loggin::error('Error al procesar patrón de ruta: ' . $e->getMessage(), 'router', [
                             'timestamp' => date('Y-m-d H:i:s'),
                             'request_uri' => $request->getUrl(),
@@ -521,20 +512,10 @@ class Router
      */
     private static function &routeTable(string $method): array
     {
-        switch ($method) {
-            case 'post':
-                return self::$postRoutes;
-            case 'put':
-                return self::$putRoutes;
-            case 'patch':
-                return self::$patchRoutes;
-            case 'delete':
-                return self::$deleteRoutes;
-            case 'query':
-                return self::$queryRoutes;
-            default:
-                return self::$getRoutes;
-        }
+        $method = in_array($method, self::METHODS, true) ? $method : 'get';
+        self::$routes[$method] ??= [];
+
+        return self::$routes[$method];
     }
 
     /**
@@ -584,19 +565,11 @@ class Router
     }
 
     /**
-     * Registers a GET route with the specified route and callback.
-     *
-     * @param string $route the route pattern
-     * @param mixed $callback the callback function or method to be executed
-     *
-     * @return Router the Router instance
-     */
-    /**
-     * Combina los middlewares de grupo y de ruta de forma robusta.
+     * Los middlewares de los grupos abiertos, seguidos de los de la ruta.
      */
     private static function mergeMiddlewares(array $middlewares = []): array
     {
-        $mergeArrays = array_merge(self::$groupMiddlewares ?: [], [is_array($middlewares) ? $middlewares : []]);
+        $mergeArrays = [...self::$groupMiddlewares, $middlewares];
 
         return array_merge(...$mergeArrays);
     }
@@ -928,14 +901,7 @@ class Router
     private function handleRouteNotFound($request, array $config, string $url, string $method): bool|string
     {
         // Verificar si la ruta existe con otros métodos HTTP
-        $allRoutes = array_merge(
-            self::$getRoutes,
-            self::$postRoutes,
-            self::$putRoutes,
-            self::$patchRoutes,
-            self::$deleteRoutes,
-            self::$queryRoutes,
-        );
+        $allRoutes = array_merge(...array_values(self::$routes));
 
         $routeExists = false;
         $allowedMethods = [];

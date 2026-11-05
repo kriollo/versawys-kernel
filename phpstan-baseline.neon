@@ -13,12 +13,6 @@ parameters:
 			path: src/CacheUsers.php
 
 		-
-			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
-			identifier: ternary.shortNotAllowed
-			count: 1
-			path: src/CacheUsers.php
-
-		-
 			message: '#^Method versaWYS\\kernel\\Cookie\:\:get\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -661,12 +655,6 @@ parameters:
 			path: src/Response.php
 
 		-
-			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: src/Router.php
-
-		-
 			message: '#^Method versaWYS\\kernel\\Router\:\:delete\(\) has parameter \$middlewares with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -799,18 +787,6 @@ parameters:
 			path: src/Router.php
 
 		-
-			message: '#^Property versaWYS\\kernel\\Router\:\:\$deleteRoutes type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Router.php
-
-		-
-			message: '#^Property versaWYS\\kernel\\Router\:\:\$getRoutes type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Router.php
-
-		-
 			message: '#^Property versaWYS\\kernel\\Router\:\:\$groupMiddlewares type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -825,30 +801,6 @@ parameters:
 		-
 			message: '#^Property versaWYS\\kernel\\Router\:\:\$middlewares type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: src/Router.php
-
-		-
-			message: '#^Property versaWYS\\kernel\\Router\:\:\$patchRoutes type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Router.php
-
-		-
-			message: '#^Property versaWYS\\kernel\\Router\:\:\$postRoutes type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Router.php
-
-		-
-			message: '#^Property versaWYS\\kernel\\Router\:\:\$putRoutes type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Router.php
-
-		-
-			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
-			identifier: ternary.shortNotAllowed
 			count: 1
 			path: src/Router.php
 
@@ -905,18 +857,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: src/SecurityUtils.php
-
-		-
-			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
-			identifier: ternary.shortNotAllowed
-			count: 1
-			path: src/SecurityUtils.php
-
-		-
-			message: '#^Binary operation "\." between ''\[Session\:…'' and 0\|0\.0\|''''\|''0''\|''null''\|''undefined''\|array\{\}\|false\|null results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: src/Session.php
 
 		-
 			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
@@ -1139,12 +1079,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: src/cli/CLIHelper.php
-
-		-
-			message: '#^Argument of an invalid type list\<string\>\|false supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 2
-			path: src/cli/CacheManager.php
 
 		-
 			message: '#^Method versaWYS\\kernel\\cli\\CacheManager\:\:handleCacheCommands\(\) has parameter \$params with no value type specified in iterable type array\.$#'
@@ -1459,12 +1393,6 @@ parameters:
 			path: src/cli/FrontManager.php
 
 		-
-			message: '#^Argument of an invalid type list\<string\>\|false supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 1
-			path: src/cli/LogManager.php
-
-		-
 			message: '#^Method versaWYS\\kernel\\cli\\LogManager\:\:handleLogs\(\) has parameter \$params with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -1765,12 +1693,6 @@ parameters:
 			path: src/cli/commands/MailSendCommand.php
 
 		-
-			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
-			identifier: ternary.shortNotAllowed
-			count: 2
-			path: src/cli/commands/MailSendCommand.php
-
-		-
 			message: '#^Only booleans are allowed in a negated boolean, int\|false given\.$#'
 			identifier: booleanNot.exprNotBoolean
 			count: 1
@@ -1833,12 +1755,6 @@ parameters:
 		-
 			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
-			count: 2
-			path: src/helpers/Functions.php
-
-		-
-			message: '#^Casting to int something that''s already int\.$#'
-			identifier: cast.useless
 			count: 2
 			path: src/helpers/Functions.php
 
@@ -1965,30 +1881,6 @@ parameters:
 		-
 			message: '#^Property versaWYS\\kernel\\helpers\\Functions\:\:\$defaultHttpOptions type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: src/helpers/Functions.php
-
-		-
-			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
-			identifier: ternary.shortNotAllowed
-			count: 1
-			path: src/helpers/Functions.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between mixed and array\{\} will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: src/helpers/Functions.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: src/helpers/Functions.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between mixed~\(0\|0\.0\|''''\|''0''\|array\{\}\|false\|null\) and '''' will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
 			count: 1
 			path: src/helpers/Functions.php
 
@@ -2386,12 +2278,6 @@ parameters:
 			message: '#^Only booleans are allowed in an if condition, mixed given\.$#'
 			identifier: if.condNotBoolean
 			count: 1
-			path: src/versaTwig.php
-
-		-
-			message: '#^Only booleans are allowed in an if condition, resource\|false given\.$#'
-			identifier: if.condNotBoolean
-			count: 2
 			path: src/versaTwig.php
 
 		-

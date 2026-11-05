@@ -277,9 +277,6 @@ final class TestClient
             $_SERVER['CONTENT_TYPE'] ??= 'application/x-www-form-urlencoded';
         }
 
-        // Request lee los parámetros de $_REQUEST, como en una petición real
-        // @mago-expect lint:no-request-variable
-        $_REQUEST = $_GET + $_POST;
         Request::setInput($body ?? ($method === 'GET' ? '' : http_build_query($data)));
 
         Output::capture();
@@ -293,8 +290,6 @@ final class TestClient
                 $_SERVER['HTTP_X_CSRF_TOKEN'] ??= $token;
                 if ($body === null) {
                     $_POST['_csrf_token'] ??= $token;
-                    // @mago-expect lint:no-request-variable
-                    $_REQUEST = $_GET + $_POST;
                     Request::setInput(http_build_query($_POST));
                 }
             }

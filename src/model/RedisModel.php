@@ -1289,8 +1289,11 @@ class RedisModel
             }
 
             // Autenticación si está configurada
-            if (isset(self::$config['password']) && !empty(self::$config['password'])) {
-                self::$instance->auth(self::$config['password']);
+            // Una clave o, con ACL, [usuario, clave]
+            $password = self::$config['password'] ?? null;
+            // @mago-expect lint:no-insecure-comparison (solo comprueba que esté configurada)
+            if ($password !== null && $password !== '' && $password !== []) {
+                self::$instance->auth($password);
             }
 
             // Seleccionar base de datos
@@ -1363,6 +1366,7 @@ class RedisModel
             // Se intenta recuperar en lugar de perder la información.
             if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
                 // allowed_classes=false: un valor manipulado en Redis nunca instancia objetos
+                // @mago-expect lint:no-error-control-operator
                 if (@unserialize($value, ['allowed_classes' => false]) !== false) {
                     self::log(
                         'Dato con formato PHP serialize detectado al leer en modo json — clave posiblemente migrada',

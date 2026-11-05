@@ -22,6 +22,7 @@ $GLOBALS['config'] = [
     'build' => ['debug' => false],
 ];
 
+// @mago-expect lint:file-name (controlador del propio script de benchmark)
 final class BenchController
 {
     public function show(): string
@@ -83,6 +84,7 @@ $cpu = is_readable('/proc/cpuinfo')
     : php_uname('m');
 $opcache =
     function_exists('opcache_get_status')
+    // @mago-expect lint:no-error-control-operator
     && is_array($status = @opcache_get_status(false))
     && ($status['opcache_enabled'] ?? false);
 $xdebug = extension_loaded('xdebug') && !in_array((string) ini_get('xdebug.mode'), ['', 'off'], true);

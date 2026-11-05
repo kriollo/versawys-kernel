@@ -8,7 +8,6 @@ use InvalidArgumentException;
 use ReflectionMethod;
 use ReflectionNamedType;
 use RuntimeException;
-use SensitiveParameter;
 
 class RouteManager
 {
@@ -778,17 +777,16 @@ class RouteManager
     private static function findMatchingToken(
         array $tokens,
         int $openIndex,
-        #[SensitiveParameter]
-        string $openToken,
-        #[SensitiveParameter]
-        string $closeToken,
+        string $open,
+        string $close,
         int $end,
     ): ?int {
         $depth = 0;
         for ($index = $openIndex; $index < $end; $index++) {
-            if ($tokens[$index] === $openToken) {
+            $char = $tokens[$index];
+            if ($char === $open) {
                 $depth++;
-            } elseif ($tokens[$index] === $closeToken) {
+            } elseif ($char === $close) {
                 $depth--;
                 if ($depth === 0) {
                     return $index;
@@ -813,20 +811,20 @@ class RouteManager
         $braces = 0;
 
         for ($index = $start; $index < $end; $index++) {
-            $token = $tokens[$index];
-            if ($token === '(') {
+            $char = $tokens[$index];
+            if ($char === '(') {
                 $parentheses++;
-            } elseif ($token === ')') {
+            } elseif ($char === ')') {
                 $parentheses--;
-            } elseif ($token === '[') {
+            } elseif ($char === '[') {
                 $brackets++;
-            } elseif ($token === ']') {
+            } elseif ($char === ']') {
                 $brackets--;
-            } elseif ($token === '{') {
+            } elseif ($char === '{') {
                 $braces++;
-            } elseif ($token === '}') {
+            } elseif ($char === '}') {
                 $braces--;
-            } elseif ($token === ',' && $parentheses === 0 && $brackets === 0 && $braces === 0) {
+            } elseif ($char === ',' && $parentheses === 0 && $brackets === 0 && $braces === 0) {
                 $ranges[] = [$argumentStart, $index];
                 $argumentStart = $index + 1;
             }

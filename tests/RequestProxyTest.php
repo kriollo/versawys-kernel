@@ -16,8 +16,6 @@ final class RequestProxyTest extends TestCase
 
     private array $originalGet;
 
-    private array $originalRequest;
-
     private array $originalFiles;
 
     protected function setUp(): void
@@ -26,13 +24,11 @@ final class RequestProxyTest extends TestCase
 
         $this->originalServer = $_SERVER;
         $this->originalGet = $_GET;
-        $this->originalRequest = $_REQUEST;
         $this->originalFiles = $_FILES;
         $this->originalConfig = $config ?? null;
         $config = ['trusted_proxies' => []];
         $_SERVER = [];
         $_GET = [];
-        $_REQUEST = [];
         $_FILES = [];
     }
 
@@ -42,7 +38,6 @@ final class RequestProxyTest extends TestCase
 
         $_SERVER = $this->originalServer;
         $_GET = $this->originalGet;
-        $_REQUEST = $this->originalRequest;
         $_FILES = $this->originalFiles;
         $config = $this->originalConfig;
     }
@@ -163,7 +158,6 @@ final class RequestProxyTest extends TestCase
     public function testRequestDefaultsToGetAndPreservesSubmittedValues(): void
     {
         $_GET = ['query' => '<script>alert(1)</script>'];
-        $_REQUEST = $_GET;
 
         $request = new Request();
 

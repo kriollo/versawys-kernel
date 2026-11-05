@@ -7,7 +7,7 @@ namespace versaWYS\kernel;
 use app\models\Dashboard;
 use app\models\Empresas;
 use app\models\Users;
-use Exception;
+use Throwable;
 
 class CacheUsers
 {
@@ -100,12 +100,9 @@ class CacheUsers
     }
 
     /**
-     * Carga los datos del usuario con sistema de caché inteligente
-     * Incluye invalidación automática basada en timestamps y cambios de datos.
+     * Datos del usuario guardados en la sesión. Se recargan si pasaron 5 minutos, si cambió la huella
+     * (el usuario o alguna empresa activa, ver fingerprint()) o si cambió la versión del menú.
      *
-     * @param array<string, mixed> $config
-     */
-    /**
      * @param array<string, mixed> $config
      */
     private function loadUserDataWithCache(Session $session, array $config): void
@@ -113,44 +110,43 @@ class CacheUsers
         $userId = (int) $session->get('id_user', 0);
         $empresaId = (int) $session->get('empresa_id', 0);
 
-        // Generar clave de caché única
         $cacheKey = sprintf('user_data_%d_%d', $userId, $empresaId);
-        /** @var array<string, mixed>|null $cacheData */
         $cacheData = $session->get($cacheKey);
-
-        // Verificar si el caché es válido
-        if (!$this->isUserCacheValid($cacheData, $userId, $empresaId)) {
-            // Cargar datos frescos de la base de datos
-            $cacheLocal = $this->loadFreshUserData($userId, $empresaId, $config);
-
-            // Guardar en caché con metadata de invalidación
-            if (isset($cacheLocal['user']) && is_array($cacheLocal['user'])) {
-                $this->cacheData = [
-                    'user' => $cacheLocal['user'],
-                    'empresaSelected' => $cacheLocal['empresaSelected'],
-                    'empresas' => $cacheLocal['empresas'],
-                    'menu_user' => $cacheLocal['menu_user'],
-                    'id_user' => $cacheLocal['id_user'],
-                    'cached_at' => time(),
-                    'user_updated_at' => strtotime((string) ($cacheLocal['user']['updated_at'] ?? '')) ?: 0,
-                    'empresa_version' => $this->getEmpresasVersion(),
-                    'menu_version' => $this->getMenuVersion(),
-                    'ttl' => time() + 300, // 5 minutos TTL
-                ];
-
-                $session->set($cacheKey, $this->cacheData);
-            }
+        // La huella se toma antes de cargar los datos: un cambio a mitad de la carga se nota en la siguiente
+        $fingerprint = $this->fingerprint($userId);
+        $menuVersion = $this->getMenuVersion();
+        if (
+            is_array($cacheData)
+            && time() <= ($cacheData['ttl'] ?? 0)
+            && $fingerprint !== null
+            && $fingerprint === ($cacheData['fingerprint'] ?? null)
+            && $menuVersion === ($cacheData['menu_version'] ?? null)
+        ) {
+            return;
         }
+
+        $cacheLocal = $this->loadFreshUserData($userId, $empresaId, $config);
+        if (!isset($cacheLocal['user']) || !is_array($cacheLocal['user'])) {
+            return;
+        }
+
+        $this->cacheData = [
+            'user' => $cacheLocal['user'],
+            'empresaSelected' => $cacheLocal['empresaSelected'],
+            'empresas' => $cacheLocal['empresas'],
+            'menu_user' => $cacheLocal['menu_user'],
+            'id_user' => $cacheLocal['id_user'],
+            'cached_at' => time(),
+            'fingerprint' => $fingerprint,
+            'menu_version' => $menuVersion,
+            'ttl' => time() + 300,
+        ];
+        $session->set($cacheKey, $this->cacheData);
     }
 
     /**
      * Carga datos frescos de la base de datos (sin caché).
      *
-     * @param array<string, mixed> $config
-     *
-     * @return array<string, mixed>
-     */
-    /**
      * @param array<string, mixed> $config
      *
      * @return array<string, mixed>
@@ -184,84 +180,24 @@ class CacheUsers
     }
 
     /**
-     * Verifica si el caché del usuario es válido
-     * Usando múltiples estrategias de invalidación.
-     *
-     * @param array<string, mixed>|null $cacheData
+     * Huella de lo que muestran los datos en caché, en una sola consulta: cuándo cambió el usuario y,
+     * de las empresas activas, cuántas son, la suma de sus ids y su último cambio. store() de VersaORM
+     * actualiza updated_at en cada UPDATE, así que editar, activar o desactivar cualquiera la cambia.
+     * null si el usuario no existe o la consulta falla: entonces la caché no vale.
      */
-    /**
-     * @param array<string, mixed>|null $cacheData
-     */
-    private function isUserCacheValid(?array $cacheData, int $userId, int $empresaId): bool
-    {
-        if ($cacheData === null) {
-            return false;
-        }
-
-        // Verificar TTL (Time To Live)
-        if (time() > ($cacheData['ttl'] ?? 0)) {
-            return false;
-        }
-
-        // Verificar si el usuario ha sido modificado
-        if ($this->hasUserBeenUpdated($userId, (int) ($cacheData['user_updated_at'] ?? 0))) {
-            return false;
-        }
-
-        // Verificar si las empresas han cambiado
-        if ($this->getEmpresasVersion() !== ($cacheData['empresa_version'] ?? '')) {
-            return false;
-        }
-
-        // Verificar si el menú ha cambiado
-        $currentMenuVersion = $this->getMenuVersion();
-
-        return $currentMenuVersion === ($cacheData['menu_version'] ?? '');
-    }
-
-    /**
-     * Verifica si el usuario ha sido actualizado desde el último caché.
-     */
-    private function hasUserBeenUpdated(int $userId, int $cachedTimestamp): bool
+    private function fingerprint(int $userId): ?string
     {
         try {
-            // Query ligera para obtener solo el timestamp de actualización del usuario
-            $userModel = new Users();
-            $user = $userModel->findWithCompany($userId);
-
-            // Manejar tanto arrays como objetos
-            $updatedAt = null;
-            if ($user !== []) {
-                if (is_array($user) && isset($user['updated_at'])) {
-                    $updatedAt = $user['updated_at'];
-                } elseif (is_object($user) && isset($user->updated_at)) {
-                    $updatedAt = $user->updated_at;
-                }
-            }
-
-            $lastUpdate = $updatedAt ? (int) strtotime((string) $updatedAt) : 0;
-
-            return $lastUpdate > $cachedTimestamp;
-        } catch (Exception) {
-            // En caso de error, invalidar caché por seguridad
-            return true;
+            $row = Users::getRow('SELECT u.updated_at, e.n, e.s, e.m FROM '
+            . Users::tableName()
+            . ' u CROSS JOIN (SELECT COUNT(id) AS n, SUM(id) AS s, MAX(updated_at) AS m FROM '
+            . Empresas::tableName()
+            . ' WHERE estado = ?) e WHERE u.id = ?', ['1', $userId]);
+        } catch (Throwable) {
+            return null;
         }
-    }
 
-    /**
-     * Obtiene una "versión" de las empresas basada en última modificación.
-     */
-    private function getEmpresasVersion(): string
-    {
-        try {
-            // Usar count de empresas y timestamp actual como versión simple
-            $empresasModel = new Empresas();
-            $empresas = $empresasModel->all('1');
-
-            return md5(serialize($empresas)); // Hash de los datos
-        } catch (Exception) {
-            return (string) time(); // Fallback que siempre invalida
-        }
+        return $row === null ? null : implode('|', array_map(strval(...), array_values($row)));
     }
 
     /**

@@ -55,6 +55,7 @@ return [
     'trusted_proxies' => [],
     'auth' => [
         'inactive_account_days' => 30,
+        // @mago-expect lint:no-literal-password (son días, no una clave)
         'expiration_days_password' => 90,
         'password_policy' => [
             'large' => 8,

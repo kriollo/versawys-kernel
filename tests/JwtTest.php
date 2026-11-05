@@ -155,7 +155,7 @@ final class JwtTest extends TestCase
         $this->session->revokeToken($jwt);
 
         self::assertFileDoesNotExist($this->dir . '/escapado');
-        self::assertSame([], glob($this->dir . '/versaWYS/cache/jwt_revoked/*') ?: []);
+        self::assertSame([], glob($this->dir . '/versaWYS/cache/jwt_revoked/*'));
     }
 
     public function testAnInvalidTokenIsNotRevokedNorFails(): void

@@ -227,10 +227,12 @@ class CommandLineInterface
         $action = $this->validateAction($params[0], $allowedActions, 'front');
         $name = $this->requireParam($params, 1, sprintf('php versaCLI front:%s:nombre_componente', $action));
 
-        $this->verboseInfo(
-            sprintf("Iniciando operación de frontend: %s para '%s'", $action, $name)
-                . ($prefix !== '' && $prefix !== '0' ? sprintf(" con prefijo '%s'", $prefix) : ''),
-        );
+        $this->verboseInfo(sprintf(
+            "Iniciando operación de frontend: %s para '%s'%s",
+            $action,
+            $name,
+            $prefix !== '' && $prefix !== '0' ? sprintf(" con prefijo '%s'", $prefix) : '',
+        ));
 
         try {
             $frontManager = new FrontManager();

@@ -2,6 +2,24 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.13.4] - 2026-11-04
+
+### Rendimiento
+- **La sesión se valida con una consulta en vez de dos.** En cada petición con sesión, `CacheUsers` comprobaba que sus datos siguieran vigentes con el usuario completo (con JOIN a la empresa) y con *todas* las empresas activas (`SELECT *` y `md5(serialize())`), que crece con la cantidad de empresas. Ahora usa una huella en una sola consulta agregada: `updated_at` del usuario y, de las empresas activas, conteo, suma de ids y último `updated_at`. Detecta lo mismo que antes, incluido otro administrador editando, activando o desactivando una empresa. Con SQLite local, el dashboard baja de 2.76 a 2.36 ms (p50) y una API con sesión de 1.58 a 1.30 ms; con la base en otro servidor se ahorra además un viaje de red por petición. Las sesiones abiertas recargan su caché una vez.
+- **Twig se crea recién al renderizar.** Antes se construía en cada petición (cargar sus clases, extensiones y filtros), aunque la respuesta fuera JSON, un redirect o `/up`. `addGlobal()`, `addExtension()` y `addFilter()` se aplican al crearlo. La carpeta de caché de Twig también se revisa en ese momento.
+- **`/up` no abre sesión.** Los monitores lo consultan cada pocos segundos y cada consulta escribía un archivo de sesión y respondía con una cookie. Solo GET y HEAD a `/up`; el resto de las rutas no cambia.
+- `app:check:deploy --production` avisa si el autoloader de Composer no está optimizado (`composer install --no-dev --optimize-autoloader`): en el esqueleto, con el mapa de clases el dashboard y las APIs ganan entre 5 y 8 %.
+- Medido con el esqueleto por HTTP (`php -S`, OPcache, SQLite, cliente y servidor en el mismo núcleo, mediana de tres rondas alternadas) contra la versión anterior: `/up` −22 %, API JSON con sesión −19 %, dashboard −9 %; login y 404 sin cambio medible (renderizan igual; el login varía entre corridas en las dos versiones). El arranque del kernel queda en unos 230 µs: configuración ~60 µs y rutas ~75 µs, que siguen sin justificar una caché (DECISIONS.md).
+- Pruebas: `CacheUsersTest` cubre cada motivo de recarga (usuario, empresa editada, desactivada, cambio de empresas activas con el mismo conteo o la misma suma, menú, vencimiento, usuario borrado, huella que falla) y que la caché nunca guarde `password` ni `restore_token`. `TwigTest` comprueba que crear `versaTwig` no toca Twig ni la carpeta de caché y que lo agregado antes del primer render llega a la plantilla; `SessionCookieTest`, que solo GET/HEAD a `/up` se salta la sesión; `AutoloaderCheckTest`, la detección del mapa de clases. `CacheUsersPostgresTest` repite los casos en PostgreSQL con `VERSA_TEST_PG`: allí `estado` es boolean y un error en la consulta no se vería, solo dejaría de usarse la caché.
+
+### Cambiado
+- Herramientas de desarrollo al día: PHPUnit `^12.5` (13 exige PHP 8.4.1 y el kernel soporta 8.3), mago `^1.59`, PHPStan `^2.3.5` (strict-rules `^2.1.1`), PHP-CS-Fixer `^3.95.28` y Rector `^2.8`. Las dependencias de ejecución no cambian de restricción (Twig 3.30, Symfony Mailer 8.1 y php-jwt 7.2 ya entraban en los rangos actuales).
+- **Sin línea base de mago.** Se revisaron los 107 hallazgos heredados de `mago-baseline.toml` y el archivo se elimina: `mago lint` ya no tolera ninguno. Se corrigieron en el código los `empty()`, `?:`, ternarios anidados, `sprintf` concatenados, asignaciones en condiciones y los `@` que no hacían falta (`shell_exec`, `stat`, `posix_getpwuid`, `inet_pton`, que ahora se valida con `filter_var`). Los que son a propósito llevan `// @mago-expect` con su motivo: los `@` de archivos y carpetas que otro proceso puede crear o borrar a la vez, los del logger (un aviso de PHP no puede romper una respuesta), `var_dump` del helper de depuración. `tagged-todo` se apaga en `mago.toml` porque toma por TODO cualquier "Todo" en español.
+- `Router` guarda las rutas en una sola tabla por método (`$routes['get']`, …) en vez de seis propiedades. Si una aplicación extiende `Router` y leía `$getRoutes`, `$postRoutes`, etc., debe usar `self::$routes[...]`.
+- `Request` ya no copia `$_REQUEST` en los parámetros: `prepareParams()` los reemplazaba siempre por GET, POST o el cuerpo. Tampoco `TestClient` arma `$_REQUEST`.
+- `composer check` sin avisos: dos casts `(int)` sobrantes en `curl_errno()`, las entradas obsoletas del baseline de PHPStan, y la prueba de cookies de sesión ya no vuelca en la consola los `Deprecated` esperados de PHP 8.4.
+- Pruebas: `RouterTestController` y `RouterTestMiddleware` en archivos propios.
+
 ## [3.13.3] - 2026-11-03
 
 ### Corregido

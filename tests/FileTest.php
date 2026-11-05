@@ -33,7 +33,8 @@ final class FileTest extends TestCase
         global $config;
 
         $config = $this->originalConfig;
-        foreach (glob($this->dir . '/*') ?: [] as $file) {
+        $files = glob($this->dir . '/*');
+        foreach ($files === false ? [] : $files as $file) {
             unlink($file);
         }
 

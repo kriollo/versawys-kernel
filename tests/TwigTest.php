@@ -6,6 +6,8 @@ namespace versaWYS\kernel\Tests;
 
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
+use ReflectionProperty;
+use Twig\TwigFilter;
 use versaWYS\kernel\Profiler;
 use versaWYS\kernel\versaTwig;
 
@@ -103,6 +105,32 @@ final class TwigTest extends TestCase
         self::assertFalse($env->hasExtension(\Twig\Extension\StringLoaderExtension::class));
         self::assertFalse($env->hasExtension(\Twig\Extension\SandboxExtension::class));
         self::assertNull($env->getFunction('template_from_string'));
+    }
+
+    /** Una API JSON, /up o un redirect no renderizan: crear versaTwig no debe costar nada */
+    public function testTwigSeCreaRecienAlRenderizar(): void
+    {
+        $twig = $this->twig(false);
+
+        self::assertNull((new ReflectionProperty(versaTwig::class, 'twigEnvironment'))->getValue($twig));
+        self::assertDirectoryDoesNotExist($this->dir . '/cache', 'la carpeta de caché se revisa al renderizar');
+
+        $twig->renderDirect('ficha', ['nombre' => 'Ana', 'html' => '']);
+
+        self::assertDirectoryExists($this->dir . '/cache');
+    }
+
+    public function testLoAgregadoAntesDelPrimerRenderLlegaALaPlantilla(): void
+    {
+        file_put_contents($this->dir . '/tpl/globales.twig', '{{ empresa }}|{{ "x"|gritar }}');
+        $twig = $this->twig(false);
+        $twig->addGlobal('empresa', 'Uno');
+        $twig->addFilter(new TwigFilter('gritar', static fn(string $s): string => strtoupper($s) . '!'));
+
+        self::assertSame('Uno|X!', $twig->renderDirect('globales'));
+        // Después de creado el entorno, se aplica directo
+        $twig->addGlobal('empresa', 'Dos');
+        self::assertSame('Dos|X!', $twig->renderDirect('globales'));
     }
 
     private function twig(bool $nonce): versaTwig

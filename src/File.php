@@ -243,6 +243,7 @@ class File extends SplFileInfo implements ArrayAccess
 
         // Crear directorio si no existe
         if (!file_exists($directory)) {
+            // @mago-expect lint:no-error-control-operator
             if (!@mkdir($directory, 0o775, true) && !is_dir($directory)) {
                 $error = error_get_last();
                 $this->handleError(sprintf(
@@ -252,16 +253,17 @@ class File extends SplFileInfo implements ArrayAccess
                 ));
             }
 
+            // @mago-expect lint:no-error-control-operator
             @chmod($directory, 0o775);
         }
 
         // Verificar que el directorio sea escribible
         if (!is_writable($directory)) {
             $perms = substr(sprintf('%o', fileperms($directory)), -4);
-            $stat = @stat($directory);
+            $stat = stat($directory);
             $owner = 'unknown';
             if ($stat !== false && function_exists('posix_getpwuid')) {
-                $pwuid = @posix_getpwuid($stat['uid']);
+                $pwuid = posix_getpwuid($stat['uid']);
                 $owner = $pwuid['name'] ?? 'uid:' . $stat['uid'];
             }
 
@@ -322,6 +324,7 @@ class File extends SplFileInfo implements ArrayAccess
         }
 
         // Establecer permisos del archivo
+        // @mago-expect lint:no-error-control-operator
         @chmod($finalPath, 0o664);
 
         if ($debug) {

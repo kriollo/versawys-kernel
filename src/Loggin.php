@@ -149,6 +149,7 @@ class Loggin
         // Crear directorio de logs si no existe
         if (!is_dir(self::$logDir)) {
             set_error_handler(static function (): void {}, E_WARNING);
+            // @mago-expect lint:no-error-control-operator
             $mkdirSuccess = @mkdir(self::$logDir, 0o775, true);
             restore_error_handler();
 
@@ -178,6 +179,7 @@ class Loggin
             }
 
             // 02775 = 0775 + setgid: los archivos de log creados dentro heredan el grupo
+            // @mago-expect lint:no-error-control-operator
             @chmod(self::$logDir, 0o2775);
         }
 
@@ -444,7 +446,11 @@ class Loggin
         float $responseTime = 0,
         ?string $module = null,
     ): void {
-        $level = $statusCode >= 500 ? self::ERROR : ($statusCode >= 400 ? self::WARNING : self::INFO);
+        $level = match (true) {
+            $statusCode >= 500 => self::ERROR,
+            $statusCode >= 400 => self::WARNING,
+            default => self::INFO,
+        };
 
         self::log($level, sprintf('HTTP Request: %s %s', $method, $url), $module ?? 'http', [
             'method' => $method,
@@ -500,7 +506,7 @@ class Loggin
 
         self::log(
             $level,
-            sprintf('Performance: %s took ', $operation) . round($duration, 4) . 's',
+            sprintf('Performance: %s took %ss', $operation, round($duration, 4)),
             $module ?? 'performance',
             $context,
         );
@@ -687,20 +693,20 @@ class Loggin
         );
 
         // Agregar contexto si existe
-        if (!empty($logData['context'])) {
+        if (($logData['context'] ?? []) !== []) {
             $contextStr = json_encode($logData['context'], JSON_UNESCAPED_UNICODE);
             $message .= ' | Context: ' . $contextStr;
         }
 
-        // Agregar trace si existe (solo primeras 3 líneas para no saturar)
-        if (isset($logData['trace']) && !empty($logData['trace'])) {
+        // Agregar trace si existe (solo las primeras 5 líneas para no saturar)
+        if (($logData['trace'] ?? []) !== []) {
             $message .= PHP_EOL . '  Stack Trace:';
             $traceLines = array_slice($logData['trace'], 0, 5);
             foreach ($traceLines as $index => $trace) {
                 $file = $trace['file'] ?? 'unknown';
                 $line = $trace['line'] ?? 0;
                 $function = $trace['function'] ?? 'unknown';
-                $message .= PHP_EOL . sprintf('    #%s %s:%s %s()', $index, $file, $line, $function);
+                $message .= sprintf('%s    #%s %s:%s %s()', PHP_EOL, $index, $file, $line, $function);
             }
         }
 
@@ -729,6 +735,7 @@ class Loggin
         // Verificar que el directorio existe y es escribible
         if (!is_dir(self::$logDir)) {
             set_error_handler(static function (): void {}, E_WARNING);
+            // @mago-expect lint:no-error-control-operator
             $mkdirSuccess = @mkdir(self::$logDir, 0o775, true);
             restore_error_handler();
 
@@ -740,6 +747,7 @@ class Loggin
             }
 
             // 02775 = 0775 + setgid: los archivos de log creados dentro heredan el grupo
+            // @mago-expect lint:no-error-control-operator
             @chmod(self::$logDir, 0o2775);
         }
 
@@ -751,6 +759,7 @@ class Loggin
         if (!file_exists($logFile)) {
             $previousUmask = umask(0);
             set_error_handler(static function (): void {}, E_WARNING);
+            // @mago-expect lint:no-error-control-operator
             $handle = @fopen($logFile, 'ab');
             restore_error_handler();
             umask($previousUmask);
@@ -766,6 +775,7 @@ class Loggin
         }
 
         // Escribir log
+        // @mago-expect lint:no-error-control-operator
         if (@file_put_contents($logFile, $formattedMessage, FILE_APPEND | LOCK_EX) === false) {
             error_log("Failed to write to log file: {$logFile}");
         } else {
@@ -795,6 +805,7 @@ class Loggin
         }
 
         set_error_handler(static function (): void {}, E_WARNING);
+        // @mago-expect lint:no-error-control-operator
         $chmodSuccess = @chmod($path, $mode);
         restore_error_handler();
 
@@ -881,6 +892,7 @@ class Loggin
                 continue;
             }
 
+            // @mago-expect lint:no-error-control-operator
             @unlink($file);
         }
     }

@@ -109,7 +109,10 @@ class SecurityUtils
 
         // Normalizar la URL (lógica original)
         $cleanUrl = trim($cleanUrl, '/');
-        $cleanUrl = parse_url($cleanUrl, PHP_URL_PATH) ?: $cleanUrl;
+        $path = parse_url($cleanUrl, PHP_URL_PATH);
+        if (is_string($path) && $path !== '') {
+            $cleanUrl = $path;
+        }
 
         // Normalizar múltiples barras consecutivas a una sola barra
         $cleanUrl = preg_replace('#/+#', '/', $cleanUrl);
@@ -206,8 +209,10 @@ class SecurityUtils
         $defaultWindow = max([3600, ...array_column($config['rate_limiting']['rules'] ?? [], 'window')]);
 
         foreach ($files as $file) {
+            // @mago-expect lint:no-error-control-operator
             $data = json_decode((string) @file_get_contents($file), true);
             if (!isset($data['window_start']) || !self::isWithinWindow((int) $data['window_start'], $defaultWindow)) {
+                // @mago-expect lint:no-error-control-operator
                 @unlink($file); // Eliminar archivo si expiró o quedó corrupto
             }
         }
@@ -239,10 +244,12 @@ class SecurityUtils
 
         $cacheDir = $config['rate_limiting']['cache_dir'];
         if (!is_dir($cacheDir)) {
+            // @mago-expect lint:no-error-control-operator
             @mkdir($cacheDir, 0o2775, true);
         }
 
         $fresh = ['count' => 1, 'window_start' => time()];
+        // @mago-expect lint:no-error-control-operator
         $handle = @fopen($cacheDir . $key . '.json', 'c+');
         if ($handle === false) {
             // Sin almacenamiento no se puede contar: se registra y la petición continúa

@@ -58,6 +58,12 @@ class Session
         self::iniSet('session.use_only_cookies', '1');
         self::iniSet('session.use_trans_sid', '0');
 
+        // Los monitores consultan /up cada pocos segundos: sin sesión no se escribe un archivo ni se
+        // envía una cookie por consulta
+        if (self::isHealthCheck()) {
+            return;
+        }
+
         if (session_status() === PHP_SESSION_NONE) {
             if (!session_start()) {
                 Loggin::error('Failed to start session', 'Session', error_get_last());
@@ -87,10 +93,19 @@ class Session
                 Output::halt();
             }
 
-            if (empty($_SESSION['csrf_token'])) {
+            if ((string) ($_SESSION['csrf_token'] ?? '') === '') {
                 $this->setCSRFToken();
             }
         }
+    }
+
+    /** GET o HEAD a /up, con la misma normalización de URL que usa Router */
+    private static function isHealthCheck(): bool
+    {
+        return (
+            in_array($_SERVER['REQUEST_METHOD'] ?? '', ['GET', 'HEAD'], true)
+            && Router::normalize_url((string) ($_SERVER['REQUEST_URI'] ?? '/')) === '/up'
+        );
     }
 
     /**
@@ -112,9 +127,11 @@ class Session
         }
 
         if (!is_dir(self::REVOKED_DIR)) {
+            // @mago-expect lint:no-error-control-operator
             @mkdir(self::REVOKED_DIR, 0o2775, true);
         }
 
+        // @mago-expect lint:no-error-control-operator
         if (@file_put_contents(self::REVOKED_DIR . $decoded['jti'], (string) $decoded['exp']) === false) {
             // El logout borra la cookie, pero el token seguiría valiendo hasta que expire si alguien lo copió
             Loggin::error('No se pudo revocar el JWT: ' . self::REVOKED_DIR . ' no es escribible.', 'security');
@@ -124,10 +141,12 @@ class Session
         $revoked = glob(self::REVOKED_DIR . '*');
 
         foreach ($revoked === false ? [] : $revoked as $file) {
+            // @mago-expect lint:no-error-control-operator
             if ((int) @file_get_contents($file) >= time()) {
                 continue;
             }
 
+            // @mago-expect lint:no-error-control-operator
             @unlink($file);
         }
     }
@@ -555,6 +574,7 @@ class Session
 
             if (!is_int($userId) || $userId <= 0 || !is_int($empresaId) || $empresaId <= 0) {
                 $currentToken = $cookie->get('tknHash');
+                // @mago-expect lint:no-insecure-comparison (compara contra literales, no contra un secreto)
                 if (is_string($currentToken) && $currentToken !== '' && $currentToken !== 'undefined') {
                     try {
                         $decodedToken = $this->decodeJWT($currentToken);
@@ -725,7 +745,7 @@ class Session
 
             // 3. Obtener y validar el token JWT
             $jwt = $cookie->get('tknHash');
-            if (empty($jwt) || $jwt === 'undefined' || $jwt === 'null') {
+            if (!is_string($jwt) || $jwt === '' || $jwt === 'undefined' || $jwt === 'null') {
                 if ($debug) {
                     Loggin::debug('[Session::checkUserSession] Token JWT vacío o inválido: ' . $jwt, 'Session');
                 }
@@ -883,7 +903,7 @@ class Session
         $this->set('_last_activity', time());
 
         // Regenerar CSRF token si no existe (sesión fue restaurada)
-        if (empty($_SESSION['csrf_token'])) {
+        if ((string) ($_SESSION['csrf_token'] ?? '') === '') {
             $this->setCSRFToken();
         }
     }

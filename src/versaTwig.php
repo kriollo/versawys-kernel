@@ -23,12 +23,43 @@ class versaTwig extends Environment
 {
     private const string SCRIPT_TAG = '/<script\b([^>]*)>(.*?)<\/script>/is';
 
-    private Environment $twigEnvironment;
+    /** Se crea en el primer render: una API JSON, /up o un redirect no pagan Twig */
+    private ?Environment $twigEnvironment = null;
+
+    /** @var list<callable(Environment): void> lo pedido antes de crear el entorno */
+    private array $pending = [];
 
     /**
      * @param array<string, mixed> $config
      */
-    public function __construct(array $config)
+    public function __construct(
+        private readonly array $config,
+    ) {}
+
+    /** El entorno de Twig, creado (con la carpeta de caché comprobada) la primera vez que se usa */
+    private function environment(): Environment
+    {
+        if ($this->twigEnvironment instanceof Environment) {
+            return $this->twigEnvironment;
+        }
+
+        self::ensureCacheDir($this->config);
+        $this->twigEnvironment = $this->init($this->config);
+        foreach ($this->pending as $apply) {
+            $apply($this->twigEnvironment);
+        }
+
+        $this->pending = [];
+
+        return $this->twigEnvironment;
+    }
+
+    /**
+     * Crea la carpeta de caché de Twig si falta; si no se puede leer o escribir, responde 500.
+     *
+     * @param array<string, mixed> $config
+     */
+    private static function ensureCacheDir(array $config): void
     {
         // Verificar usabilidad de twig
         $__TWIG_CACHE_PATH = $config['twig']['compiled_dir'];
@@ -44,8 +75,10 @@ class versaTwig extends Environment
                     E_WARNING,
                 );
 
+                // @mago-expect lint:no-error-control-operator
                 $mkdirSuccess = @mkdir($__TWIG_CACHE_PATH, 0o775, true);
                 // 02775 = 0775 + setgid: los subdirs/archivos creados dentro heredan el grupo del dir
+                // @mago-expect lint:no-error-control-operator
                 @chmod($__TWIG_CACHE_PATH, 0o2775);
 
                 restore_error_handler();
@@ -82,6 +115,7 @@ class versaTwig extends Environment
                 }
             } else {
                 // 02775 = 0775 + setgid: los subdirs/archivos creados dentro heredan el grupo del dir
+                // @mago-expect lint:no-error-control-operator
                 @chmod($__TWIG_CACHE_PATH, 0o2775);
             }
 
@@ -119,8 +153,6 @@ class versaTwig extends Environment
                 Output::halt();
             }
         }
-
-        $this->twigEnvironment = $this->init($config);
     }
 
     /**
@@ -167,7 +199,7 @@ class versaTwig extends Environment
      */
     public function addGlobal(string $name, $value): void
     {
-        $this->twigEnvironment->addGlobal($name, $value);
+        $this->defer(static fn(Environment $twig) => $twig->addGlobal($name, $value));
     }
 
     /**
@@ -178,7 +210,7 @@ class versaTwig extends Environment
     public function addExtension($extension): void
     {
         if ($extension instanceof ExtensionInterface) {
-            $this->twigEnvironment->addExtension($extension);
+            $this->defer(static fn(Environment $twig) => $twig->addExtension($extension));
         }
     }
 
@@ -189,7 +221,19 @@ class versaTwig extends Environment
      */
     public function addFilter(TwigFilter $filter): void
     {
-        $this->twigEnvironment->addFilter($filter);
+        $this->defer(static fn(Environment $twig) => $twig->addFilter($filter));
+    }
+
+    /** @param callable(Environment): void $apply */
+    private function defer(callable $apply): void
+    {
+        if ($this->twigEnvironment instanceof Environment) {
+            $apply($this->twigEnvironment);
+
+            return;
+        }
+
+        $this->pending[] = $apply;
     }
 
     /**
@@ -212,7 +256,7 @@ class versaTwig extends Environment
         }
 
         try {
-            $result = $this->twigEnvironment->render($name, $context);
+            $result = $this->environment()->render($name, $context);
 
             // Detectar si es una petición SPA y manejarla
             if ($this->isSPARequest()) {
@@ -245,7 +289,7 @@ class versaTwig extends Environment
         }
 
         try {
-            return $this->twigEnvironment->render($name, $context);
+            return $this->environment()->render($name, $context);
         } catch (LoaderError|RuntimeError|SyntaxError $e) {
             $this->catch($e);
 
@@ -356,7 +400,7 @@ class versaTwig extends Environment
     private function renderSPAContent(): string
     {
         try {
-            return $this->twigEnvironment->render('dashboard/spa-content.twig', [
+            return $this->environment()->render('dashboard/spa-content.twig', [
                 'current_user' => $this->getCurrentUserData(),
             ]);
         } catch (LoaderError|RuntimeError|SyntaxError) {
@@ -426,64 +470,45 @@ class versaTwig extends Environment
      */
     private function setFilterTwig(Environment $twig): void
     {
-        $rutaCarpeta = __DIR__ . '/helpers';
-
-        if ($handle = opendir($rutaCarpeta)) {
-            while (false !== ($entry = readdir($handle))) {
-                if ($entry === '.' || $entry === '..') {
-                    continue;
-                }
-
-                $rutaArchivo = $rutaCarpeta . '/' . $entry;
-                if (is_file($rutaArchivo) && pathinfo($rutaArchivo, PATHINFO_EXTENSION) === 'php') {
-                    $nombreClase = pathinfo($rutaArchivo, PATHINFO_FILENAME);
-                    $class = 'versaWYS\\kernel\\helpers\\' . $nombreClase;
-                    $class = str_replace('.php', '', $class);
-
-                    $classInstancia = new $class();
-                    if (method_exists($classInstancia, 'setTwigFilters')) {
-                        $filters = $classInstancia->setTwigFilters();
-                        foreach ($filters as $filter) {
-                            [$nombre, $funcion] = $filter;
-                            $twig->addFilter(new TwigFilter($nombre, $funcion));
-                        }
-                    }
-                }
+        foreach (self::helperInstances() as $helper) {
+            if (!method_exists($helper, 'setTwigFilters')) {
+                continue;
             }
 
-            closedir($handle);
+            foreach ($helper->setTwigFilters() as [$nombre, $funcion]) {
+                $twig->addFilter(new TwigFilter($nombre, $funcion));
+            }
         }
     }
 
     private function setFunctionTwig(Environment $twig): void
     {
-        $rutaCarpeta = __DIR__ . '/helpers';
-
-        if ($handle = opendir($rutaCarpeta)) {
-            while (false !== ($entry = readdir($handle))) {
-                if ($entry === '.' || $entry === '..') {
-                    continue;
-                }
-
-                $rutaArchivo = $rutaCarpeta . '/' . $entry;
-                if (is_file($rutaArchivo) && pathinfo($rutaArchivo, PATHINFO_EXTENSION) === 'php') {
-                    $nombreClase = pathinfo($rutaArchivo, PATHINFO_FILENAME);
-                    $class = 'VersaWYS\\kernel\\helpers\\' . $nombreClase;
-                    $class = str_replace('.php', '', $class);
-
-                    $classInstancia = new $class();
-                    if (method_exists($classInstancia, 'setTwigFunctions')) {
-                        $functions = $classInstancia->setTwigFunctions();
-                        foreach ($functions as $function) {
-                            [$nombre, $funcion] = $function;
-                            $twig->addFunction(new TwigFunction($nombre, $funcion));
-                        }
-                    }
-                }
+        foreach (self::helperInstances() as $helper) {
+            if (!method_exists($helper, 'setTwigFunctions')) {
+                continue;
             }
 
-            closedir($handle);
+            foreach ($helper->setTwigFunctions() as [$nombre, $funcion]) {
+                $twig->addFunction(new TwigFunction($nombre, $funcion));
+            }
         }
+    }
+
+    /**
+     * Una instancia de cada clase de src/helpers.
+     *
+     * @return list<object>
+     */
+    private static function helperInstances(): array
+    {
+        $files = glob(__DIR__ . '/helpers/*.php');
+        $helpers = [];
+        foreach ($files === false ? [] : $files as $file) {
+            $class = 'versaWYS\\kernel\\helpers\\' . basename($file, '.php');
+            $helpers[] = new $class();
+        }
+
+        return $helpers;
     }
 
     private function catch(LoaderError|RuntimeError|SyntaxError $e): void

@@ -176,6 +176,7 @@ class Functions
             });
         </script>
         ";
+        // @mago-expect lint:no-debug-symbols
         var_dump($data); // deploy-check:ignore (este es el helper de depuración)
         echo '</pre>';
     }
@@ -233,7 +234,7 @@ class Functions
      */
     public static function e(mixed $val): bool
     {
-        return isset($val) && !empty($val) && $val !== '' && $val !== [] && $val !== null;
+        return (bool) $val;
     }
 
     public static function validarRut(string $rut): bool
@@ -481,9 +482,11 @@ class Functions
 
         $inner = '';
         foreach ($root->childNodes as $child) {
-            if ($child instanceof DOMElement) {
-                $inner .= (string) $doc->saveXML($child);
+            if (!$child instanceof DOMElement) {
+                continue;
             }
+
+            $inner .= (string) $doc->saveXML($child);
         }
 
         return $inner;
@@ -662,11 +665,11 @@ class Functions
             break;
         }
 
-        if (!$hasUserAgent && !empty($opts['user_agent'])) {
+        if (!$hasUserAgent && (string) ($opts['user_agent'] ?? '') !== '') {
             $finalHeaders[] = 'User-Agent: ' . $opts['user_agent'];
         }
 
-        if (!empty($opts['cookies'])) {
+        if ((string) ($opts['cookies'] ?? '') !== '') {
             $finalHeaders[] = 'Cookie: ' . $opts['cookies'];
         }
 
@@ -711,7 +714,7 @@ class Functions
         $rawResponse = curl_exec($ch);
         $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $headerSize = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        $curlErrNo = (int) curl_errno($ch);
+        $curlErrNo = curl_errno($ch);
         $curlError = curl_error($ch);
         $durationMs = (int) round((microtime(true) - $startedAt) * 1000);
 
@@ -728,7 +731,7 @@ class Functions
             $rawResponse = curl_exec($ch);
             $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $headerSize = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-            $curlErrNo = (int) curl_errno($ch);
+            $curlErrNo = curl_errno($ch);
             $curlError = curl_error($ch);
             $durationMs = (int) round((microtime(true) - $startedAt) * 1000);
             $insecureTlsUsed = $curlErrNo === 0;
@@ -759,7 +762,7 @@ class Functions
         }
 
         $decodedBody = $responseBody;
-        if (empty($opts['raw_output']) && is_string($responseBody) && $responseBody !== '') {
+        if (!($opts['raw_output'] ?? false) && is_string($responseBody) && $responseBody !== '') {
             $decoded = json_decode($responseBody, true);
             if (json_last_error() === JSON_ERROR_NONE) {
                 $decodedBody = $decoded;
@@ -833,10 +836,11 @@ class Functions
             ];
         }
 
+        $mimeType = mime_content_type($filePath);
         $postData = array_merge($additionalData, [
             $fieldName => new CURLFile(
                 $filePath,
-                mime_content_type($filePath) ?: 'application/octet-stream',
+                $mimeType !== false ? $mimeType : 'application/octet-stream',
                 $clientFileName !== null && $clientFileName !== '' ? $clientFileName : basename($filePath),
             ),
         ]);

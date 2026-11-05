@@ -76,7 +76,7 @@ La CI hace lo mismo en PHP 8.3, 8.4 y 8.5. Si el cambio también necesita modifi
 composer fixer:all      # corrige y formatea todo, como en los proyectos (ver abajo)
 composer check          # formato (mago fmt) + mago lint + pruebas + phpstan: lo que corre la CI
 composer test           # PHPUnit: Router, Request, contenedor, validación, autorización, cola, caché, archivos, /up…
-composer mago           # linter mago (con mago-baseline.toml)
+composer mago           # linter mago, sin línea base
 composer bench          # línea base de rendimiento (ver BENCHMARK.md)
 composer mago:analyze   # analizador de mago, opcional (el del CI es phpstan)
 ```
@@ -85,7 +85,7 @@ composer mago:analyze   # analizador de mago, opcional (el del CI es phpstan)
 
 Para una biblioteca, rector no convierte métodos estáticos en métodos de instancia (`rector.php`): cambiaría cómo los usan las aplicaciones. `SensitiveParameterTest` vigila que el formato no deje un `#[SensitiveParameter]` sin su `use`, porque PHP lo ignoraría sin aviso.
 
-`mago lint` falla solo con hallazgos nuevos: los heredados están en `mago-baseline.toml`. Al corregir algunos, `composer mago:baseline` regenera la línea base para que no vuelvan.
+`mago lint` no tiene línea base: cualquier hallazgo hace fallar la CI. Una excepción a propósito se marca en la línea anterior con `// @mago-expect lint:<regla>` y, si no es obvio, el motivo; una regla que no aplica al kernel se apaga en `mago.toml` con su razón.
 
 La CI también ejecuta `composer audit` y la suite del esqueleto contra este kernel, que cubre por HTTP lo que necesita un servidor: sesión y JWT, CSRF, CSP, `QUERY`, `app:check:deploy --url`. Las pruebas nuevas que no necesitan un servidor van en este repositorio.
 

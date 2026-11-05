@@ -19,7 +19,7 @@ class CronManager
         }
 
         $files = glob(self::$path . '*.php');
-        if (empty($files)) {
+        if ($files === false || $files === []) {
             CLIErrorHandler::info('No hay tareas cron creadas.');
 
             return;

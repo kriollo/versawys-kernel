@@ -196,7 +196,7 @@ class CommandMakeCommand extends BaseCommand
      */
     private function generateCommandTemplate(string $className, string $commandName, string $description = ''): string
     {
-        $descriptionText = !empty($description) ? $description : 'Descripción del comando';
+        $descriptionText = $description !== '' ? $description : 'Descripción del comando';
 
         $date = date('Y-m-d H:i:s');
 

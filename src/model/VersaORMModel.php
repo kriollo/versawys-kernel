@@ -692,8 +692,11 @@ class VersaORMModel extends VersaModel
         return match ($operation) {
             'queryBuilder' => sprintf("Error al construir la consulta para la tabla '%s'", $table),
             'exec' => sprintf("Error al ejecutar consulta SQL en la tabla '%s'", $table),
-            default => sprintf("Error en operación de base de datos en la tabla '%s': ", $table)
-                . trim(substr($e->getMessage(), 0, 100)),
+            default => sprintf(
+                "Error en operación de base de datos en la tabla '%s': %s",
+                $table,
+                trim(substr($e->getMessage(), 0, 100)),
+            ),
         };
     }
 
@@ -726,7 +729,7 @@ class VersaORMModel extends VersaModel
         return match ($operation) {
             'queryBuilder' => 'Error al inicializar QueryBuilder en ' . $modelClass,
             'exec' => 'Error al ejecutar consulta en ' . $modelClass,
-            default => sprintf('Error interno en %s: ', $modelClass) . trim(substr($e->getMessage(), 0, 80)),
+            default => sprintf('Error interno en %s: %s', $modelClass, trim(substr($e->getMessage(), 0, 80))),
         };
     }
 

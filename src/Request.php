@@ -17,7 +17,7 @@ class Request
 
     protected mixed $url;
 
-    protected array $params;
+    protected array $params = [];
 
     protected array $files;
 
@@ -43,7 +43,6 @@ class Request
             $this->contentType = $_SERVER['CONTENT_TYPE'] ?? '';
             $this->method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
             $this->url = $_SERVER['REQUEST_URI'] ?? '/';
-            $this->params = $_REQUEST;
             $this->files = $_FILES;
             $this->ip = self::clientIp();
             $this->accept = $_SERVER['HTTP_ACCEPT'] ?? '*/*';
@@ -259,8 +258,10 @@ class Request
             if (isset($currentFile['tmp_name']) && $currentFile['tmp_name'] !== '') {
                 try {
                     $files[] = new File($currentFile);
+
+                    // @mago-expect lint:no-empty-catch-clause
                 } catch (Exception) {
-                    // Registrar el error o manejarlo, opcionalmente continuar con otros archivos
+                    // Un archivo inválido se descarta y se siguen procesando los demás
                 }
             }
         }
@@ -365,10 +366,12 @@ class Request
     {
         global $config;
 
-        $ipBin = @inet_pton($ip);
-        if ($ipBin === false) {
+        // inet_pton() avisa con una dirección inválida: se valida antes
+        if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
             return false;
         }
+
+        $ipBin = (string) inet_pton($ip);
 
         foreach ((array) ($config['trusted_proxies'] ?? []) as $range) {
             $parsed = self::parseProxyRange((string) $range);
@@ -405,10 +408,11 @@ class Request
     public static function parseProxyRange(string $range): ?array
     {
         $parts = explode('/', trim($range), 2);
-        $subnetBin = @inet_pton($parts[0]);
-        if ($subnetBin === false) {
+        if (filter_var($parts[0], FILTER_VALIDATE_IP) === false) {
             return null;
         }
+
+        $subnetBin = (string) inet_pton($parts[0]);
 
         $maxBits = strlen($subnetBin) * 8;
         $prefix = $parts[1] ?? (string) $maxBits;

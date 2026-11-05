@@ -119,13 +119,13 @@ class ServerManager
     private static function getPowerShellExecutable(): ?string
     {
         // Probar PowerShell 7 (pwsh)
-        $testPwsh = @shell_exec('pwsh -NoProfile -Command "Write-Output test" 2>nul');
+        $testPwsh = shell_exec('pwsh -NoProfile -Command "Write-Output test" 2>nul');
         if ($testPwsh !== null && str_contains(trim($testPwsh), 'test')) {
             return 'pwsh';
         }
 
         // Probar Windows PowerShell (powershell)
-        $testPs = @shell_exec('powershell -NoProfile -Command "Write-Output test" 2>nul');
+        $testPs = shell_exec('powershell -NoProfile -Command "Write-Output test" 2>nul');
         if ($testPs !== null && str_contains(trim($testPs), 'test')) {
             return 'powershell';
         }
@@ -141,7 +141,7 @@ class ServerManager
         if (PHP_OS_FAMILY === 'Windows') {
             // Usar netstat con ruta completa para evitar dependencias de PATH o shell
             $command = 'C:\\Windows\\System32\\netstat.exe -ano';
-            $output = @shell_exec($command);
+            $output = shell_exec($command);
 
             if ($output === null || trim($output) === '') {
                 // Fallback: usar socket
@@ -168,7 +168,7 @@ class ServerManager
 
         // Para Linux/Mac
         $command = "netstat -tuln 2>/dev/null | grep :{$port} || ss -tuln 2>/dev/null | grep :{$port}";
-        $output = @shell_exec($command);
+        $output = shell_exec($command);
 
         if ($output === null) {
             return self::checkPortWithSocket($port);
@@ -182,11 +182,13 @@ class ServerManager
      */
     private static function checkPortWithSocket(int $port): bool
     {
+        // @mago-expect lint:no-error-control-operator
         $socket = @socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
         if ($socket === false) {
             return true; // Si no podemos crear socket, asumimos disponible
         }
 
+        // @mago-expect lint:no-error-control-operator
         $result = @socket_bind($socket, '127.0.0.1', $port);
         socket_close($socket);
 
@@ -221,7 +223,7 @@ class ServerManager
 
         // En Windows - usar netstat primero (siempre disponible)
         $command = 'C:\\Windows\\System32\\netstat.exe -ano';
-        $output = @shell_exec($command);
+        $output = shell_exec($command);
 
         if ($output === null || trim($output) === '') {
             return null;
@@ -248,7 +250,7 @@ class ServerManager
                 $psExe = self::getPowerShellExecutable();
                 if ($psExe !== null) {
                     $psCommand = "{$psExe} -NoProfile -Command \"(Get-Process -Id {$pid} -ErrorAction SilentlyContinue).ProcessName\"";
-                    $psOutput = @shell_exec($psCommand);
+                    $psOutput = shell_exec($psCommand);
                     if ($psOutput !== null && trim($psOutput) !== '') {
                         $processName = trim($psOutput);
                     }
@@ -257,7 +259,7 @@ class ServerManager
                 // Fallback a tasklist si PowerShell no funcionó
                 if ($processName === null) {
                     $tasklistCommand = "C:\\Windows\\System32\\tasklist.exe /FI \"PID eq {$pid}\" /NH /FO CSV";
-                    $tasklistOutput = @shell_exec($tasklistCommand);
+                    $tasklistOutput = shell_exec($tasklistCommand);
 
                     if ($tasklistOutput !== null && trim($tasklistOutput) !== '') {
                         if (preg_match('/"([^"]+)"/', $tasklistOutput, $matches)) {

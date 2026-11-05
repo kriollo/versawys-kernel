@@ -10,8 +10,6 @@ use VersaORM\VersaORMException;
 use versaWYS\kernel\model\OrmFactory;
 use versaWYS\kernel\model\VersaORMModel;
 
-// TODO: validar si el modo debug está activo y preguntar si está seguro
-
 class MigrationManager extends VersaORMModel
 {
     protected string $table = 'versa_migrations';

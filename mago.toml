@@ -35,6 +35,8 @@ no-else-clause = { enabled = false }
 no-isset = { enabled = false }
 # Session endurece la cookie con ini_set() a propósito (no depende del php.ini del servidor)
 no-ini-set = { enabled = false }
+# En español "Todo"/"Todos" aparecen en cualquier comentario y la regla los toma por TODO
+tagged-todo = { enabled = false }
 # Las pruebas usan self::assert…()
 assertion-style = { style = "self" }
 

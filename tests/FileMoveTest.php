@@ -42,7 +42,8 @@ final class FileMoveTest extends TestCase
 
         self::assertTrue($file->moveToOriginalName($this->dir . '/nueva/sub'));
 
-        $guardados = glob($this->dir . '/nueva/sub/*') ?: [];
+        $guardados = glob($this->dir . '/nueva/sub/*');
+        self::assertIsArray($guardados);
         self::assertCount(1, $guardados);
         self::assertSame('contenido', file_get_contents($guardados[0]));
         self::assertDoesNotMatchRegularExpression('/[\s()]/', basename($guardados[0]));

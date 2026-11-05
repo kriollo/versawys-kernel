@@ -814,9 +814,11 @@ class CheckDeployCommand extends BaseCommand
      */
     private function checkExposure(): void
     {
-        $base = $this->url !== ''
-            ? $this->url
-            : ($this->production ? (string) ($this->projectConfig()['build']['base_url'] ?? '') : '');
+        $base = match (true) {
+            $this->url !== '' => $this->url,
+            $this->production => (string) ($this->projectConfig()['build']['base_url'] ?? ''),
+            default => '',
+        };
         $base = rtrim($base, '/');
         if ($base === '') {
             if ($this->production) {
@@ -861,6 +863,7 @@ class CheckDeployCommand extends BaseCommand
         ]]);
         foreach ($paths as $path) {
             // Basta un byte: un 200 vacío (algunos kernels antiguos lo daban para archivos inexistentes) no expone nada
+            // @mago-expect lint:no-error-control-operator
             $body = @file_get_contents($base . $path, false, $context, 0, 1);
             $status = $http_response_header[0] ?? '';
             if ($status === '') {
@@ -896,6 +899,7 @@ class CheckDeployCommand extends BaseCommand
             // /up solo da el detalle con esta firma, que se calcula con session.key de config.json
             'header' => 'X-Versawys-Health: ' . Router::healthToken(),
         ]]);
+        // @mago-expect lint:no-error-control-operator
         $health = json_decode((string) @file_get_contents($base . '/up', false, $context), true);
         if (!is_array($health) || !array_key_exists('opcache', $health)) {
             $this->add(
@@ -1012,6 +1016,14 @@ class CheckDeployCommand extends BaseCommand
             );
         }
 
+        if (!self::autoloaderOptimized($this->root . '/versaWYS/vendor')) {
+            $this->add(
+                'warning',
+                'El autoloader de Composer no está optimizado: cada clase se busca en disco en cada petición.',
+                hint: 'composer install --no-dev --optimize-autoloader (o composer dump-autoload -o)',
+            );
+        }
+
         // Instalación y base de datos
         if (is_file($this->root . '/' . ConfigManager::dir() . '/install.token')) {
             $this->add(
@@ -1064,6 +1076,22 @@ class CheckDeployCommand extends BaseCommand
     // =====================================================================
     // Utilidades
     // =====================================================================
+
+    /**
+     * ¿Generó Composer el mapa de clases (--optimize-autoloader)? Sin él, cada clase se busca recorriendo
+     * las carpetas PSR-4. Sin vendor/ no hay nada que revisar: eso ya lo informa otra revisión.
+     */
+    public static function autoloaderOptimized(string $vendorDir): bool
+    {
+        $classmap = $vendorDir . '/composer/autoload_classmap.php';
+        if (!is_file($classmap)) {
+            return true;
+        }
+
+        $map = require $classmap;
+
+        return is_array($map) && isset($map[Router::class]);
+    }
 
     private function add(
         string $level,

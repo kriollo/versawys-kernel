@@ -12,10 +12,14 @@ final class LogTest extends TestCase
 {
     public function testSecretsNeverReachTheLogAtAnyDepth(): void
     {
+        // Datos sensibles de mentira: es lo que redact() debe ocultar
         $context = Loggin::redact([
             'email' => 'ana@ejemplo.cl',
+            // @mago-expect lint:no-literal-password
             'password' => 'Clave#2026',
+            // @mago-expect lint:no-literal-password
             'params' => ['_csrf_token' => 'abc', 'nombre' => 'Ana', 'headers' => ['Authorization' => 'Bearer x']],
+            // @mago-expect lint:no-literal-password
             'api_key' => 'k',
         ]);
 

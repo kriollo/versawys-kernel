@@ -88,13 +88,13 @@ class MailSendCommand extends BaseCommand
             'to_name' => $to['name'] ?? '',
             'subject' => $subject,
             'type' => $type,
-            'template' => $template ?: '(sin template)',
+            'template' => $template !== '' ? $template : '(sin template)',
             'data_keys' => array_keys($data),
             'images_count' => count($imagesRaw),
         ]);
 
         // ── 2. Validar campos requeridos ─────────────────────────────────────
-        if (!is_array($to) || empty($to['email'])) {
+        if (!is_array($to) || !is_string($to['email'] ?? null) || $to['email'] === '') {
             Loggin::error('Payload sin to.email', self::LOG_MODULE, ['payload_keys' => array_keys($payload)]);
             $this->error('Campo requerido faltante: to.email');
 
@@ -168,7 +168,7 @@ class MailSendCommand extends BaseCommand
             'to' => $to['email'],
             'subject' => $subject,
             'type' => $type,
-            'template' => $template ?: '(html/text directo)',
+            'template' => $template !== '' ? $template : '(html/text directo)',
             'images_count' => count($imagenesEmbed),
         ]);
 

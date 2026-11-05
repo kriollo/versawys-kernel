@@ -35,10 +35,13 @@ final class SchemaCacheTest extends TestCase
         VersaORM::onQuery(null);
         PdoConnection::clearPool();
         $config = $this->originalConfig;
-        foreach (glob($this->dir . '/{,cache/}*', GLOB_BRACE) ?: [] as $file) {
-            if (is_file($file)) {
-                unlink($file);
+        $files = glob($this->dir . '/{,cache/}*', GLOB_BRACE);
+        foreach ($files === false ? [] : $files as $file) {
+            if (!is_file($file)) {
+                continue;
             }
+
+            unlink($file);
         }
 
         @rmdir($this->dir . '/cache'); // @mago-expect lint:no-error-control-operator
@@ -68,7 +71,7 @@ final class SchemaCacheTest extends TestCase
         $orm->exec('CREATE TABLE productos (id INTEGER PRIMARY KEY)');
         $orm->schema('columns', 'productos');
 
-        self::assertSame([], glob($this->dir . '/cache/*.json') ?: []);
+        self::assertSame([], glob($this->dir . '/cache/*.json'));
     }
 
     /** Una petición nueva: otra conexión, sin la memoria de la anterior */

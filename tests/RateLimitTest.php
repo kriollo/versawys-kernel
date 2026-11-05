@@ -29,11 +29,12 @@ final class RateLimitTest extends TestCase
         global $config;
 
         $config = $this->originalConfig;
-        foreach (glob($this->dir . '*') ?: [] as $file) {
+        $files = glob($this->dir . '*');
+        foreach ($files === false ? [] : $files as $file) {
             unlink($file);
         }
 
-        @rmdir($this->dir);
+        @rmdir($this->dir); // @mago-expect lint:no-error-control-operator
     }
 
     public function testItBlocksWithA429AfterTheLimit(): void
@@ -57,7 +58,9 @@ final class RateLimitTest extends TestCase
         }
 
         // La ventana de este contador empezó hace más de 60 s
-        foreach (glob($this->dir . '*.json') ?: [] as $file) {
+        $files = glob($this->dir . '*.json');
+        self::assertIsArray($files);
+        foreach ($files as $file) {
             file_put_contents($file, json_encode(['count' => 99, 'window_start' => time() - 61]));
         }
 
@@ -71,7 +74,6 @@ final class RateLimitTest extends TestCase
         // Un ataque repartido entre IPs contra el mismo correo: se cuenta también por cuenta
         $attempt = static function (string $ip, string $email): array|true {
             $_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/admin/login', 'REMOTE_ADDR' => $ip];
-            $_REQUEST = ['email' => $email];
             $GLOBALS['request'] = new Request();
             $GLOBALS['request']->setParam('email', $email);
 
@@ -116,7 +118,8 @@ final class RateLimitTest extends TestCase
 
         unlink($script);
 
-        $files = glob($this->dir . '*.json') ?: [];
+        $files = glob($this->dir . '*.json');
+        self::assertIsArray($files);
         self::assertCount(1, $files);
         self::assertSame(200, json_decode((string) file_get_contents($files[0]), true)['count']);
     }
@@ -139,9 +142,9 @@ final class RateLimitTest extends TestCase
             unlink($blocker);
         }
 
-        $logs =
-            (string) file_get_contents($log)
-            . implode('', array_map(file_get_contents(...), glob(sys_get_temp_dir() . '/versawys-test-logs/*') ?: []));
+        $logFiles = glob(sys_get_temp_dir() . '/versawys-test-logs/*');
+        self::assertIsArray($logFiles);
+        $logs = (string) file_get_contents($log) . implode('', array_map(file_get_contents(...), $logFiles));
         unlink($log);
         self::assertStringContainsString('Rate limiting sin almacenamiento escribible', $logs);
     }
