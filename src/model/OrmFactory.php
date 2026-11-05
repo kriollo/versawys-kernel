@@ -38,6 +38,9 @@ class OrmFactory
             'username' => $dbConfig['username'],
             'password' => $dbConfig['password'],
             'sslmode' => $dbConfig['sslmode'] ?? null,
+            // Zona de la sesión de BD (NOW() y similares coinciden con PHP). VersaORM la fija al abrir la
+            // conexión: una petición que no consulta la BD (/up, un redirect, un estático) no se conecta
+            'session_timezone' => (string) ($appConfig['build']['timezone'] ?? ''),
             // Extras con valores por defecto
             'debug' => $voConfig['debug'] ?? false,
             'cache' => $voConfig['cache'] ?? false,
@@ -51,119 +54,116 @@ class OrmFactory
             $orm = new VersaORM($config);
             $orm->setTimezone($appConfig['build']['timezone']);
 
-            // Alinear la zona horaria de la sesión de BD para que NOW() y similares coincidan con PHP.
-            // MySQL recibe el offset (+HH:MM) porque los nombres de zona requieren tablas tz cargadas.
-            if (
-                str_contains(strtolower((string) $config['driver']), 'pg')
-                || str_contains(strtolower((string) $config['driver']), 'postgres')
-            ) {
-                $orm->exec("SET TIME ZONE '{$appConfig['build']['timezone']}'");
-            } elseif (
-                str_contains(strtolower((string) $config['driver']), 'mysql')
-                || str_contains(strtolower((string) $config['driver']), 'maria')
-            ) {
-                $orm->exec("SET time_zone = '" . date('P') . "'");
-            }
-
             return $orm;
         } catch (Throwable $throwable) {
-            $errorMsg = $throwable->getMessage();
-            $dbInfo = [
-                'driver' => $config['driver'] ?? 'unknown',
-                'host' => $config['host'] ?? 'unknown',
-                'port' => $config['port'] ?? 'unknown',
-                'database' => $config['database'] ?? 'unknown',
-            ];
+            throw self::connectionError($throwable, $config);
+        }
+    }
 
-            // Detectar tipos específicos de errores
-            if (
-                str_contains($errorMsg, 'no existe la base de datos')
-                || str_contains($errorMsg, 'database') && str_contains($errorMsg, 'does not exist')
-            ) {
-                throw new RuntimeException(
-                    sprintf(
-                        "❌ ERROR DE BASE DE DATOS: La base de datos '%s' no existe.\n\n"
-                        . "📊 Configuración:\n"
-                        . "   • Driver: %s\n"
-                        . "   • Host: %s\n"
-                        . "   • Puerto: %s\n"
-                        . "   • Base de datos: %s\n\n"
-                        . "💡 Soluciones:\n"
-                        . "   1. Crear la base de datos: CREATE DATABASE %s;\n"
-                        . "   2. Verificar el nombre en config.json\n"
-                        . '   3. Ejecutar: php versaCLI migrate:up (después de crear la BD)',
-                        $dbInfo['database'],
-                        $dbInfo['driver'],
-                        $dbInfo['host'],
-                        $dbInfo['port'],
-                        $dbInfo['database'],
-                        $dbInfo['database'],
-                    ),
-                    0,
-                    $throwable,
-                );
-            }
+    /**
+     * El error de conexión con la causa probable y qué revisar. VersaORM conecta en la primera consulta,
+     * así que también lo usa ErrorHandler cuando la conexión falla ahí.
+     *
+     * @param array<string, mixed> $config driver, host, port, database y username
+     */
+    public static function connectionError(Throwable $throwable, array $config): RuntimeException
+    {
+        $errorMsg = $throwable->getMessage();
+        $dbInfo = [
+            'driver' => $config['driver'] ?? 'unknown',
+            'host' => $config['host'] ?? 'unknown',
+            'port' => $config['port'] ?? 'unknown',
+            'database' => $config['database'] ?? 'unknown',
+        ];
 
-            if (str_contains($errorMsg, 'Connection refused') || str_contains($errorMsg, 'could not connect')) {
-                throw new RuntimeException(
-                    sprintf(
-                        "❌ ERROR DE CONEXIÓN: No se pudo conectar al servidor de base de datos.\n\n"
-                        . "📊 Configuración:\n"
-                        . "   • Driver: %s\n"
-                        . "   • Host: %s\n"
-                        . "   • Puerto: %s\n\n"
-                        . "💡 Soluciones:\n"
-                        . "   1. Verificar que el servidor %s esté ejecutándose\n"
-                        . "   2. Revisar host y puerto en config.json\n"
-                        . '   3. Verificar reglas de firewall',
-                        $dbInfo['driver'],
-                        $dbInfo['host'],
-                        $dbInfo['port'],
-                        strtoupper($dbInfo['driver']),
-                    ),
-                    0,
-                    $throwable,
-                );
-            }
-
-            if (str_contains($errorMsg, 'Access denied') || str_contains($errorMsg, 'authentication failed')) {
-                throw new RuntimeException(
-                    sprintf(
-                        "❌ ERROR DE AUTENTICACIÓN: Credenciales de base de datos incorrectas.\n\n"
-                        . "📊 Configuración:\n"
-                        . "   • Usuario: %s\n"
-                        . "   • Base de datos: %s\n\n"
-                        . "💡 Soluciones:\n"
-                        . "   1. Verificar usuario y contraseña en config.json\n"
-                        . '   2. Verificar permisos del usuario en la base de datos',
-                        $config['username'] ?? 'unknown',
-                        $dbInfo['database'],
-                    ),
-                    0,
-                    $throwable,
-                );
-            }
-
-            // Error genérico con información útil
-            throw new RuntimeException(
+        // Detectar tipos específicos de errores
+        if (
+            str_contains($errorMsg, 'no existe la base de datos')
+            || str_contains($errorMsg, 'database') && str_contains($errorMsg, 'does not exist')
+        ) {
+            return new RuntimeException(
                 sprintf(
-                    "❌ ERROR DE BASE DE DATOS: %s\n\n"
+                    "❌ ERROR DE BASE DE DATOS: La base de datos '%s' no existe.\n\n"
                     . "📊 Configuración:\n"
                     . "   • Driver: %s\n"
                     . "   • Host: %s\n"
                     . "   • Puerto: %s\n"
                     . "   • Base de datos: %s\n\n"
-                    . '💡 Revisar configuración en: config.json',
-                    $errorMsg,
+                    . "💡 Soluciones:\n"
+                    . "   1. Crear la base de datos: CREATE DATABASE %s;\n"
+                    . "   2. Verificar el nombre en config.json\n"
+                    . '   3. Ejecutar: php versaCLI migrate:up (después de crear la BD)',
+                    $dbInfo['database'],
                     $dbInfo['driver'],
                     $dbInfo['host'],
                     $dbInfo['port'],
+                    $dbInfo['database'],
                     $dbInfo['database'],
                 ),
                 0,
                 $throwable,
             );
         }
+
+        if (str_contains($errorMsg, 'Connection refused') || str_contains($errorMsg, 'could not connect')) {
+            return new RuntimeException(
+                sprintf(
+                    "❌ ERROR DE CONEXIÓN: No se pudo conectar al servidor de base de datos.\n\n"
+                    . "📊 Configuración:\n"
+                    . "   • Driver: %s\n"
+                    . "   • Host: %s\n"
+                    . "   • Puerto: %s\n\n"
+                    . "💡 Soluciones:\n"
+                    . "   1. Verificar que el servidor %s esté ejecutándose\n"
+                    . "   2. Revisar host y puerto en config.json\n"
+                    . '   3. Verificar reglas de firewall',
+                    $dbInfo['driver'],
+                    $dbInfo['host'],
+                    $dbInfo['port'],
+                    strtoupper($dbInfo['driver']),
+                ),
+                0,
+                $throwable,
+            );
+        }
+
+        if (str_contains($errorMsg, 'Access denied') || str_contains($errorMsg, 'authentication failed')) {
+            return new RuntimeException(
+                sprintf(
+                    "❌ ERROR DE AUTENTICACIÓN: Credenciales de base de datos incorrectas.\n\n"
+                    . "📊 Configuración:\n"
+                    . "   • Usuario: %s\n"
+                    . "   • Base de datos: %s\n\n"
+                    . "💡 Soluciones:\n"
+                    . "   1. Verificar usuario y contraseña en config.json\n"
+                    . '   2. Verificar permisos del usuario en la base de datos',
+                    $config['username'] ?? 'unknown',
+                    $dbInfo['database'],
+                ),
+                0,
+                $throwable,
+            );
+        }
+
+        // Error genérico con información útil
+        return new RuntimeException(
+            sprintf(
+                "❌ ERROR DE BASE DE DATOS: %s\n\n"
+                . "📊 Configuración:\n"
+                . "   • Driver: %s\n"
+                . "   • Host: %s\n"
+                . "   • Puerto: %s\n"
+                . "   • Base de datos: %s\n\n"
+                . '💡 Revisar configuración en: config.json',
+                $errorMsg,
+                $dbInfo['driver'],
+                $dbInfo['host'],
+                $dbInfo['port'],
+                $dbInfo['database'],
+            ),
+            0,
+            $throwable,
+        );
     }
 
     /**

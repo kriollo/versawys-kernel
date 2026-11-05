@@ -6,6 +6,7 @@ namespace versaWYS\kernel;
 
 use Throwable;
 use VersaORM\VersaORMException;
+use versaWYS\kernel\model\OrmFactory;
 
 /**
  * Manejador global de errores mejorado para versaWYS
@@ -119,6 +120,15 @@ class ErrorHandler
         if ($e instanceof VersaORMException) {
             $errorData['sql_error'] = $e->getErrorDetails() ?? 'Unknown';
             $errorData['type'] = 'Database Error (VersaORM)';
+
+            // La conexión se abre en la primera consulta: su error llega aquí y no al arrancar
+            if (self::isConnectionError($e)) {
+                global $config;
+                $errorData['message'] = OrmFactory::connectionError(
+                    $e,
+                    (array) ($config['database'] ?? []),
+                )->getMessage();
+            }
         }
 
         $errorData['full_trace'] = $e->getTraceAsString();
@@ -217,7 +227,7 @@ class ErrorHandler
             . '</style></head><body><header><small>'
             . $h($e::class)
             . ' · modo debug</small><h1>'
-            . $h($e->getMessage())
+            . $h($errorData['message'] ?? $e->getMessage())
             . '</h1></header><main>'
             . $sql
             . $html
@@ -395,6 +405,18 @@ class ErrorHandler
         }
 
         return $userTrace;
+    }
+
+    /** Falló la conexión a la BD: VersaORM la envuelve en el error de la consulta (getPrevious) */
+    public static function isConnectionError(Throwable $e): bool
+    {
+        for ($current = $e; $current !== null; $current = $current->getPrevious()) {
+            if ($current instanceof VersaORMException && $current->getErrorCode() === 'PDO_CONNECTION_FAILED') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
