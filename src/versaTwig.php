@@ -167,9 +167,15 @@ class versaTwig extends Environment
      */
     public function init(array $config): Environment
     {
-        $loader = new FilesystemLoader($config['twig']['templates_dir']);
+        $templates = (string) $config['twig']['templates_dir'];
+        $loader = new FilesystemLoader($templates);
+        // La caché compilada se comparte entre releases (shared/), y Twig la nombra solo por la
+        // plantilla: una petición que aún atiende el release anterior la llenaría con su versión
+        // vieja, y en producción Twig no la vuelve a revisar. Una subcarpeta por release lo evita.
+        $path = realpath($templates);
+        $release = substr(md5(false === $path ? $templates : $path), 0, 12);
         $twigInit = new Environment($loader, [
-            'cache' => $config['twig']['cache'] ? $config['twig']['compiled_dir'] : false,
+            'cache' => $config['twig']['cache'] ? rtrim((string) $config['twig']['compiled_dir'], '/') . '/' . $release : false,
             'debug' => $config['build']['debug'],
             'charset' => $config['build']['charset'],
             // El escape HTML queda siempre activo (valor por defecto de Twig): no se apaga por configuración.

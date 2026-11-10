@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.13.7] - 2026-11-10
+
+### Corregido
+- **Un deploy podía dejar en línea una plantilla Twig vieja.** Con la caché compartida entre releases (versaDeploy: `versaWYS/cache` en `shared/`), Twig nombra cada plantilla compilada por su ruta relativa a la carpeta del release, que es la misma en todos. `app:deploy:finish` limpia la caché, pero si en ese momento una petición todavía la atendía el release anterior, volvía a compilar la versión vieja con el mismo nombre; y en producción Twig no revisa si la plantilla cambió, así que quedaba hasta el próximo deploy. Ahora cada release compila en su propia subcarpeta de `twig.compiled_dir` (un hash de la ruta real de `templates_dir`), y `app:deploy:finish` sigue limpiándolas todas. Prueba: `TwigTest`.
+
 ## [3.13.6] - 2026-11-09
 
 ### Corregido

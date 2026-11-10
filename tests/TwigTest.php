@@ -133,6 +133,42 @@ final class TwigTest extends TestCase
         self::assertSame('Dos|X!', $twig->renderDirect('globales'));
     }
 
+    public function testEachReleaseCompilesItsOwnTemplatesInTheSharedCache(): void
+    {
+        // dos releases con la misma plantilla y distinto texto, y una caché compartida
+        // (como en el servidor: cada petición corre dentro de su release, con rutas relativas)
+        global $config;
+        $cwd = (string) getcwd();
+        foreach (['viejo', 'nuevo'] as $release) {
+            mkdir($this->dir . '/' . $release . '/tpl', 0o777, true);
+            file_put_contents($this->dir . '/' . $release . '/tpl/login.twig', '<h2>' . $release . '</h2>');
+            chdir($this->dir . '/' . $release);
+            $config = [
+                'twig' => [
+                    'cache' => true,
+                    'compiled_dir' => $this->dir . '/cache',
+                    'templates_dir' => './tpl',
+                    'strict_variables' => false,
+                ],
+                'build' => ['debug' => false, 'charset' => 'utf-8'],
+                'csp' => ['nonce' => false],
+            ];
+            $twig = new versaTwig($config);
+            // compila sin cargar la clase: en el servidor cada petición es un proceso nuevo
+            $env = (new ReflectionMethod($twig, 'environment'))->invoke($twig);
+            $source = $env->getLoader()->getSourceContext('login.twig');
+            $env->getCache(false)->write(
+                $env->getCache(false)->generateKey('login.twig', $env->getTemplateClass('login.twig')),
+                $env->compileSource($source),
+            );
+            chdir($cwd);
+        }
+
+        $compiled = array_map('file_get_contents', (array) glob($this->dir . '/cache/{,*/}*/*.php', GLOB_BRACE));
+        self::assertCount(2, $compiled);
+        self::assertCount(1, array_filter($compiled, static fn(string $php): bool => str_contains($php, '<h2>nuevo</h2>')));
+    }
+
     private function twig(bool $nonce): versaTwig
     {
         global $config;
