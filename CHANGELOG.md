@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.13.6] - 2026-11-09
+
+### Corregido
+- **`app:check:deploy --production` fallaba en el primer despliegue** con «Sin permiso de escritura: versaWYS/cache/twig/.cache». Con la caché compartida entre releases (versaDeploy), `versaWYS/cache` existe pero vacía, y la revisión miraba solo la carpeta de arriba de la que falta, que tampoco existía. Ahora sube hasta la primera carpeta que existe y revisa esa: Twig crea las intermedias al renderizar. `app:deploy:finish` deja de fallar en un servidor nuevo. Prueba: `WritableCheckTest`.
+
 ## [3.13.5] - 2026-11-05
 
 ### Rendimiento

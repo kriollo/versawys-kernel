@@ -935,6 +935,20 @@ class CheckDeployCommand extends BaseCommand
         }
     }
 
+    /**
+     * Si la aplicación puede escribir en el directorio: uno que aún no existe se crea con sus padres
+     * (Twig crea versaWYS/cache/twig/.cache en el primer render), así que basta que el primero que
+     * existe sea escribible.
+     */
+    public static function canWrite(string $path): bool
+    {
+        while (!is_dir($path) && dirname($path) !== $path) {
+            $path = dirname($path);
+        }
+
+        return is_dir($path) && is_writable($path);
+    }
+
     private function checkServer(): void
     {
         if (!$this->production) {
@@ -981,9 +995,7 @@ class CheckDeployCommand extends BaseCommand
         ];
         foreach (array_unique($writable) as $directory) {
             $path = $this->root . '/' . trim((string) $directory, './');
-            // Un directorio que aún no existe se crea solo si su padre es escribible
-            $target = is_dir($path) ? $path : dirname($path);
-            if (!is_dir($target) || !is_writable($target)) {
+            if (!self::canWrite($path)) {
                 $this->add(
                     'critical',
                     'Sin permiso de escritura: ' . $this->relative($path),
