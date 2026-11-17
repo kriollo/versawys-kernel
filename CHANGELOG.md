@@ -2,6 +2,20 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.14.0] - 2026-11-16
+
+### Añadido
+- **`php versaCLI serve` atiende varias peticiones a la vez.** El servidor integrado de PHP atendía de a una: mientras un video se descargaba, todo lo demás (otro video, la música, una API) quedaba en fila, y un editor de video en el navegador se trababa al entrar cada clip. Ahora levanta varios procesos (`PHP_CLI_SERVER_WORKERS`): uno por núcleo, hasta 8; `--workers=N` elige la cantidad y un `PHP_CLI_SERVER_WORKERS` ya definido se respeta. En Windows, donde PHP no lo soporta, sigue con uno. Prueba: `DevServerTest`.
+
+### Corregido
+- **El servidor de desarrollo no servía audio ni video por rangos.** El servidor integrado de PHP ignora `Range` y responde siempre el archivo entero, así que el navegador no podía saltar a la mitad de un video o una canción (se quedaba cargando y el audio raspaba). `routerServe.php` sirve ahora `mp4`, `webm`, `mp3`, `wav`, `m4a` y `ogg` con `Accept-Ranges`: `206` con el trozo pedido (`inicio-fin`, `inicio-` o `-sufijo`), `416` si el rango no es válido. Prueba: `DevServerTest`.
+
+### Seguridad
+- **El servidor de desarrollo entregaba archivos de fuera del proyecto a través de un enlace simbólico** (el servidor integrado de PHP sigue los enlaces). Los medios se sirven solo si su ruta real queda dentro del proyecto; si no, `404`. Prueba: `DevServerTest`.
+
+### Cambiado
+- `src/versaTwig.php` y `tests/TwigTest.php` con el formato de mago (`composer check` fallaba en `mago fmt --dry-run` desde 3.13.7).
+
 ## [3.13.7] - 2026-11-10
 
 ### Corregido

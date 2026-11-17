@@ -7,6 +7,90 @@ declare(strict_types=1);
  * Este script maneja las reescrituras de URL y bloquea acceso a carpetas sensibles.
  */
 
+/** Medios que el servidor de desarrollo sirve con rangos (los navegadores piden trozos al saltar) */
+const VERSAWYS_MEDIA_TYPES = [
+    'mp4' => 'video/mp4',
+    'webm' => 'video/webm',
+    'mp3' => 'audio/mpeg',
+    'wav' => 'audio/wav',
+    'm4a' => 'audio/mp4',
+    'ogg' => 'audio/ogg',
+];
+
+/**
+ * Sirve un archivo de audio o video con soporte de un rango (Range: bytes=inicio-fin, inicio- o -sufijo).
+ * Solo archivos dentro del proyecto. Responde 206 con el trozo, 200 con el archivo entero o 416.
+ */
+function versawys_serve_media(string $projectRoot, string $uri, string $mime): void
+{
+    $root = realpath($projectRoot);
+    $path = realpath($projectRoot . ltrim($uri, '/'));
+    if ($root === false || $path === false || !str_starts_with($path, $root . DIRECTORY_SEPARATOR) || !is_file($path)) {
+        http_response_code(404);
+
+        return;
+    }
+
+    $size = (int) filesize($path);
+    $start = 0;
+    $end = $size - 1;
+    header('Accept-Ranges: bytes');
+    header('Content-Type: ' . $mime);
+
+    $range = (string) ($_SERVER['HTTP_RANGE'] ?? '');
+    if ($range !== '') {
+        if (preg_match('/^bytes=(\d*)-(\d*)$/', trim($range), $m) !== 1 || $m[1] === '' && $m[2] === '') {
+            http_response_code(416);
+            header("Content-Range: bytes */{$size}");
+
+            return;
+        }
+
+        if ($m[1] === '') {
+            // Sufijo: los últimos N bytes
+            $start = max(0, $size - (int) $m[2]);
+        } else {
+            $start = (int) $m[1];
+            $end = $m[2] === '' ? $size - 1 : min((int) $m[2], $size - 1);
+        }
+
+        if ($start > $end || $start >= $size) {
+            http_response_code(416);
+            header("Content-Range: bytes */{$size}");
+
+            return;
+        }
+
+        http_response_code(206);
+        header("Content-Range: bytes {$start}-{$end}/{$size}");
+    }
+
+    $length = $end - $start + 1;
+    header('Content-Length: ' . $length);
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'HEAD') {
+        return;
+    }
+
+    $fh = fopen($path, 'rb');
+    if ($fh === false) {
+        return;
+    }
+
+    fseek($fh, $start);
+    $pending = $length;
+    while ($pending > 0 && !feof($fh)) {
+        $chunk = fread($fh, min(1 << 16, $pending));
+        if ($chunk === false) {
+            break;
+        }
+
+        echo $chunk;
+        $pending -= strlen($chunk);
+    }
+
+    fclose($fh);
+}
+
 // Obtener la URI solicitada
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 
@@ -102,6 +186,14 @@ if ($uri !== '/' && file_exists($projectRoot . $uri)) {
     ];
 
     $extension = strtolower(pathinfo($uri, PATHINFO_EXTENSION));
+
+    // Audio y video con rangos (206): el servidor integrado de PHP los ignora y responde siempre el archivo
+    // entero, así el navegador no puede saltar a la mitad (un editor de video se queda cargando y el audio raspa)
+    if (isset(VERSAWYS_MEDIA_TYPES[$extension])) {
+        versawys_serve_media($projectRoot, $uri, VERSAWYS_MEDIA_TYPES[$extension]);
+
+        return true;
+    }
 
     if (in_array($extension, $allowedExtensions, true)) {
         // Dejar que PHP sirva el archivo

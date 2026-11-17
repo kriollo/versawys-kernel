@@ -7,18 +7,21 @@ namespace versaWYS\kernel\cli;
 class ServerManager
 {
     /**
-     * @param list<string> $params opciones --port=N y --host=H
+     * @param list<string> $params opciones --port=N, --host=H y --workers=N
      */
     public static function handleServe(bool $verbose = false, array $params = []): void
     {
-        // php versaCLI serve --port=8080 --host=0.0.0.0
+        // php versaCLI serve --port=8080 --host=0.0.0.0 --workers=4
         $port = 8000;
         $host = 'localhost';
+        $workers = null;
         foreach ($params as $param) {
             if (preg_match('/^--port=(\d{2,5})$/', $param, $m) === 1) {
                 $port = (int) $m[1];
             } elseif (preg_match('/^--host=([A-Za-z0-9.\-]+)$/', $param, $m) === 1) {
                 $host = $m[1];
+            } elseif (preg_match('/^--workers=(\d{1,2})$/', $param, $m) === 1) {
+                $workers = max(1, min(64, (int) $m[1]));
             }
         }
 
@@ -109,8 +112,40 @@ class ServerManager
             CLIErrorHandler::info('Router script: ' . $routerScript);
         }
 
+        // Varios procesos (PHP_CLI_SERVER_WORKERS): con uno solo, una descarga larga (un video que se está
+        // reproduciendo) deja en fila a todas las demás peticiones y el editor de video o la página se traban
+        $workers = self::serverWorkers($workers);
+        if ($workers > 1) {
+            putenv("PHP_CLI_SERVER_WORKERS={$workers}");
+            echo "⚡ {$workers} procesos atendiendo peticiones en paralelo (--workers=N para cambiarlo)\n\n";
+        }
+
         // Ejecutar el servidor
         passthru($command);
+    }
+
+    /**
+     * Procesos del servidor integrado: el pedido (--workers=N), el de PHP_CLI_SERVER_WORKERS si ya está definido,
+     * o uno por núcleo (máximo 8). En Windows PHP no lo soporta: siempre 1.
+     */
+    private static function serverWorkers(?int $pedido): int
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            return 1;
+        }
+
+        if ($pedido !== null) {
+            return $pedido;
+        }
+
+        $definido = (int) getenv('PHP_CLI_SERVER_WORKERS');
+        if ($definido > 0) {
+            return $definido;
+        }
+
+        $nucleos = (int) trim((string) shell_exec('nproc 2>/dev/null'));
+
+        return max(2, min(8, $nucleos > 0 ? $nucleos : 4));
     }
 
     /**

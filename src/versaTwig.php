@@ -175,7 +175,9 @@ class versaTwig extends Environment
         $path = realpath($templates);
         $release = substr(md5(false === $path ? $templates : $path), 0, 12);
         $twigInit = new Environment($loader, [
-            'cache' => $config['twig']['cache'] ? rtrim((string) $config['twig']['compiled_dir'], '/') . '/' . $release : false,
+            'cache' => $config['twig']['cache']
+                ? rtrim((string) $config['twig']['compiled_dir'], '/') . '/' . $release
+                : false,
             'debug' => $config['build']['debug'],
             'charset' => $config['build']['charset'],
             // El escape HTML queda siempre activo (valor por defecto de Twig): no se apaga por configuración.

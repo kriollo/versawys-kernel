@@ -166,7 +166,10 @@ final class TwigTest extends TestCase
 
         $compiled = array_map('file_get_contents', (array) glob($this->dir . '/cache/{,*/}*/*.php', GLOB_BRACE));
         self::assertCount(2, $compiled);
-        self::assertCount(1, array_filter($compiled, static fn(string $php): bool => str_contains($php, '<h2>nuevo</h2>')));
+        self::assertCount(1, array_filter($compiled, static fn(string $php): bool => str_contains(
+            $php,
+            '<h2>nuevo</h2>',
+        )));
     }
 
     private function twig(bool $nonce): versaTwig
