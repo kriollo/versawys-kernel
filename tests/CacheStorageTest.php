@@ -154,6 +154,49 @@ final class CacheStorageTest extends TestCase
         Storage::put($ruta, 'x');
     }
 
+    public function testCacheClearBorraSubcarpetasYRespetaElEstado(): void
+    {
+        global $config;
+
+        $root = $this->dir . '/app';
+        $files = [
+            'versaWYS/cache/profiler/a.json',
+            'versaWYS/cache/rate_limits/sub/r.json',
+            'app/templates/.cache/ab/c.php', // ruta de Twig cuando no hay config.json
+            'versaWYS/cache/commands.php',
+            'versaWYS/cache/jwt_revoked/token',
+            'versaWYS/cache/db_backups/respaldo.sql',
+            'versaWYS/cache/profiler/.gitkeep',
+        ];
+        foreach ($files as $file) {
+            if (!is_dir(dirname($root . '/' . $file))) {
+                mkdir(dirname($root . '/' . $file), 0o777, true);
+            }
+            file_put_contents($root . '/' . $file, 'x');
+        }
+
+        $config['profiler'] = ['dir' => 'versaWYS/cache/profiler'];
+        $cwd = (string) getcwd();
+        chdir($root);
+
+        try {
+            ob_start();
+            CacheManager::handleCacheCommands(['clear']);
+            ob_end_clean();
+        } finally {
+            chdir($cwd);
+        }
+
+        foreach (array_slice($files, 0, 4) as $file) {
+            self::assertFileDoesNotExist($root . '/' . $file);
+        }
+
+        self::assertDirectoryDoesNotExist($root . '/versaWYS/cache/rate_limits/sub');
+        foreach (array_slice($files, 4) as $file) {
+            self::assertFileExists($root . '/' . $file);
+        }
+    }
+
     /** La base 15 de Redis local, para no tocar datos de desarrollo; sin Redis, la prueba se omite */
     private function usarRedis(string $sessionKey): void
     {
@@ -183,46 +226,5 @@ final class CacheStorageTest extends TestCase
     private function redisKeys(): array
     {
         return RedisModel::scan('cache:*');
-    }
-
-    public function testCacheClearBorraSubcarpetasYRespetaElEstado(): void
-    {
-        global $config;
-
-        $root = $this->dir . '/app';
-        $files = [
-            'versaWYS/cache/profiler/a.json',
-            'versaWYS/cache/rate_limits/sub/r.json',
-            'app/templates/.cache/ab/c.php', // ruta de Twig cuando no hay config.json
-            'versaWYS/cache/commands.php',
-            'versaWYS/cache/jwt_revoked/token',
-            'versaWYS/cache/db_backups/respaldo.sql',
-            'versaWYS/cache/profiler/.gitkeep',
-        ];
-        foreach ($files as $file) {
-            is_dir(dirname($root . '/' . $file)) || mkdir(dirname($root . '/' . $file), 0o777, true);
-            file_put_contents($root . '/' . $file, 'x');
-        }
-
-        $config['profiler'] = ['dir' => 'versaWYS/cache/profiler'];
-        $cwd = (string) getcwd();
-        chdir($root);
-
-        try {
-            ob_start();
-            CacheManager::handleCacheCommands(['clear']);
-            ob_end_clean();
-        } finally {
-            chdir($cwd);
-        }
-
-        foreach (array_slice($files, 0, 4) as $file) {
-            self::assertFileDoesNotExist($root . '/' . $file);
-        }
-
-        self::assertDirectoryDoesNotExist($root . '/versaWYS/cache/rate_limits/sub');
-        foreach (array_slice($files, 4) as $file) {
-            self::assertFileExists($root . '/' . $file);
-        }
     }
 }

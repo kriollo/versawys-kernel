@@ -109,6 +109,7 @@ class SecurityUtils
 
         // Normalizar la URL (lógica original)
         $cleanUrl = trim($cleanUrl, '/');
+
         $path = parse_url($cleanUrl, PHP_URL_PATH);
         if (is_string($path) && $path !== '') {
             $cleanUrl = $path;

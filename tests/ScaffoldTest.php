@@ -40,10 +40,11 @@ final class ScaffoldTest extends TestCase
         }
 
         $read =
-            static fn(string $suffix): string => (string) file_get_contents((string) current(array_filter($files, static fn(string $f): bool => str_ends_with(
-                $f,
-                $suffix,
-            ))));
+            static fn(
+                string $suffix,
+            ): string => (string) file_get_contents((string) current(array_filter($files, static fn(
+                string $f,
+            ): bool => str_ends_with($f, $suffix))));
 
         // La tabla tiene la empresa y el modelo filtra por ella en cada consulta
         self::assertStringContainsString("create('ordenes_compra'", $read('_OrdenesCompra.php'));

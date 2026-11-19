@@ -39,11 +39,11 @@ final class OrmFactoryTest extends TestCase
         try {
             $orm->exec('SELECT 1');
             self::fail('La primera consulta debía intentar conectar');
-        } catch (VersaORMException $e) {
-            self::assertTrue(ErrorHandler::isConnectionError($e));
+        } catch (VersaORMException $versaormException) {
+            self::assertTrue(ErrorHandler::isConnectionError($versaormException));
             self::assertStringContainsString(
                 'ERROR DE CONEXIÓN',
-                OrmFactory::connectionError($e, $database)->getMessage(),
+                OrmFactory::connectionError($versaormException, $database)->getMessage(),
             );
         }
     }

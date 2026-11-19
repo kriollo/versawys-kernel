@@ -126,7 +126,7 @@ final class Container
         }
 
         $constructor = $reflection->getConstructor();
-        if ($constructor === null || $constructor->getNumberOfParameters() === 0) {
+        if (!$constructor instanceof ReflectionMethod || $constructor->getNumberOfParameters() === 0) {
             return new $class();
         }
 

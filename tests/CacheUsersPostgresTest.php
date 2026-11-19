@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\Tests;
 
+use Override;
 use PDO;
 
 /**
@@ -13,6 +14,7 @@ use PDO;
  */
 final class CacheUsersPostgresTest extends CacheUsersTest
 {
+    #[Override]
     protected function setUp(): void
     {
         if ((string) getenv('VERSA_TEST_PG') === '') {
@@ -22,6 +24,7 @@ final class CacheUsersPostgresTest extends CacheUsersTest
         parent::setUp();
     }
 
+    #[Override]
     protected function database(): array
     {
         [$host, $port, $database, $username, $password] = explode(':', (string) getenv('VERSA_TEST_PG'), 5)
@@ -41,6 +44,7 @@ final class CacheUsersPostgresTest extends CacheUsersTest
         ];
     }
 
+    #[Override]
     protected function connect(array $database): PDO
     {
         $pdo = new PDO(

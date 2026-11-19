@@ -81,6 +81,7 @@ final class TestDatabase
                 ['driver' => 'sqlite', 'database' => $dir . '/test.sqlite', 'log_path' => $dir . '/orm/']
                 + $config['database'];
         }
+
         $config['session']['key'] = bin2hex(random_bytes(32));
         // Igual que una instalación nueva (config:init): CSP con nonce y sin eval
         $config['csp']['nonce'] = true;
@@ -135,38 +136,6 @@ final class TestDatabase
         return new PDO('sqlite:' . self::$database, options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     }
 
-    /** @return array{host: string, port: string, database: string, username: string, password: string}|null */
-    private static function postgresFromEnv(): ?array
-    {
-        $value = getenv('VERSA_TEST_DB');
-        if (!is_string($value) || substr_count($value, ':') !== 4) {
-            return null;
-        }
-
-        [$host, $port, $database, $username, $password] = explode(':', $value);
-
-        return [
-            'host' => $host,
-            'port' => $port,
-            'database' => $database,
-            'username' => $username,
-            'password' => $password,
-        ];
-    }
-
-    /** @param array{host: string, port: string, database: string, username: string, password: string} $db */
-    private static function connect(array $db): PDO
-    {
-        return new PDO(
-            "pgsql:host={$db['host']};port={$db['port']};dbname={$db['database']}",
-            $db['username'],
-            $db['password'],
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            ],
-        );
-    }
-
     /** Una empresa nueva; devuelve su id. La empresa 1 la crean los seeders. */
     public static function empresa(string $nombre = 'Otra empresa'): int
     {
@@ -210,6 +179,38 @@ final class TestDatabase
         $client->login($email, self::PASSWORD);
 
         return $client;
+    }
+
+    /** @return array{host: string, port: string, database: string, username: string, password: string}|null */
+    private static function postgresFromEnv(): ?array
+    {
+        $value = getenv('VERSA_TEST_DB');
+        if (!is_string($value) || substr_count($value, ':') !== 4) {
+            return null;
+        }
+
+        [$host, $port, $database, $username, $password] = explode(':', $value);
+
+        return [
+            'host' => $host,
+            'port' => $port,
+            'database' => $database,
+            'username' => $username,
+            'password' => $password,
+        ];
+    }
+
+    /** @param array{host: string, port: string, database: string, username: string, password: string} $db */
+    private static function connect(array $db): PDO
+    {
+        return new PDO(
+            "pgsql:host={$db['host']};port={$db['port']};dbname={$db['database']}",
+            $db['username'],
+            $db['password'],
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ],
+        );
     }
 
     /** Un RUT válido distinto en cada llamada (es único en la tabla empresas) */

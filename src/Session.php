@@ -99,15 +99,6 @@ class Session
         }
     }
 
-    /** GET o HEAD a /up, con la misma normalización de URL que usa Router */
-    private static function isHealthCheck(): bool
-    {
-        return (
-            in_array($_SERVER['REQUEST_METHOD'] ?? '', ['GET', 'HEAD'], true)
-            && Router::normalize_url((string) ($_SERVER['REQUEST_URI'] ?? '/')) === '/up'
-        );
-    }
-
     /**
      * Invalida un JWT antes de su expiración (logout). Guarda su `jti` hasta que expire por sí solo.
      */
@@ -921,6 +912,15 @@ class Session
     public static function resetRequestState(): void
     {
         self::$validatedThisRequest = false;
+    }
+
+    /** GET o HEAD a /up, con la misma normalización de URL que usa Router */
+    private static function isHealthCheck(): bool
+    {
+        return (
+            in_array($_SERVER['REQUEST_METHOD'] ?? '', ['GET', 'HEAD'], true)
+            && Router::normalize_url($_SERVER['REQUEST_URI'] ?? '/') === '/up'
+        );
     }
 
     /** Solo si cambia: PHP rechaza tocar la configuración de sesión con salida previa, aunque sea el mismo valor. */

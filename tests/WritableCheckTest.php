@@ -39,6 +39,7 @@ final class WritableCheckTest extends TestCase
         if (function_exists('posix_getuid') && posix_getuid() === 0) {
             self::markTestSkipped('root escribe en cualquier carpeta');
         }
+
         chmod($this->dir . '/cache', 0o555);
 
         self::assertFalse(CheckDeployCommand::canWrite($this->dir . '/cache'));

@@ -37,7 +37,7 @@ function versawys_serve_media(string $projectRoot, string $uri, string $mime): v
     header('Accept-Ranges: bytes');
     header('Content-Type: ' . $mime);
 
-    $range = (string) ($_SERVER['HTTP_RANGE'] ?? '');
+    $range = $_SERVER['HTTP_RANGE'] ?? '';
     if ($range !== '') {
         if (preg_match('/^bytes=(\d*)-(\d*)$/', trim($range), $m) !== 1 || $m[1] === '' && $m[2] === '') {
             http_response_code(416);

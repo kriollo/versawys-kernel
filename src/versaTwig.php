@@ -36,6 +36,163 @@ class versaTwig extends Environment
         private readonly array $config,
     ) {}
 
+    /**
+     * Initializes the Twig environment with the given configuration.
+     *
+     * @param array $config the configuration settings for Twig
+     *
+     * @return Environment the initialized Twig environment
+     */
+    /**
+     * @param array<string, mixed> $config
+     */
+    public function init(array $config): Environment
+    {
+        $templates = (string) $config['twig']['templates_dir'];
+        $loader = new FilesystemLoader($templates);
+        // La caché compilada se comparte entre releases (shared/), y Twig la nombra solo por la
+        // plantilla: una petición que aún atiende el release anterior la llenaría con su versión
+        // vieja, y en producción Twig no la vuelve a revisar. Una subcarpeta por release lo evita.
+        $path = realpath($templates);
+        $release = substr(md5($path === false ? $templates : $path), 0, 12);
+        $twigInit = new Environment($loader, [
+            'cache' => $config['twig']['cache']
+                ? rtrim((string) $config['twig']['compiled_dir'], '/') . '/' . $release
+                : false,
+            'debug' => $config['build']['debug'],
+            'charset' => $config['build']['charset'],
+            // El escape HTML queda siempre activo (valor por defecto de Twig): no se apaga por configuración.
+            // twig.auto_escape nunca tuvo efecto (Twig llama a la opción `autoescape`) y está deprecada
+            'strict_variables' => $config['build']['debug']
+                ? $config['twig']['strict_variables']
+                : $config['build']['debug'],
+        ]);
+
+        if ($config['build']['debug']) {
+            $twigInit->addExtension(new DebugExtension());
+        }
+
+        $twigInit->addExtension(new CssInlinerExtension());
+
+        $this->setFilterTwig($twigInit);
+        $this->setFunctionTwig($twigInit);
+
+        return $twigInit;
+    }
+
+    /**
+     * Adds a global variable to the Twig environment.
+     *
+     * @param string $name the name of the global variable
+     * @param mixed $value the value of the global variable
+     */
+    public function addGlobal(string $name, $value): void
+    {
+        $this->defer(static fn(Environment $twig) => $twig->addGlobal($name, $value));
+    }
+
+    /**
+     * Adds an extension to the Twig environment.
+     *
+     * @param mixed $extension the extension to be added
+     */
+    public function addExtension($extension): void
+    {
+        if ($extension instanceof ExtensionInterface) {
+            $this->defer(static fn(Environment $twig) => $twig->addExtension($extension));
+        }
+    }
+
+    /**
+     * Adds a filter to the Twig environment.
+     *
+     * @param TwigFilter $filter the filter to be added
+     */
+    public function addFilter(TwigFilter $filter): void
+    {
+        $this->defer(static fn(Environment $twig) => $twig->addFilter($filter));
+    }
+
+    /**
+     * Renders a Twig template with the given context and returns the result as a string.
+     * Supports SPA navigation by returning JSON when requested via AJAX.
+     *
+     * @param string|TemplateWrapper $name the path to the Twig template file
+     * @param array $context the variables to be passed to the template
+     *
+     * @return string the rendered template as a string
+     */
+    /**
+     * @param string|TemplateWrapper $name
+     * @param array<string, mixed> $context
+     */
+    public function render($name, array $context = []): string
+    {
+        if (is_string($name) && !str_ends_with($name, '.twig')) {
+            $name .= '.twig';
+        }
+
+        try {
+            $result = $this->environment()->render($name, $context);
+
+            // Detectar si es una petición SPA y manejarla
+            if ($this->isSPARequest()) {
+                $this->handleSPAResponse($name, $result, $context);
+
+                return ''; // No retornamos nada porque ya enviamos la respuesta JSON
+            }
+
+            return $result . $this->debug();
+        } catch (LoaderError|RuntimeError|SyntaxError $e) {
+            $this->catch($e);
+
+            return '';
+        }
+    }
+
+    /**
+     * Renderiza una plantilla directamente sin aplicar transformación SPA.
+     * Útil para páginas de error que siempre deben mostrarse como HTML.
+     *
+     * @param string|TemplateWrapper $name
+     * @param array<string, mixed> $context
+     *
+     * @return string
+     */
+    public function renderDirect($name, array $context = []): string
+    {
+        if (is_string($name) && !str_ends_with($name, '.twig')) {
+            $name .= '.twig';
+        }
+
+        try {
+            return $this->environment()->render($name, $context);
+        } catch (LoaderError|RuntimeError|SyntaxError $e) {
+            $this->catch($e);
+
+            return '';
+        }
+    }
+
+    public static function errorHandler($errno, $errstr, $errfile, $errline): void
+    {
+        global $versawys_error_handling_in_progress;
+
+        // Si ya se está manejando un error, evitar duplicación
+        if ($versawys_error_handling_in_progress) {
+            return;
+        }
+
+        Response::jsonError([
+            'success' => 0,
+            'message' => $errstr,
+            'code' => $errno,
+            'line' => $errline,
+            'file' => $errfile,
+        ], 500);
+        Output::halt();
+    }
+
     /** El entorno de Twig, creado (con la carpeta de caché comprobada) la primera vez que se usa */
     private function environment(): Environment
     {
@@ -155,83 +312,6 @@ class versaTwig extends Environment
         }
     }
 
-    /**
-     * Initializes the Twig environment with the given configuration.
-     *
-     * @param array $config the configuration settings for Twig
-     *
-     * @return Environment the initialized Twig environment
-     */
-    /**
-     * @param array<string, mixed> $config
-     */
-    public function init(array $config): Environment
-    {
-        $templates = (string) $config['twig']['templates_dir'];
-        $loader = new FilesystemLoader($templates);
-        // La caché compilada se comparte entre releases (shared/), y Twig la nombra solo por la
-        // plantilla: una petición que aún atiende el release anterior la llenaría con su versión
-        // vieja, y en producción Twig no la vuelve a revisar. Una subcarpeta por release lo evita.
-        $path = realpath($templates);
-        $release = substr(md5(false === $path ? $templates : $path), 0, 12);
-        $twigInit = new Environment($loader, [
-            'cache' => $config['twig']['cache']
-                ? rtrim((string) $config['twig']['compiled_dir'], '/') . '/' . $release
-                : false,
-            'debug' => $config['build']['debug'],
-            'charset' => $config['build']['charset'],
-            // El escape HTML queda siempre activo (valor por defecto de Twig): no se apaga por configuración.
-            // twig.auto_escape nunca tuvo efecto (Twig llama a la opción `autoescape`) y está deprecada
-            'strict_variables' => $config['build']['debug']
-                ? $config['twig']['strict_variables']
-                : $config['build']['debug'],
-        ]);
-
-        if ($config['build']['debug']) {
-            $twigInit->addExtension(new DebugExtension());
-        }
-
-        $twigInit->addExtension(new CssInlinerExtension());
-
-        $this->setFilterTwig($twigInit);
-        $this->setFunctionTwig($twigInit);
-
-        return $twigInit;
-    }
-
-    /**
-     * Adds a global variable to the Twig environment.
-     *
-     * @param string $name the name of the global variable
-     * @param mixed $value the value of the global variable
-     */
-    public function addGlobal(string $name, $value): void
-    {
-        $this->defer(static fn(Environment $twig) => $twig->addGlobal($name, $value));
-    }
-
-    /**
-     * Adds an extension to the Twig environment.
-     *
-     * @param mixed $extension the extension to be added
-     */
-    public function addExtension($extension): void
-    {
-        if ($extension instanceof ExtensionInterface) {
-            $this->defer(static fn(Environment $twig) => $twig->addExtension($extension));
-        }
-    }
-
-    /**
-     * Adds a filter to the Twig environment.
-     *
-     * @param TwigFilter $filter the filter to be added
-     */
-    public function addFilter(TwigFilter $filter): void
-    {
-        $this->defer(static fn(Environment $twig) => $twig->addFilter($filter));
-    }
-
     /** @param callable(Environment): void $apply */
     private function defer(callable $apply): void
     {
@@ -242,86 +322,6 @@ class versaTwig extends Environment
         }
 
         $this->pending[] = $apply;
-    }
-
-    /**
-     * Renders a Twig template with the given context and returns the result as a string.
-     * Supports SPA navigation by returning JSON when requested via AJAX.
-     *
-     * @param string|TemplateWrapper $name the path to the Twig template file
-     * @param array $context the variables to be passed to the template
-     *
-     * @return string the rendered template as a string
-     */
-    /**
-     * @param string|TemplateWrapper $name
-     * @param array<string, mixed> $context
-     */
-    public function render($name, array $context = []): string
-    {
-        if (is_string($name) && !str_ends_with($name, '.twig')) {
-            $name .= '.twig';
-        }
-
-        try {
-            $result = $this->environment()->render($name, $context);
-
-            // Detectar si es una petición SPA y manejarla
-            if ($this->isSPARequest()) {
-                $this->handleSPAResponse($name, $result, $context);
-
-                return ''; // No retornamos nada porque ya enviamos la respuesta JSON
-            }
-
-            return $result . $this->debug();
-        } catch (LoaderError|RuntimeError|SyntaxError $e) {
-            $this->catch($e);
-
-            return '';
-        }
-    }
-
-    /**
-     * Renderiza una plantilla directamente sin aplicar transformación SPA.
-     * Útil para páginas de error que siempre deben mostrarse como HTML.
-     *
-     * @param string|TemplateWrapper $name
-     * @param array<string, mixed> $context
-     *
-     * @return string
-     */
-    public function renderDirect($name, array $context = []): string
-    {
-        if (is_string($name) && !str_ends_with($name, '.twig')) {
-            $name .= '.twig';
-        }
-
-        try {
-            return $this->environment()->render($name, $context);
-        } catch (LoaderError|RuntimeError|SyntaxError $e) {
-            $this->catch($e);
-
-            return '';
-        }
-    }
-
-    public static function errorHandler($errno, $errstr, $errfile, $errline): void
-    {
-        global $versawys_error_handling_in_progress;
-
-        // Si ya se está manejando un error, evitar duplicación
-        if ($versawys_error_handling_in_progress) {
-            return;
-        }
-
-        Response::jsonError([
-            'success' => 0,
-            'message' => $errstr,
-            'code' => $errno,
-            'line' => $errline,
-            'file' => $errfile,
-        ], 500);
-        Output::halt();
     }
 
     /**

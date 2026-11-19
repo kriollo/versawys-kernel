@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace versaWYS\kernel\cli;
 
 use Exception;
+use FilesystemIterator;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
 use versaWYS\kernel\Loggin;
 
 class LogManager
@@ -94,12 +98,9 @@ class LogManager
                 continue;
             }
 
-            $items = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(
-                $dir,
-                \FilesystemIterator::SKIP_DOTS,
-            ));
+            $items = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS));
             foreach ($items as $item) {
-                if (!$item instanceof \SplFileInfo || !$item->isFile() || $item->getExtension() !== 'log') {
+                if (!$item instanceof SplFileInfo || !$item->isFile() || $item->getExtension() !== 'log') {
                     continue;
                 }
 

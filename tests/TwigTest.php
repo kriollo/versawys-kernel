@@ -7,6 +7,8 @@ namespace versaWYS\kernel\Tests;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use ReflectionProperty;
+use Twig\Extension\SandboxExtension;
+use Twig\Extension\StringLoaderExtension;
 use Twig\TwigFilter;
 use versaWYS\kernel\Profiler;
 use versaWYS\kernel\versaTwig;
@@ -102,8 +104,8 @@ final class TwigTest extends TestCase
         self::assertStringNotContainsString('49', $html);
 
         $env = $twig->init($GLOBALS['config']);
-        self::assertFalse($env->hasExtension(\Twig\Extension\StringLoaderExtension::class));
-        self::assertFalse($env->hasExtension(\Twig\Extension\SandboxExtension::class));
+        self::assertFalse($env->hasExtension(StringLoaderExtension::class));
+        self::assertFalse($env->hasExtension(SandboxExtension::class));
         self::assertNull($env->getFunction('template_from_string'));
     }
 

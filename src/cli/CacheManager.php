@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace versaWYS\kernel\cli;
 
 use Exception;
+use FilesystemIterator;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
 use Throwable;
 use versaWYS\kernel\Cache;
 use versaWYS\kernel\Profiler;
@@ -209,18 +213,18 @@ class CacheManager
         }
 
         $deleted = 0;
-        $items = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST,
+        $items = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST,
         );
         foreach ($items as $item) {
-            if (!$item instanceof \SplFileInfo) {
+            if (!$item instanceof SplFileInfo) {
                 continue;
             }
 
             if ($item->isDir() && !$item->isLink()) {
                 // Si quedó un .gitkeep dentro, la carpeta se conserva
-                if (!(new \FilesystemIterator($item->getPathname()))->valid()) {
+                if (!(new FilesystemIterator($item->getPathname()))->valid()) {
                     rmdir($item->getPathname());
                 }
             } elseif (

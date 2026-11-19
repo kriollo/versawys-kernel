@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace versaWYS\kernel\Tests;
 
+use Composer\InstalledVersions;
 use PHPUnit\Framework\TestCase;
 use versaWYS\kernel\cli\commands\CheckDeployCommand;
 use versaWYS\kernel\Router;
@@ -27,7 +28,7 @@ final class AutoloaderCheckTest extends TestCase
     public function testSinMapaDeClasesNoEstaOptimizado(): void
     {
         // Lo que deja `composer install` sin -o: solo las clases de Composer
-        $this->classmap(['Composer\\InstalledVersions' => '/x/InstalledVersions.php']);
+        $this->classmap([InstalledVersions::class => '/x/InstalledVersions.php']);
 
         self::assertFalse(CheckDeployCommand::autoloaderOptimized($this->vendor));
     }

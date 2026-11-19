@@ -276,6 +276,40 @@ class CheckDeployCommand extends BaseCommand
             HELP;
     }
 
+    /**
+     * Si la aplicación puede escribir en el directorio: uno que aún no existe se crea con sus padres
+     * (Twig crea versaWYS/cache/twig/.cache en el primer render), así que basta que el primero que
+     * existe sea escribible.
+     */
+    public static function canWrite(string $path): bool
+    {
+        while (!is_dir($path) && dirname($path) !== $path) {
+            $path = dirname($path);
+        }
+
+        return is_dir($path) && is_writable($path);
+    }
+
+    // =====================================================================
+    // Utilidades
+    // =====================================================================
+
+    /**
+     * ¿Generó Composer el mapa de clases (--optimize-autoloader)? Sin él, cada clase se busca recorriendo
+     * las carpetas PSR-4. Sin vendor/ no hay nada que revisar: eso ya lo informa otra revisión.
+     */
+    public static function autoloaderOptimized(string $vendorDir): bool
+    {
+        $classmap = $vendorDir . '/composer/autoload_classmap.php';
+        if (!is_file($classmap)) {
+            return true;
+        }
+
+        $map = require $classmap;
+
+        return is_array($map) && isset($map[Router::class]);
+    }
+
     private function checkAppContract(): void
     {
         foreach (KernelPublishCommand::stubs() as $target => $source) {
@@ -935,20 +969,6 @@ class CheckDeployCommand extends BaseCommand
         }
     }
 
-    /**
-     * Si la aplicación puede escribir en el directorio: uno que aún no existe se crea con sus padres
-     * (Twig crea versaWYS/cache/twig/.cache en el primer render), así que basta que el primero que
-     * existe sea escribible.
-     */
-    public static function canWrite(string $path): bool
-    {
-        while (!is_dir($path) && dirname($path) !== $path) {
-            $path = dirname($path);
-        }
-
-        return is_dir($path) && is_writable($path);
-    }
-
     private function checkServer(): void
     {
         if (!$this->production) {
@@ -1083,26 +1103,6 @@ class CheckDeployCommand extends BaseCommand
                 hint: 'php versaCLI migrate:up',
             );
         }
-    }
-
-    // =====================================================================
-    // Utilidades
-    // =====================================================================
-
-    /**
-     * ¿Generó Composer el mapa de clases (--optimize-autoloader)? Sin él, cada clase se busca recorriendo
-     * las carpetas PSR-4. Sin vendor/ no hay nada que revisar: eso ya lo informa otra revisión.
-     */
-    public static function autoloaderOptimized(string $vendorDir): bool
-    {
-        $classmap = $vendorDir . '/composer/autoload_classmap.php';
-        if (!is_file($classmap)) {
-            return true;
-        }
-
-        $map = require $classmap;
-
-        return is_array($map) && isset($map[Router::class]);
     }
 
     private function add(

@@ -41,9 +41,11 @@ final class DevServerTest extends TestCase
         }
 
         foreach (['public/a.wav', 'public/fuera.wav', 'index.php'] as $file) {
-            if (is_link($this->dir . '/' . $file) || file_exists($this->dir . '/' . $file)) {
-                unlink($this->dir . '/' . $file);
+            if (!is_link($this->dir . '/' . $file) && !file_exists($this->dir . '/' . $file)) {
+                continue;
             }
+
+            unlink($this->dir . '/' . $file);
         }
 
         rmdir($this->dir . '/public');
@@ -56,36 +58,36 @@ final class DevServerTest extends TestCase
         $this->arrancar();
 
         [$status, $headers, $body] = $this->get('/public/a.wav', 'bytes=100-199');
-        $this->assertSame(206, $status);
-        $this->assertSame('bytes 100-199/100000', $headers['content-range']);
-        $this->assertSame('bytes', $headers['accept-ranges']);
-        $this->assertSame(substr($this->media, 100, 100), $body);
+        self::assertSame(206, $status);
+        self::assertSame('bytes 100-199/100000', $headers['content-range']);
+        self::assertSame('bytes', $headers['accept-ranges']);
+        self::assertSame(substr($this->media, 100, 100), $body);
 
         [$status, $headers, $body] = $this->get('/public/a.wav', 'bytes=-10');
-        $this->assertSame(206, $status);
-        $this->assertSame('bytes 99990-99999/100000', $headers['content-range']);
-        $this->assertSame(substr($this->media, -10), $body);
+        self::assertSame(206, $status);
+        self::assertSame('bytes 99990-99999/100000', $headers['content-range']);
+        self::assertSame(substr($this->media, -10), $body);
 
         [$status, $headers, $body] = $this->get('/public/a.wav', 'bytes=99990-');
-        $this->assertSame(206, $status);
-        $this->assertSame(substr($this->media, 99_990), $body);
+        self::assertSame(206, $status);
+        self::assertSame(substr($this->media, 99_990), $body);
 
         [$status, $headers, $body] = $this->get('/public/a.wav');
-        $this->assertSame(200, $status);
-        $this->assertSame('bytes', $headers['accept-ranges']);
-        $this->assertSame($this->media, $body);
+        self::assertSame(200, $status);
+        self::assertSame('bytes', $headers['accept-ranges']);
+        self::assertSame($this->media, $body);
 
         foreach (['bytes=200000-', 'bytes=abc', 'bytes=-'] as $rango) {
             [$status, $headers] = $this->get('/public/a.wav', $rango);
-            $this->assertSame(416, $status, $rango);
-            $this->assertSame('bytes */100000', $headers['content-range'], $rango);
+            self::assertSame(416, $status, $rango);
+            self::assertSame('bytes */100000', $headers['content-range'], $rango);
         }
     }
 
     public function testNoSirveArchivosFueraDelProyecto(): void
     {
         if (PHP_OS_FAMILY === 'Windows') {
-            $this->markTestSkipped('Sin enlaces simbólicos en Windows');
+            self::markTestSkipped('Sin enlaces simbólicos en Windows');
         }
 
         // Un enlace simbólico que apunta afuera del proyecto
@@ -96,27 +98,27 @@ final class DevServerTest extends TestCase
 
         [$status, , $body] = $this->get('/public/fuera.wav');
         unlink($afuera);
-        $this->assertSame(404, $status);
-        $this->assertStringNotContainsString('secreto', $body);
+        self::assertSame(404, $status);
+        self::assertStringNotContainsString('secreto', $body);
     }
 
     public function testCuantosProcesosAtiendenPeticiones(): void
     {
         if (PHP_OS_FAMILY === 'Windows') {
-            $this->markTestSkipped('PHP no soporta PHP_CLI_SERVER_WORKERS en Windows');
+            self::markTestSkipped('PHP no soporta PHP_CLI_SERVER_WORKERS en Windows');
         }
 
         $workers = new ReflectionMethod(ServerManager::class, 'serverWorkers');
 
-        $this->assertSame(4, $workers->invoke(null, 4), '--workers=4');
+        self::assertSame(4, $workers->invoke(null, 4), '--workers=4');
 
         putenv('PHP_CLI_SERVER_WORKERS=6');
-        $this->assertSame(6, $workers->invoke(null, null), 'PHP_CLI_SERVER_WORKERS definido');
+        self::assertSame(6, $workers->invoke(null, null), 'PHP_CLI_SERVER_WORKERS definido');
 
         putenv('PHP_CLI_SERVER_WORKERS');
         $porDefecto = $workers->invoke(null, null);
-        $this->assertGreaterThanOrEqual(2, $porDefecto);
-        $this->assertLessThanOrEqual(8, $porDefecto);
+        self::assertGreaterThanOrEqual(2, $porDefecto);
+        self::assertLessThanOrEqual(8, $porDefecto);
     }
 
     private function arrancar(): void
@@ -128,7 +130,7 @@ final class DevServerTest extends TestCase
         );
         fclose($socket);
 
-        $router = dirname(__DIR__) . '/src/cli/routerServe.php';
+        $router = __DIR__ . '/../src/cli/routerServe.php';
         $this->server = proc_open(
             [PHP_BINARY, '-S', "127.0.0.1:{$this->port}", '-t', $this->dir, $router],
             [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']],
@@ -138,6 +140,7 @@ final class DevServerTest extends TestCase
 
         // Mientras arranca, conectar falla con un aviso: se ignora hasta que responda
         set_error_handler(static fn(): bool => true);
+
         try {
             for ($i = 0; $i < 50; $i++) {
                 $conexion = fsockopen('127.0.0.1', $this->port);

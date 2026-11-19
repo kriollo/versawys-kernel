@@ -301,6 +301,18 @@ class ErrorHandler
         return true;
     }
 
+    /** Falló la conexión a la BD: VersaORM la envuelve en el error de la consulta (getPrevious) */
+    public static function isConnectionError(Throwable $e): bool
+    {
+        for ($current = $e; $current instanceof Throwable; $current = $current->getPrevious()) {
+            if ($current instanceof VersaORMException && $current->getErrorCode() === 'PDO_CONNECTION_FAILED') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Las líneas alrededor de `$line`: número => código.
      *
@@ -405,18 +417,6 @@ class ErrorHandler
         }
 
         return $userTrace;
-    }
-
-    /** Falló la conexión a la BD: VersaORM la envuelve en el error de la consulta (getPrevious) */
-    public static function isConnectionError(Throwable $e): bool
-    {
-        for ($current = $e; $current !== null; $current = $current->getPrevious()) {
-            if ($current instanceof VersaORMException && $current->getErrorCode() === 'PDO_CONNECTION_FAILED') {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**
