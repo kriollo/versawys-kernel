@@ -48,6 +48,39 @@ class ErrorHandler
     /**
      * Maneja excepciones no capturadas.
      */
+    /**
+     * Un error no controlado queda registrado siempre: en producción, en el log (antes solo se registraba en debug)
+     * y, si el proyecto tiene `app/errors.php` (un closure que recibe la excepción), también ahí, para que la
+     * aplicación lo lleve a donde quiera (incidencias, avisos). Si ese closure falla, la respuesta no cambia.
+     */
+    private static function report(Throwable $e): void
+    {
+        global $debug;
+
+        if (!$debug) {
+            Loggin::error('Excepción no controlada: ' . $e->getMessage(), 'ErrorHandler', [
+                'class' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+
+        $file = getcwd() . '/app/errors.php';
+        if (!is_file($file)) {
+            return;
+        }
+
+        try {
+            $reporter = require $file;
+            if (is_callable($reporter)) {
+                $reporter($e);
+            }
+        } catch (Throwable) { // @mago-expect lint:no-empty-catch-clause
+            // Reportar no puede romper la respuesta de error
+        }
+    }
+
     public static function handleException(Throwable $e): void
     {
         global $debug, $versawys_error_handling_in_progress, $request;
@@ -66,6 +99,7 @@ class ErrorHandler
         }
 
         self::$handled = true;
+        self::report($e);
         $isApiCall = $request instanceof Request && $request->isApiCall();
 
         // FAST-PATH para producción: respuesta inmediata sin procesamiento pesado

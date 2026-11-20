@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.15.0] - 2026-11-19
+
+### Añadido
+- **`app/errors.php`: la aplicación recibe cada excepción no controlada.** Si el proyecto tiene ese archivo (un closure que recibe la `Throwable`, como `app/schedule.php`), `ErrorHandler` lo llama antes de responder, en producción y en debug, para llevarla a donde quiera (incidencias, avisos). Si el closure falla, la respuesta de error no cambia. Prueba: `ErrorHandlerTest`.
+
+### Corregido
+- **En producción las excepciones no controladas no quedaban en el log.** La respuesta rápida de producción contestaba «Error interno del servidor» sin registrar nada (solo el modo debug escribía el log), así que un error real se perdía sin rastro. Ahora queda en el log `ErrorHandler` con su clase, archivo, línea y traza.
+
 ## [3.14.0] - 2026-11-16
 
 ### Añadido

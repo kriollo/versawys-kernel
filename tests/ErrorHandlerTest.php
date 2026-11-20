@@ -108,6 +108,42 @@ final class ErrorHandlerTest extends TestCase
      *
      * @return array{0: int, 1: string}
      */
+    public function testElErrorLlegaAAppErrorsPhpYSiEseFallaLaRespuestaNoCambia(): void
+    {
+        $proyecto = sys_get_temp_dir() . '/versawys-errores-' . bin2hex(random_bytes(4));
+        mkdir($proyecto . '/app', 0o777, true);
+        $registro = $proyecto . '/reportado.txt';
+        $antes = (string) getcwd();
+        chdir($proyecto);
+
+        try {
+            file_put_contents(
+                $proyecto . '/app/errors.php',
+                '<?php return static function (Throwable $e): void { file_put_contents('
+                . var_export($registro, true)
+                . ', $e::class . ": " . $e->getMessage()); };',
+            );
+            [$status] = $this->explota(false);
+            self::assertSame(500, $status);
+            self::assertStringStartsWith('RuntimeException: SQLSTATE', (string) file_get_contents($registro));
+
+            // Un reportero que falla no cambia la respuesta
+            ErrorHandler::resetRequestState();
+            file_put_contents(
+                $proyecto . '/app/errors.php',
+                '<?php return static function (Throwable $e): void { throw new LogicException("x"); };',
+            );
+            [$status, $body] = $this->explota(false);
+            self::assertSame(500, $status);
+            self::assertStringContainsString('Error del Servidor', $body);
+        } finally {
+            chdir($antes);
+            array_map('unlink', (array) glob($proyecto . '/{,app/}*.*', GLOB_BRACE));
+            rmdir($proyecto . '/app');
+            rmdir($proyecto);
+        }
+    }
+
     private function explota(bool $debug, array $server = []): array
     {
         $GLOBALS['debug'] = $debug;

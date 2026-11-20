@@ -13,6 +13,22 @@ El panel base (`app/models`, `app/services`) se copia en cada proyecto y el kern
 
 **Agregar algo a esta lista o cambiar una firma es un cambio de versión mayor.** `php versaCLI app:check:deploy` falla si al proyecto le falta alguno.
 
+## 3.14 → 3.15 (sin cambios incompatibles)
+
+`composer update versawys/kernel`. En producción las excepciones no controladas ahora quedan en el log (`ErrorHandler`), sin hacer nada.
+
+Para llevar esos errores a donde quiera la aplicación (incidencias, avisos), crear `app/errors.php`, igual que `app/schedule.php`:
+
+```php
+<?php
+
+return static function (Throwable $e): void {
+    // registrar como incidencia, avisar al equipo, etc.
+};
+```
+
+Corre en producción y en debug, antes de responder. Si el closure lanza una excepción, la respuesta de error no cambia.
+
 ## 3.10 → 3.11
 
 `composer update versawys/kernel versaorm/versaorm-php`: el kernel pide VersaORM `^2.2`. El código de los proyectos sigue funcionando sin cambios, pero estos cambios de comportamiento conviene revisarlos:
