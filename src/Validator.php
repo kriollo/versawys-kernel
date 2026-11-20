@@ -113,6 +113,11 @@ final class Validator
             $rules = array_values(array_filter($rules, static fn($r): bool => $r !== 'nullable'));
         }
 
+        // Con int, integer o numeric, min y max comparan el valor (min:1 rechaza 0 y -5); si no, el largo del texto
+        $numerico = array_intersect(array_map(static fn($r): string => is_string($r)
+            ? explode(':', $r, 2)[0]
+            : '', $rules), ['int', 'integer', 'numeric']) !== [];
+
         foreach ($rules as $rule) {
             if (!$exists) {
                 return $this->message(
@@ -140,7 +145,9 @@ final class Validator
 
             // Un valor de tipo inesperado (arreglo, null) es un dato inválido, no un error 500
             try {
-                $error = $check($path, $value, $param);
+                $error = $numerico && in_array($name, ['min', 'max'], true)
+                    ? self::limiteNumerico($path, $value, $name, (float) $param)
+                    : $check($path, $value, $param);
             } catch (Throwable) {
                 $error = sprintf('El campo %s no es valido', $path);
             }
@@ -151,6 +158,25 @@ final class Validator
         }
 
         return null;
+    }
+
+    /** min/max de un campo numérico: el valor, no su largo. Si no es número, ya lo rechaza int/numeric. */
+    private static function limiteNumerico(string $field, mixed $value, string $regla, float $limite): ?string
+    {
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        $fuera = $regla === 'min' ? (float) $value < $limite : (float) $value > $limite;
+
+        return $fuera
+            ? sprintf(
+                'El campo %s debe ser %s %s',
+                $field,
+                $regla === 'min' ? 'mayor o igual a' : 'menor o igual a',
+                $limite,
+            )
+            : null;
     }
 
     private function message(string $path, string $rule, string $default): string

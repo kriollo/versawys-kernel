@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.16.0] - 2026-11-20
+
+### Corregido
+- **`min` y `max` de un campo numérico medían el largo del texto, no el valor.** Con `int|min:1`, `0` y `-5` pasaban (miden 1 y 2 caracteres) y con `max:100`, `101` también: un monto de pago, un límite o una página fuera de rango llegaban al controlador como válidos. Ahora, si el campo lleva `int`, `integer` o `numeric`, `min` y `max` comparan el valor; sin esas reglas siguen midiendo el largo del texto. Prueba: `ValidatorTest`.
+
+### Seguridad
+- **Una sesión que apunta a otra empresa termina.** La empresa en uso sale de la sesión (`empresa_id`), y lo único que impedía a un usuario no superadministrador operar en otra era que la ruta para cambiarla fuera solo del superadministrador. Ahora `checkSession` lo comprueba en cada petición: si la empresa de la sesión no es la de la cuenta, la sesión termina con el motivo `empresa_ajena`. El superadministrador sigue operando en la que elija. `GlobalMiddleware::blockedReason()` recibe la empresa de la sesión como segundo argumento (opcional). Prueba: `GlobalMiddlewareBloqueoTest`.
+
 ## [3.15.0] - 2026-11-19
 
 ### Añadido

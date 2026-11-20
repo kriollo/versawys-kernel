@@ -129,6 +129,32 @@ final class ValidatorTest extends TestCase
         );
     }
 
+    public function testMinYMaxDeUnCampoNumericoComparanElValorNoElLargo(): void
+    {
+        $reglas = [
+            'cantidad' => 'required|int|min:1|max:100',
+            'precio' => 'required|numeric|min:0.5',
+            'codigo' => 'required|string|min:3',
+        ];
+        $errores = static fn(array $datos): array => Validator::make($datos, $reglas)->errors();
+
+        // 0 y -5 miden 1 y 2 caracteres: como largo pasarían min:1. 101 mide 3: pasaría max:100
+        self::assertArrayHasKey('cantidad', $errores(['cantidad' => '0', 'precio' => 1, 'codigo' => 'abc']));
+        self::assertArrayHasKey('cantidad', $errores(['cantidad' => -5, 'precio' => 1, 'codigo' => 'abc']));
+        self::assertSame(
+            'El campo cantidad debe ser menor o igual a 100',
+            $errores(['cantidad' => '101', 'precio' => 1, 'codigo' => 'abc'])['cantidad'] ?? null,
+        );
+        self::assertSame(
+            'El campo precio debe ser mayor o igual a 0.5',
+            $errores(['cantidad' => 1, 'precio' => '0.4', 'codigo' => 'abc'])['precio'] ?? null,
+        );
+        // Los bordes pasan; sin int/numeric sigue siendo el largo del texto
+        self::assertSame([], $errores(['cantidad' => '1', 'precio' => 0.5, 'codigo' => 'abc']));
+        self::assertSame([], $errores(['cantidad' => 100, 'precio' => '999', 'codigo' => '123']));
+        self::assertArrayHasKey('codigo', $errores(['cantidad' => 1, 'precio' => 1, 'codigo' => '12']));
+    }
+
     public function testUnaReglaMalEscritaNoDejaPasarElDato(): void
     {
         self::assertSame(

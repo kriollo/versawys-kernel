@@ -15,6 +15,7 @@ class GlobalMiddleware
     private const array BLOCKED_MESSAGES = [
         'cuenta_desactivada' => 'Cuenta de usuario desactivada',
         'empresa_suspendida' => 'La empresa está suspendida',
+        'empresa_ajena' => 'La sesión no corresponde a la empresa de la cuenta',
     ];
 
     // Propiedad estática para almacenar los datos del usuario durante una única petición.
@@ -122,7 +123,7 @@ class GlobalMiddleware
 
             // 5. Cuenta desactivada o empresa suspendida: la sesión termina
             $userData = self::$currentUserData['user'];
-            $blocked = self::blockedReason($userData);
+            $blocked = self::blockedReason($userData, $empresaId);
             if ($blocked !== null) {
                 return $this->endSession($blocked, self::BLOCKED_MESSAGES[$blocked]);
             }
@@ -431,16 +432,25 @@ class GlobalMiddleware
     }
 
     /**
-     * Por qué esta cuenta ya no puede usar el panel: 'cuenta_desactivada', 'empresa_suspendida' o null.
-     * Una empresa suspendida no afecta al superadministrador, que es quien administra las empresas.
+     * Por qué esta cuenta ya no puede usar el panel: 'cuenta_desactivada', 'empresa_suspendida', 'empresa_ajena'
+     * o null. Una empresa suspendida no afecta al superadministrador, que es quien administra las empresas.
      * `empresa_estado` lo entrega Users::findWithCompany(); sin esa clave, no se revisa.
+     *
+     * Con `$empresaId` (la empresa de la sesión): solo el superadministrador opera en una empresa que no es la de su
+     * cuenta. Para los demás, que la sesión apunte a otra empresa (un error, o una sesión manipulada) termina la
+     * sesión: es la segunda barrera para que una cuenta nunca vea los datos de otra empresa.
      *
      * @param array<string, mixed> $user
      */
-    public static function blockedReason(array $user): ?string
+    public static function blockedReason(array $user, ?int $empresaId = null): ?string
     {
         return match (true) {
             (int) ($user['status'] ?? 0) !== 1 => 'cuenta_desactivada',
+            $empresaId !== null
+                && ($user['role'] ?? '') !== 'superadmin'
+                && array_key_exists('id_empresa', $user)
+                && (int) $user['id_empresa'] !== $empresaId
+                => 'empresa_ajena',
             ($user['role'] ?? '') !== 'superadmin'
                 && array_key_exists('empresa_estado', $user)
                 && !(bool) $user['empresa_estado']
