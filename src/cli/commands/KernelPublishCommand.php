@@ -40,15 +40,34 @@ class KernelPublishCommand extends BaseCommand
     }
 
     /**
+     * Las tablas Vue compartidas por todos los proyectos (`--tablas`). Van aparte de stubs(): `src/` no se despliega y
+     * la revisión del servidor no debe exigirlas.
+     *
+     * @return array<string, string> ruta en el proyecto => ruta del original en el kernel
+     */
+    public static function tablas(): array
+    {
+        $dir = dirname(__DIR__, 3) . '/resources/vue';
+        $files = [];
+        foreach (['customTable.vue', 'customTableSimple.vue'] as $file) {
+            $files["src/dashboard/js/components/{$file}"] = "{$dir}/{$file}";
+        }
+
+        return $files;
+    }
+
+    /**
      * @param array<mixed> $params
      */
     #[Override]
     public function execute(array $params = []): int
     {
-        $force = in_array('--force', [...$params, ...($_SERVER['argv'] ?? [])], true);
+        $args = [...$params, ...($_SERVER['argv'] ?? [])];
+        $force = in_array('--force', $args, true);
+        $files = in_array('--tablas', $args, true) ? self::tablas() : self::stubs();
         $pending = 0;
 
-        foreach (self::stubs() as $target => $source) {
+        foreach ($files as $target => $source) {
             if (is_file($target) && file_get_contents($target) === file_get_contents($source)) {
                 echo CLIErrorHandler::colorize('  ✓ ', 'green') . "{$target}\n";
 
@@ -97,11 +116,11 @@ class KernelPublishCommand extends BaseCommand
     public function getHelp(): string
     {
         return (
-            "Uso: php versaCLI app:kernel:publish [--force]\n\n"
+            "Uso: php versaCLI app:kernel:publish [--tablas] [--force]\n\n"
             . "Sin opciones crea los archivos que faltan y muestra en qué difieren los demás (- proyecto, + kernel).\n"
             . '--force reemplaza los que difieren. Archivos: '
             . implode(', ', array_keys(self::stubs()))
-            . "\n"
+            . "\n--tablas trabaja con customTable y customTableSimple en lugar de los archivos base.\n"
         );
     }
 }

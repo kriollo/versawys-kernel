@@ -13,6 +13,10 @@ El panel base (`app/models`, `app/services`) se copia en cada proyecto y el kern
 
 **Agregar algo a esta lista o cambiar una firma es un cambio de versión mayor.** `php versaCLI app:check:deploy` falla si al proyecto le falta alguno.
 
+## 3.16 → 3.17 (sin cambios incompatibles)
+
+`composer update versawys/kernel`. Para usar las tablas comunes: `php versaCLI app:kernel:publish --tablas`, revisar el diff y repetir con `--force`. Lo propio del proyecto va en `window.AppConfig.tabla` de `layout.twig`, no en el componente.
+
 ## 3.14 → 3.15 (sin cambios incompatibles)
 
 `composer update versawys/kernel`. En producción las excepciones no controladas ahora quedan en el log (`ErrorHandler`), sin hacer nada.

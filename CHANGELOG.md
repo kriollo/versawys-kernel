@@ -2,6 +2,22 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.17.0] - 2026-11-23
+
+### Añadido
+- **Una sola versión de `customTable` y `customTableSimple`** en `resources/vue`, para todos los proyectos. `php versaCLI app:kernel:publish --tablas` muestra en qué difiere la copia del proyecto y `--force` la reemplaza. Van aparte de los archivos base porque `src/` no se despliega y la revisión del servidor no debe exigirlas.
+- **`customTable` reúne lo que cada proyecto tenía por separado:** menú de tres puntos con secciones (`menu` en cada botón), `altoFijo`, alto automático, `orderDirection`, evento `rowDblClick`, tipos `date` y `number`, estados propios del proyecto y visor de archivos opcional (`window.versaAbrirArchivo`).
+- **`window.AppConfig.tabla`** configura por proyecto los valores por omisión y el comportamiento (`perPage`, `smallLine`, `botonesEnFila`, `recargarAlFiltrar`, `dobleClicAccion`, `montosDerecha`, `altoAutomatico`, `accionesFijas`, `textoSobreMarca`, `estados`), sin cambiar el componente.
+- `customTableSimple` adopta el estilo de `customTable`.
+
+### Corregido
+- **El menú lateral quedaba detrás del encabezado de la tabla:** ambos usaban `z-20`. El contenedor de la tabla ahora aísla sus capas.
+- **Una búsqueda con `&` o `#` rompía la consulta:** los parámetros van codificados.
+- **Una respuesta lenta podía reemplazar a una búsqueda más nueva:** solo se aplica la última petición.
+- Limpiar la búsqueda vuelve a la primera página, el check de la cabecera refleja la página visible y el indicador de exportación ya no queda activo si la exportación falla.
+- Las columnas con `visible: false` se exportan, pero ya no se dibujan.
+- Las flechas de posición permiten mover una fila entre páginas.
+
 ## [3.16.1] - 2026-11-23
 
 ### Corregido
