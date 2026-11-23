@@ -236,7 +236,6 @@ class VersaORMModel extends VersaModel
         $refl = new ReflectionClass($cls);
         if ($refl->hasProperty('table')) {
             $prop = $refl->getProperty('table');
-            $prop->setAccessible(true);
             /** @var mixed $val */
             $val = $prop->isStatic() ? $prop->getValue() : $prop->getValue($refl->newInstanceWithoutConstructor());
             if (is_string($val) && $val !== '') {

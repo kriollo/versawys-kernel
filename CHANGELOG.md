@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.16.1] - 2026-11-23
+
+### Corregido
+- **Avisos de obsolescencia en PHP 8.5.** Se quitan `curl_close()` del cliente HTTP y `ReflectionProperty::setAccessible()` de `VersaORMModel`: no hacen nada desde PHP 8.0 y 8.1, y el kernel exige 8.3.
+
+### Cambiado
+- Dependencias al día: `twig/twig` 3.31, `egulias/email-validator` 4.0.5, `revolt/event-loop` 1.1, `phpunit/phpunit` 12.5.45, `phpstan/phpstan` 2.3.7, `phpstan/phpstan-strict-rules` 2.1.2, `carthage-software/mago` 1.61. PHPUnit sigue en 12 porque la versión 13 no es compatible con PHP 8.3.
+
 ## [3.16.0] - 2026-11-20
 
 ### Corregido

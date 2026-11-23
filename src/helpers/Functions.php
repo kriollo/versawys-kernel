@@ -737,8 +737,6 @@ class Functions
             $insecureTlsUsed = $curlErrNo === 0;
         }
 
-        curl_close($ch);
-
         $responseHeaders = [];
         $responseBody = '';
         if (is_string($rawResponse) && $rawResponse !== '') {

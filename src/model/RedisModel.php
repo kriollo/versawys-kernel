@@ -1291,7 +1291,6 @@ class RedisModel
             // Autenticación si está configurada
             // Una clave o, con ACL, [usuario, clave]
             $password = self::$config['password'] ?? null;
-            // @mago-expect lint:no-insecure-comparison (solo comprueba que esté configurada)
             if (!in_array($password, [null, '', []], true)) {
                 self::$instance->auth($password);
             }
