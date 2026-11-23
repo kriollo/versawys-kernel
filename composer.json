@@ -27,10 +27,10 @@
     "ext-mbstring": "*",
     "ext-pdo": "*",
     "composer-runtime-api": "^2.2",
-    "firebase/php-jwt": "^7.1",
-    "symfony/mailer": "^7.3 || ^8.1",
+    "firebase/php-jwt": "^7.2.2",
+    "symfony/mailer": "^7.4.22 || ^8.1.10",
     "twig/cssinliner-extra": "^3.26",
-    "twig/twig": "^3.28",
+    "twig/twig": "^3.31",
     "versaorm/versaorm-php": "^2.2.5"
   },
   "require-dev": {

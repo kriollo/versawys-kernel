@@ -9,6 +9,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); v
 
 ### Cambiado
 - Dependencias al día: `twig/twig` 3.31, `egulias/email-validator` 4.0.5, `revolt/event-loop` 1.1, `phpstan/phpstan` 2.3.7, `phpstan/phpstan-strict-rules` 2.1.2, `carthage-software/mago` 1.61, `rector/rector` 2.8.5, `laravel/pint` 1.32.3 y `friendsofphp/php-cs-fixer` 3.95.32.
+- **Versiones mínimas de producción:** `twig/twig` ^3.31, `firebase/php-jwt` ^7.2.2 y `symfony/mailer` ^7.4.22 || ^8.1.10 (la rama 7 se mantiene para PHP 8.3).
 - **PHPUnit 13 en PHP 8.4 y 8.5.** La restricción es `^12.5.45 || ^13.4.8` porque PHPUnit 13 exige PHP 8.4 y el kernel sigue soportando 8.3.
 
 ## [3.16.0] - 2026-11-20
