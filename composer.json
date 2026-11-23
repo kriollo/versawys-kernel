@@ -34,13 +34,13 @@
     "versaorm/versaorm-php": "^2.2.5"
   },
   "require-dev": {
-    "laravel/pint": "^1.32.1",
-    "phpstan/phpstan": "^2.3.5",
-    "phpstan/phpstan-strict-rules": "^2.1.1",
-    "phpunit/phpunit": "^12.5.43",
-    "carthage-software/mago": "^1.59",
-    "friendsofphp/php-cs-fixer": "^3.95.28",
-    "rector/rector": "^2.8"
+    "laravel/pint": "^1.32.3",
+    "phpstan/phpstan": "^2.3.7",
+    "phpstan/phpstan-strict-rules": "^2.1.2",
+    "phpunit/phpunit": "^12.5.45 || ^13.4.8",
+    "carthage-software/mago": "^1.61",
+    "friendsofphp/php-cs-fixer": "^3.95.32",
+    "rector/rector": "^2.8.5"
   },
   "bin": [
     "bin/versaCLI"

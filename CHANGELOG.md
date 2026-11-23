@@ -8,7 +8,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); v
 - **Avisos de obsolescencia en PHP 8.5.** Se quitan `curl_close()` del cliente HTTP y `ReflectionProperty::setAccessible()` de `VersaORMModel`: no hacen nada desde PHP 8.0 y 8.1, y el kernel exige 8.3.
 
 ### Cambiado
-- Dependencias al día: `twig/twig` 3.31, `egulias/email-validator` 4.0.5, `revolt/event-loop` 1.1, `phpunit/phpunit` 12.5.45, `phpstan/phpstan` 2.3.7, `phpstan/phpstan-strict-rules` 2.1.2, `carthage-software/mago` 1.61. PHPUnit sigue en 12 porque la versión 13 no es compatible con PHP 8.3.
+- Dependencias al día: `twig/twig` 3.31, `egulias/email-validator` 4.0.5, `revolt/event-loop` 1.1, `phpstan/phpstan` 2.3.7, `phpstan/phpstan-strict-rules` 2.1.2, `carthage-software/mago` 1.61, `rector/rector` 2.8.5, `laravel/pint` 1.32.3 y `friendsofphp/php-cs-fixer` 3.95.32.
+- **PHPUnit 13 en PHP 8.4 y 8.5.** La restricción es `^12.5.45 || ^13.4.8` porque PHPUnit 13 exige PHP 8.4 y el kernel sigue soportando 8.3.
 
 ## [3.16.0] - 2026-11-20
 
