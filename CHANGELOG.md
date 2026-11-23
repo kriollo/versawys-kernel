@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.17.1] - 2026-11-23
+
+### Seguridad
+- **El límite de peticiones podía reiniciarse con tráfico simultáneo.** La limpieza leía los contadores sin bloqueo: si uno se estaba reescribiendo lo veía vacío, lo daba por corrupto y lo borraba. Con eso, una ráfaga podía saltarse los límites de la API y del login. La limpieza ahora respeta el bloqueo, no toca un contador en uso y una petición ya no cuenta sobre un archivo borrado.
+
 ## [3.17.0] - 2026-11-23
 
 ### Añadido

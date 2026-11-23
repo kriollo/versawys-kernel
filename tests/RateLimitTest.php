@@ -37,6 +37,43 @@ final class RateLimitTest extends TestCase
         @rmdir($this->dir); // @mago-expect lint:no-error-control-operator
     }
 
+    public function testLaLimpiezaNoBorraUnContadorQueSeEstaEscribiendo(): void
+    {
+        mkdir($this->dir, 0o775, true);
+        $file = $this->dir . 'en-uso.json';
+        $handle = fopen($file, 'c+');
+        self::assertNotFalse($handle);
+        self::assertTrue(flock($handle, LOCK_EX));
+
+        SecurityUtils::cleanExpiredLimits();
+
+        self::assertFileExists($file);
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    }
+
+    public function testLaLimpiezaConservaUnContadorRecienCreadoYBorraLoVencido(): void
+    {
+        mkdir($this->dir, 0o775, true);
+        file_put_contents($this->dir . 'nuevo.json', '');
+        file_put_contents($this->dir . 'vacio-viejo.json', '');
+        touch($this->dir . 'vacio-viejo.json', time() - 7200);
+        file_put_contents($this->dir . 'corrupto.json', 'no es json');
+        file_put_contents(
+            $this->dir . 'vencido.json',
+            (string) json_encode(['count' => 9, 'window_start' => time() - 7200]),
+        );
+        file_put_contents($this->dir . 'vigente.json', (string) json_encode(['count' => 2, 'window_start' => time()]));
+
+        SecurityUtils::cleanExpiredLimits();
+
+        self::assertFileExists($this->dir . 'nuevo.json');
+        self::assertFileExists($this->dir . 'vigente.json');
+        self::assertFileDoesNotExist($this->dir . 'vacio-viejo.json');
+        self::assertFileDoesNotExist($this->dir . 'corrupto.json');
+        self::assertFileDoesNotExist($this->dir . 'vencido.json');
+    }
+
     public function testItBlocksWithA429AfterTheLimit(): void
     {
         for ($i = 0; $i < 3; $i++) {

@@ -211,11 +211,34 @@ class SecurityUtils
 
         foreach ($files as $file) {
             // @mago-expect lint:no-error-control-operator
-            $data = json_decode((string) @file_get_contents($file), true);
-            if (!isset($data['window_start']) || !self::isWithinWindow((int) $data['window_start'], $defaultWindow)) {
-                // @mago-expect lint:no-error-control-operator
-                @unlink($file); // Eliminar archivo si expiró o quedó corrupto
+            $handle = @fopen($file, 'r+');
+            if ($handle === false) {
+                continue;
             }
+
+            // Un contador en uso no se toca: mientras se reescribe está vacío y parecería corrupto
+            if (!flock($handle, LOCK_EX | LOCK_NB)) {
+                fclose($handle);
+
+                continue;
+            }
+
+            $contents = (string) stream_get_contents($handle);
+            $stat = fstat($handle);
+            $data = json_decode($contents, true);
+            $expired = $contents === ''
+                // Recién creado por una petición que aún espera su turno para escribirlo
+                ? $stat !== false && (time() - $stat['mtime']) >= $defaultWindow
+                : !is_array($data)
+                || !isset($data['window_start'])
+                || !self::isWithinWindow((int) $data['window_start'], $defaultWindow);
+            if ($expired) {
+                // @mago-expect lint:no-error-control-operator
+                @unlink($file);
+            }
+
+            flock($handle, LOCK_UN);
+            fclose($handle);
         }
     }
 
@@ -250,8 +273,28 @@ class SecurityUtils
         }
 
         $fresh = ['count' => 1, 'window_start' => time()];
-        // @mago-expect lint:no-error-control-operator
-        $handle = @fopen($cacheDir . $key . '.json', 'c+');
+        $path = $cacheDir . $key . '.json';
+        $handle = false;
+        // Si la limpieza borró el archivo mientras se esperaba el bloqueo, se abre de nuevo: no se cuenta en uno huérfano
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            // @mago-expect lint:no-error-control-operator
+            $handle = @fopen($path, 'c+');
+            if ($handle === false) {
+                break;
+            }
+
+            flock($handle, LOCK_EX);
+            clearstatcache(true, $path);
+            $stat = fstat($handle);
+            // @mago-expect lint:no-error-control-operator
+            if ($stat !== false && @fileinode($path) === $stat['ino']) {
+                break;
+            }
+
+            fclose($handle);
+            $handle = false;
+        }
+
         if ($handle === false) {
             // Sin almacenamiento no se puede contar: se registra y la petición continúa
             Loggin::error('Rate limiting sin almacenamiento escribible: ' . $cacheDir, 'security');
@@ -259,7 +302,6 @@ class SecurityUtils
             return $fresh;
         }
 
-        flock($handle, LOCK_EX);
         $data = json_decode((string) stream_get_contents($handle), true);
 
         if (
