@@ -92,7 +92,7 @@ class GlobalControllers
      * @param array<int|string, string> $allowedFilters columnas que el cliente puede filtrar con `externalFilters`
      *                                                  (`col=valor AND col2>valor2`). Acepta `'col'` o `'nombreCliente' => 'tabla.col'`.
      *
-     * @return array<string, mixed>
+     * @return array{page: int, per_page: int, filtro: string, order: string, externalFilters: string, limit: string, filter: string, bindings: list<mixed>, allParams: array<array-key, mixed>, offset: int, limitNumber: int}
      */
     public function getParamsPaginate(
         Request $http,

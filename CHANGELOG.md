@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.17.2] - 2026-11-25
+
+### Corregido
+- **Las pruebas escribían en el `Storage` del proyecto.** `TestDatabase::boot()` llevaba los logs, Twig y el límite de peticiones a la carpeta temporal de la corrida, pero no `storage.root`: los XML, PDF y respaldos de las pruebas quedaban en `versaWYS/storage`. Como la base de prueba reinicia los id en cada corrida, una prueba podía leer el archivo que dejó otra corrida para el mismo id, y sobrescribir los de desarrollo. Ahora `storage.root` también es la carpeta de la corrida, que se borra al terminar.
+- **`getParamsPaginate()` declara la forma exacta de lo que devuelve** (`page`, `per_page`, `filtro`, `order`, `externalFilters`, `limit`, `filter`, `bindings`, `allParams`, `offset` y `limitNumber`), en vez de `array<string, mixed>`. Los analizadores estáticos ya no marcan cada uso como índice posiblemente indefinido.
+
 ## [3.17.1] - 2026-11-23
 
 ### Seguridad

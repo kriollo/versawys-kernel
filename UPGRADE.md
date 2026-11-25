@@ -13,6 +13,11 @@ El panel base (`app/models`, `app/services`) se copia en cada proyecto y el kern
 
 **Agregar algo a esta lista o cambiar una firma es un cambio de versión mayor.** `php versaCLI app:check:deploy` falla si al proyecto le falta alguno.
 
+## 3.17.1 → 3.17.2 (sin cambios incompatibles)
+
+- Las pruebas con `TestDatabase` guardan los archivos de `Storage` en la carpeta temporal de la corrida. Si una prueba
+  leía a propósito un archivo de `versaWYS/storage` del proyecto, ahora tiene que crearlo en la prueba.
+
 ## 3.17.0 → 3.17.1 (sin cambios incompatibles)
 
 `composer update versawys/kernel`. Corrige el reinicio de los contadores de límite de peticiones bajo carga.

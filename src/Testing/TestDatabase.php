@@ -89,6 +89,10 @@ final class TestDatabase
         $config['twig']['compiled_dir'] = $dir . '/twig';
         $config['logging']['dir'] = $dir . '/logs/';
         $config['rate_limiting']['cache_dir'] = $dir . '/rate_limits/';
+        // Los archivos de la aplicación (Storage) también van a la carpeta de la corrida: la base de prueba reinicia
+        // los id en cada corrida, así que con la carpeta del proyecto una prueba leía el archivo que dejó otra corrida
+        // para el mismo id, y podía sobrescribir los de desarrollo
+        $config['storage']['root'] = $dir . '/storage';
         // Las pruebas inician muchas sesiones seguidas: el rate limiting no las puede frenar
         foreach (['global', 'api', 'upload', 'sensitive', 'login'] as $rule) {
             $config['rate_limiting']['rules'][$rule]['requests'] = 100_000;
