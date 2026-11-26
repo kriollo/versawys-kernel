@@ -53,6 +53,8 @@ return [
     // IPs o rangos CIDR de los proxies propios (balanceador, Cloudflare): solo desde ellos se
     // aceptan X-Forwarded-For / -Proto / -Host. Rangos inválidos se ignoran y se registran.
     'trusted_proxies' => [],
+    // Tope del cuerpo JSON de una petición, en bytes: uno mayor responde 413 sin decodificarse
+    'max_json_bytes' => 2_097_152,
     'auth' => [
         'inactive_account_days' => 30,
         // @mago-expect lint:no-literal-password (son días, no una clave)

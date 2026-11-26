@@ -29,11 +29,16 @@ class Request
 
     protected mixed $rawBodyLength;
 
+    /** Anidación máxima de un cuerpo JSON (la de PHP es 512): ningún formulario ni API necesita más */
+    public const int JSON_MAX_DEPTH = 64;
+
     /**
      * Estado de la petición actual: su identificador (X-Request-Id) y, en pruebas, el cuerpo que fija
      * Testing\TestClient (sin él se lee php://input).
      *
-     * @var array{id?: string, input?: string}
+     * `body_error`: por qué el cuerpo JSON no se pudo leer (ver bodyError()).
+     *
+     * @var array{id?: string, input?: string, body_error?: array{success: int, message: string, code: int}}
      */
     private static array $current = [];
 
@@ -47,6 +52,7 @@ class Request
             $this->ip = self::clientIp();
             $this->accept = $_SERVER['HTTP_ACCEPT'] ?? '*/*';
             $this->prepareFiles();
+            unset(self::$current['body_error']);
             $this->prepareParams();
 
             $this->rawBody = self::input();
@@ -561,7 +567,7 @@ class Request
             $this->params = $_GET ?? [];
         } elseif ($method === 'POST') {
             if ($this->contentType !== '' && str_starts_with(strtolower($this->contentType), 'application/json')) {
-                $this->params = json_decode(self::input(), true) ?? [];
+                $this->params = $this->decodeJson(self::input());
             } else {
                 // Para POST multipart/form-data, no aplicar filtros agresivos
                 $this->params = $_POST;
@@ -580,7 +586,7 @@ class Request
 
         // str_starts_with: el Content-Type suele llevar "; charset=utf-8"
         if (str_starts_with(strtolower($this->contentType), 'application/json')) {
-            $this->params = $params === '' || !Functions::validateJson($params) ? [] : json_decode($params, true);
+            $this->params = $this->decodeJson($params);
         } elseif (str_contains($this->contentType, 'multipart/form-data')) {
             $this->params = $this->procesaFormData($params);
         } else {
@@ -590,6 +596,53 @@ class Request
         foreach (array_keys($this->params) as $key) {
             $this->processJsonValue($key);
         }
+    }
+
+    /**
+     * El cuerpo JSON como arreglo, decodificado una sola vez. Antes de decodificar se mide: un cuerpo sobre
+     * max_json_bytes no se procesa (un JSON enorme consume CPU y memoria antes de llegar al límite de peticiones).
+     * Uno inválido o más anidado que JSON_MAX_DEPTH tampoco: ambos dejan bodyError para que el Router responda.
+     *
+     * @return array<array-key, mixed>
+     */
+    protected function decodeJson(string $body): array
+    {
+        if (trim($body) === '') {
+            return [];
+        }
+
+        global $config;
+        $max = (int) ($config['max_json_bytes'] ?? 2_097_152);
+        if ($max > 0 && strlen($body) > $max) {
+            self::$current['body_error'] = [
+                'success' => 0,
+                'message' => 'El cuerpo de la petición es demasiado grande',
+                'code' => 413,
+            ];
+
+            return [];
+        }
+
+        try {
+            $datos = json_decode($body, true, self::JSON_MAX_DEPTH, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            self::$current['body_error'] = ['success' => 0, 'message' => 'El cuerpo JSON no es válido', 'code' => 400];
+
+            return [];
+        }
+
+        return is_array($datos) ? $datos : [];
+    }
+
+    /**
+     * Por qué el cuerpo JSON no se pudo leer (413: demasiado grande; 400: inválido o demasiado anidado). El Router
+     * responde con él antes de enrutar; null si no hubo problema.
+     *
+     * @return array{success: int, message: string, code: int}|null
+     */
+    public function bodyError(): ?array
+    {
+        return self::$current['body_error'] ?? null;
     }
 
     protected function processJsonValue($key): void

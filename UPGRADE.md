@@ -13,6 +13,12 @@ El panel base (`app/models`, `app/services`) se copia en cada proyecto y el kern
 
 **Agregar algo a esta lista o cambiar una firma es un cambio de versión mayor.** `php versaCLI app:check:deploy` falla si al proyecto le falta alguno.
 
+## 3.17.2 → 3.17.3
+
+- Un cuerpo JSON mayor a 2 MB responde 413 y uno inválido responde 400 (antes llegaba al controlador como `[]`). Si
+  una ruta recibe JSON más grande a propósito (una importación, por ejemplo), sube `max_json_bytes` en `config.json`
+  o súbelo como archivo (`multipart/form-data`, que no pasa por este tope).
+
 ## 3.17.1 → 3.17.2 (sin cambios incompatibles)
 
 - Las pruebas con `TestDatabase` guardan los archivos de `Storage` en la carpeta temporal de la corrida. Si una prueba

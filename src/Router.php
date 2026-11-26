@@ -229,6 +229,12 @@ class Router
                 ], 405);
             }
 
+            // Cuerpo JSON demasiado grande, inválido o demasiado anidado: se responde sin enrutar
+            $bodyError = $request instanceof Request ? $request->bodyError() : null;
+            if ($bodyError !== null) {
+                return Response::json($bodyError, $bodyError['code']);
+            }
+
             // �🚨 RATE LIMITING GLOBAL - Aplicar antes de procesar rutas
             if ($this->shouldApplyGlobalRateLimit($request)) {
                 $rateLimitResult = SecurityUtils::checkGlobalRateLimit($request);

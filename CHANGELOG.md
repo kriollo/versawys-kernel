@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.17.3] - 2026-11-25
+
+### Seguridad
+- **El cuerpo JSON se decodificaba sin tope de tamaño ni de anidación**, en toda petición y antes del límite de peticiones (el `Request` se arma al arrancar). Un cuerpo enorme gastaba CPU y memoria aunque la ruta no existiera o exigiera sesión. Ahora se mide antes de decodificar: sobre `max_json_bytes` (2 MB por omisión; `0` lo desactiva) responde **413** sin enrutar. Un JSON inválido o con más de 64 niveles responde **400**, en vez de convertirse en silencio en `[]`.
+- **PUT, PATCH y DELETE decodificaban el JSON dos veces** (validar y luego decodificar): ahora una sola.
+
 ## [3.17.2] - 2026-11-25
 
 ### Corregido
