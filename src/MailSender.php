@@ -103,23 +103,19 @@ class MailSender
         return $email;
     }
 
+    /**
+     * Las imágenes embebidas, referenciadas en el HTML como `cid:<id>` (por ejemplo `<img src="cid:logo">`). Se
+     * embeben por nombre: Symfony les da su Content-ID y reemplaza `cid:<id>` en el HTML por ese Content-ID. Con un
+     * Content-ID propio (`logo@symfony`) el `cid:logo` del HTML no coincidía y el cliente de correo mostraba la imagen
+     * como adjunto en vez de en el cuerpo.
+     */
     private function embedImage(Email $email, array $imagesEmbed): Email
     {
         foreach ($imagesEmbed as $image) {
-            $cid = trim((string) ($image['id'] ?? ''));
-            if ($cid === '') {
-                $cid = bin2hex(random_bytes(8)) . '@symfony';
-            } elseif (!str_contains($cid, '@')) {
-                $cid .= '@symfony';
-            }
-
-            $part = (new DataPart(
-                new File($image['path']),
-                basename((string) $image['path']),
-                $image['mime'],
-            ))->asInline();
-            $part->setContentId($cid);
-            $email->addPart($part);
+            $nombre = trim((string) ($image['id'] ?? ''));
+            // Un id con dominio (logo@symfony, de versiones anteriores) se referencia en el HTML sin él
+            $nombre = $nombre === '' ? bin2hex(random_bytes(8)) : explode('@', $nombre)[0];
+            $email->embedFromPath((string) $image['path'], $nombre, $image['mime'] ?? null);
         }
 
         return $email;

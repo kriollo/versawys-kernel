@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.17.4] - 2026-11-26
+
+### Corregido
+- **Las imágenes embebidas llegaban como adjunto y no en el cuerpo del correo.** `MailSender` les fijaba un Content-ID propio (`logo@symfony`) mientras el HTML las pedía como `cid:logo`: no coincidían y Gmail u Outlook mostraban el logo como archivo adjunto. Ahora se embeben por nombre (`embedFromPath`) y Symfony enlaza el `cid:` del HTML con su imagen. Un `id` con dominio de versiones anteriores se sigue aceptando.
+
 ## [3.17.3] - 2026-11-25
 
 ### Seguridad
